@@ -36,11 +36,6 @@ rpMatFXD3D8AtomicMatFXEnvRender_hook(RxD3D8InstanceData *inst, int flags, int se
 		RwD3D8SetTexture(NULL, 0);
 	RwD3D8SetTexture(NULL, 1);
 
-	RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-	RwD3D8SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-	RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-	RwD3D8SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-
 	ApplyEnvMapTextureMatrix(envMap, 1, env->envFrame);
 	RwUInt32 texfactor = ((intens | ((intens | (intens << 8)) << 8)) << 8) | intens;
 	RwD3D8SetRenderState(D3DRS_TEXTUREFACTOR, texfactor);
@@ -72,7 +67,7 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 	MatFXEnv *env = &matfx->fx[sel];
 	float factor;
 	RwUInt8 intens; 
-	factor = env->envCoeff*4.0f*255.0f;
+	factor = env->envCoeff*255.0f;
 	intens = factor;
 
 	{
@@ -85,8 +80,13 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 		}else
 			keystate = false;
 	}
-	if(pcmatfx)
-		return rpMatFXD3D8AtomicMatFXEnvRender(inst, flags, sel, texture, envMap);
+	if(pcmatfx){
+		float saved = env->envCoeff;
+		env->envCoeff *= 0.25f;
+		int ret = rpMatFXD3D8AtomicMatFXEnvRender(inst, flags, sel, texture, envMap);
+		env->envCoeff = saved;
+		return ret;
+	}
 
 	if(factor == 0.0f || !envMap){
 		if(sel == 0)
@@ -105,11 +105,6 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 	else
 		RwD3D8SetTexture(NULL, 0);
 
-	RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-	RwD3D8SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-	RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-	RwD3D8SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-
 	RwD3D8SetVertexShader(inst->vertexShader);
 	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
 	RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
@@ -125,24 +120,26 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 	RwUInt32 src, dst, lighting, zwrite, fog, fogcol;
 	RwRenderStateGet(rwRENDERSTATESRCBLEND, &src);
 	RwRenderStateGet(rwRENDERSTATEDESTBLEND, &dst);
-	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
+	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
 	RwD3D8GetRenderState(D3DRS_LIGHTING, &lighting);
 	RwD3D8GetRenderState(D3DRS_ZWRITEENABLE, &zwrite);
 	RwD3D8GetRenderState(D3DRS_FOGENABLE, &fog);
 //	RwD3D8SetRenderState(D3DRS_LIGHTING, 0);
 	RwD3D8SetRenderState(D3DRS_ZWRITEENABLE, 0);
-	if(lighting){
+	if(fog){
 		RwD3D8GetRenderState(D3DRS_FOGCOLOR, &fogcol);
 		RwD3D8SetRenderState(D3DRS_FOGCOLOR, 0);
 	}
 
-	RwUInt32 texfactor;
-	texfactor = ((intens | ((intens | (intens << 8)) << 8)) << 8) | intens;
+	RwUInt32 texfactor = ((intens | ((intens | (intens << 8)) << 8)) << 8) | intens;
 	RwD3D8SetRenderState(D3DRS_TEXTUREFACTOR, texfactor);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MODULATE);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
+	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
 
 	if(inst->indexBuffer)
 		RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
@@ -155,9 +152,10 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 	RwD3D8SetRenderState(D3DRS_LIGHTING, lighting);
 	RwD3D8SetRenderState(D3DRS_ZWRITEENABLE, zwrite);
 	RwD3D8SetRenderState(D3DRS_FOGENABLE, fog);
-	if(lighting)
+	if(fog)
 		RwD3D8SetRenderState(D3DRS_FOGCOLOR, fogcol);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
 	RwD3D8SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
 	RwD3D8SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
 
@@ -215,7 +213,7 @@ patch10(void)
 		MemoryVP::InjectHook(0x57A8BA, createIIIEnvFrame);
 		MemoryVP::InjectHook(0x57A8C7, 0x57A8F4, PATCH_JUMP);
 	}
-//	MemoryVP::Patch<DWORD>(0x699D44, 0x3f800000);
+	MemoryVP::Patch<DWORD>(0x699D44, 0x3f800000);
 	MemoryVP::InjectHook(0x6765C8, rpMatFXD3D8AtomicMatFXEnvRender_dual);
 }
 
