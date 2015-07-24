@@ -16,3 +16,7 @@ WRAPPER RwBool RwD3D8SetStreamSource(RwUInt32, void*, RwUInt32) { EAXJMP(0x65F37
 WRAPPER RwBool RwD3D8SetIndices(void*, RwUInt32) { EAXJMP(0x65F3C0); }
 WRAPPER RwBool RwD3D8DrawIndexedPrimitive(RwUInt32, RwUInt32, RwUInt32, RwUInt32, RwUInt32) { EAXJMP(0x65F410); }
 WRAPPER RwBool RwD3D8DrawPrimitive(RwUInt32, RwUInt32, RwUInt32) { EAXJMP(0x65F4A0); }
+WRAPPER RwBool RwD3D8SetSurfaceProperties(const RwRGBA*, const RwSurfaceProperties*, RwBool) { EAXJMP(0x65F7F0); }
+
+WRAPPER RwBool RwD3D8SetLight(RwInt32, const void*) { EAXJMP(0x65FB20); }
+WRAPPER RwBool RwD3D8EnableLight(RwInt32, RwBool) { EAXJMP(0x65FC10); }
