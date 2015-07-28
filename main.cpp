@@ -6,13 +6,137 @@ WRAPPER int rpMatFXD3D8AtomicMatFXEnvRender(RxD3D8InstanceData*, int, int, RwTex
 WRAPPER int rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData*, int, RwTexture*) { EAXJMP(0x674380); }
 WRAPPER RwBool rwD3D8RenderStateIsVertexAlphaEnable(void) { EAXJMP(0x659F60); };
 WRAPPER void rwD3D8RenderStateVertexAlphaEnable(RwBool x) { EAXJMP(0x659CF0); };
-WRAPPER void ApplyEnvMapTextureMatrix(RwTexture*, int, RwFrame*) { EAXJMP(0x6755D0); }
 int &MatFXMaterialDataOffset = *(int*)0x7876CC;
+
+void **&RwEngineInst = *(void***)0x7870C0;
 
 D3DMATERIAL8 &gMaterial = *(D3DMATERIAL8*)0x6DDEB8;
 D3DMATERIAL8 &gLastMaterial = *(D3DMATERIAL8*)0x789760;
 int &maxNumLights = *(int*)0x789BF4;
 int &lightsCache = *(int*)0x789BF8;
+
+RwMatrix &defmat = *(RwMatrix*)0x67FB18;
+
+WRAPPER int rwD3D8RasterIsCubeRaster(RwRaster*) { EAXJMP(0x63EE40); }
+
+
+int blendstyle, texgenstyle;
+int blendkey, texgenkey;
+
+void
+rwtod3dmat(D3DMATRIX *d3d, RwMatrix *rw)
+{
+	d3d->m[0][0] = rw->right.x;
+	d3d->m[0][1] = rw->right.y;
+	d3d->m[0][2] = rw->right.z;
+	d3d->m[0][3] = 0.0f;
+	d3d->m[1][0] = rw->up.x;
+	d3d->m[1][1] = rw->up.y;
+	d3d->m[1][2] = rw->up.z;
+	d3d->m[1][3] = 0.0f;
+	d3d->m[2][0] = rw->at.x;
+	d3d->m[2][1] = rw->at.y;
+	d3d->m[2][2] = rw->at.z;
+	d3d->m[2][3] = 0.0f;
+	d3d->m[3][0] = rw->pos.x;
+	d3d->m[3][1] = rw->pos.y;
+	d3d->m[3][2] = rw->pos.z;
+	d3d->m[3][3] = 1.0f;
+}
+
+void
+d3dtorwmat(RwMatrix *rw, D3DMATRIX *d3d)
+{
+	rw->right.x	= d3d->m[0][0];
+	rw->right.y	= d3d->m[0][1];
+	rw->right.z	= d3d->m[0][2]; 
+	rw->up.x	= d3d->m[1][0];
+	rw->up.y	= d3d->m[1][1];
+	rw->up.z	= d3d->m[1][2];
+	rw->at.x	= d3d->m[2][0];
+	rw->at.y	= d3d->m[2][1];
+	rw->at.z	= d3d->m[2][2];
+	rw->pos.x	= d3d->m[3][0];
+	rw->pos.y	= d3d->m[3][1];
+	rw->pos.z	= d3d->m[3][2];
+}
+
+void
+ApplyEnvMapTextureMatrix(RwTexture *tex, int n, RwFrame *frame)
+{
+	RwD3D8SetTexture(tex, n);
+	if(rwD3D8RasterIsCubeRaster(tex->raster)){
+		RwD3D8SetTextureStageState(n, D3DTSS_TEXCOORDINDEX, 0x30000);
+		return;
+	}
+	RwD3D8SetTextureStageState(n, D3DRS_ALPHAREF, 2);
+	RwD3D8SetTextureStageState(n, D3DTSS_TEXCOORDINDEX, 0x10000);
+	if(frame){
+		D3DMATRIX invmat;
+
+		RwMatrix *m1 = RwMatrixCreate();
+		m1->flags = 0;
+		RwMatrix *m2 = RwMatrixCreate();
+		m2->flags = 0;
+		RwMatrix *m3 = RwMatrixCreate();
+		m3->flags = 0;
+
+		RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera));
+		RwMatrix *envfrm = RwFrameGetLTM(frame);
+		if(texgenstyle == 0){
+			memcpy(m2, camfrm, 0x40);
+			m2->pos.x = 0.0f;
+			m2->pos.y = 0.0f;
+			m2->pos.z = 0.0f;
+			m2->right.x = -m2->right.x;
+			m2->right.y = -m2->right.y;
+			m2->right.z = -m2->right.z;
+			m2->flags = 0;
+	
+			RwMatrixInvert(m3, envfrm);
+			m3->pos.x = -1.0f;
+			m3->pos.y = -1.0f;
+			m3->pos.z = -1.0f;
+	
+			m3->right.x *= -0.5f;
+			m3->right.y *= -0.5f;
+			m3->right.z *= -0.5f;
+			m3->up.x *= -0.5f;
+			m3->up.y *= -0.5f;
+			m3->up.z *= -0.5f;
+			m3->at.x *= -0.5f;
+			m3->at.y *= -0.5f;
+			m3->at.z *= -0.5f;
+			m3->pos.x *= -0.5f;
+			m3->pos.y *= -0.5f;
+			m3->pos.z *= -0.5f;
+			RwMatrixMultiply(m1, m2, m3);
+	
+			rwtod3dmat(&invmat, m1);
+			RwD3D8SetTransform(D3DTS_TEXTURE0+n, &invmat);
+		}else{
+			RwMatrixInvert(m1, envfrm);
+			RwMatrixMultiply(m2, m1, camfrm);
+			m2->right.x = -m2->right.x;
+			m2->right.y = -m2->right.y;
+			m2->right.z = -m2->right.z;
+			m2->flags = 0;
+			m2->pos.x = 0.0f;
+			m2->pos.y = 0.0f;
+			m2->pos.z = 0.0f;
+			RwMatrixMultiply(m1, m2, &defmat);
+			rwtod3dmat(&invmat, m1);
+			RwD3D8SetTransform(D3DTS_TEXTURE0+n, &invmat);
+		}
+
+		RwMatrixDestroy(m1);
+		RwMatrixDestroy(m2);
+		RwMatrixDestroy(m3);
+
+		return;
+	}
+	RwD3D8SetTransform(D3DTS_TEXTURE0+n, &defmat);
+}
 
 void RwD3D8GetLight(RwInt32 n, void *light)
 {
@@ -20,8 +144,6 @@ void RwD3D8GetLight(RwInt32 n, void *light)
 		memset(light, 0, 0x68);
 	memcpy(light, (const void *)(lightsCache + 108 * n), 0x68);
 }
-
-int switchkey;
 
 int
 rpMatFXD3D8AtomicMatFXEnvRender_hook(RxD3D8InstanceData *inst, int flags, int sel, RwTexture *texture, RwTexture *envMap)
@@ -48,7 +170,7 @@ rpMatFXD3D8AtomicMatFXEnvRender_hook(RxD3D8InstanceData *inst, int flags, int se
 		RwD3D8SetTexture(NULL, 0);
 	RwD3D8SetTexture(NULL, 1);
 
-	ApplyEnvMapTextureMatrix(envMap, 1, env->envFrame);
+	ApplyEnvMapTextureMatrix(envMap, 0, env->envFrame);
 	RwUInt32 texfactor = ((intens | ((intens | (intens << 8)) << 8)) << 8) | intens;
 	RwD3D8SetRenderState(D3DRS_TEXTUREFACTOR, texfactor);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MULTIPLYADD);
@@ -69,8 +191,6 @@ rpMatFXD3D8AtomicMatFXEnvRender_hook(RxD3D8InstanceData *inst, int flags, int se
 	RwD3D8SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, 1);
 	return 0;
 }
-
-int matfxstyle = 0;
 
 int
 rpMatFXD3D8AtomicMatFXEnvRender_spec(RxD3D8InstanceData *inst, int flags, int sel, RwTexture *texture, RwTexture *envMap)
@@ -155,22 +275,32 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 
 	{
 		static bool keystate = false;
-		if(GetAsyncKeyState(switchkey) & 0x8000){
+		if(GetAsyncKeyState(blendkey) & 0x8000){
 			if(!keystate){
 				keystate = true;
-				matfxstyle = (matfxstyle+1)%2;
+				blendstyle = (blendstyle+1)%2;
 			}
 		}else
 			keystate = false;
 	}
-	if(matfxstyle == 1){
+	{
+		static bool keystate = false;
+		if(GetAsyncKeyState(texgenkey) & 0x8000){
+			if(!keystate){
+				keystate = true;
+				texgenstyle = (texgenstyle+1)%2;
+			}
+		}else
+			keystate = false;
+	}
+	if(blendstyle == 1){
 		float saved = env->envCoeff;
 		env->envCoeff *= 0.25f;
 		int ret = rpMatFXD3D8AtomicMatFXEnvRender(inst, flags, sel, texture, envMap);
 		env->envCoeff = saved;
 		return ret;
 	}
-	if(matfxstyle == 2)
+	if(blendstyle == 2)
 		return rpMatFXD3D8AtomicMatFXEnvRender_spec(inst, flags, sel, texture, envMap);
 
 	if(factor == 0.0f || !envMap){
@@ -197,7 +327,6 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 		RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
 	else
 		RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
-
 
 	ApplyEnvMapTextureMatrix(envMap, 0, env->envFrame);
 	if(!rwD3D8RenderStateIsVertexAlphaEnable())
@@ -252,19 +381,19 @@ createIIIEnvFrame(void)
 {
 	RwFrame *f;
 	f = RwFrameCreate();
+	f->modelling.right.x = 1.0f;
+	f->modelling.right.y = 0.0f;
+	f->modelling.right.z = 0.0f;
+	f->modelling.at.x = 0.0f;
+	f->modelling.at.y = 0.0f;
 	f->modelling.at.z = 1.0f;
-	f->modelling.up.y = f->modelling.at.z;
-	f->modelling.right.x = f->modelling.up.y;
-	f->modelling.up.x = 0;
-	f->modelling.right.z = f->modelling.up.x;
-	f->modelling.right.y = f->modelling.right.z;
-	f->modelling.at.y = 0;
-	f->modelling.at.x = f->modelling.at.y;
-	f->modelling.up.z = f->modelling.at.x;
-	f->modelling.pos.z = 0;
-	f->modelling.pos.y = f->modelling.pos.z;
-	f->modelling.pos.x = f->modelling.pos.y;
-	f->modelling.flags |= 0x20003u;
+	f->modelling.up.x = 0.0f;
+	f->modelling.up.y = 1.0f;
+	f->modelling.up.z = 0.0f;
+	f->modelling.pos.x = 0.0f;
+	f->modelling.pos.y = 0.0f;
+	f->modelling.pos.z = 0.0f;
+	f->modelling.flags |= 0x20003;
 	RwFrameUpdateObjects(f);
 	RwFrameGetLTM(f);
 	return f;
@@ -314,19 +443,6 @@ dualPassHook(void)
 	}
 }
 
-/*
-struct AnimAssocDefinition
-{
-	char *name;
-	char *blockName;
-	int modelIndex;
-	int animCount;
-	char **animNames;
-	void *animInfoList;
-};
-AnimAssocDefinition *animAssocDefinitions = (AnimAssocDefinition*)0x6857B0;
-*/
-
 int
 readhex(char *str)
 {
@@ -348,36 +464,36 @@ patch10(void)
 	modulePath[nLen-2] = L'n';
 	modulePath[nLen-3] = L'i';
 
-	GetPrivateProfileString("SkyGfx", "switchKey", "0x76", tmp, sizeof(tmp), modulePath);
-	switchkey = readhex(tmp);
-	matfxstyle = GetPrivateProfileInt("SkyGfx", "reflSwitch", 0, modulePath) % 2;
+	GetPrivateProfileString("SkyGfx", "texblendSwitchKey", "0x76", tmp, sizeof(tmp), modulePath);
+	blendkey = readhex(tmp);
+	GetPrivateProfileString("SkyGfx", "texgenSwitchKey", "0x77", tmp, sizeof(tmp), modulePath);
+	texgenkey = readhex(tmp);
+	blendstyle = GetPrivateProfileInt("SkyGfx", "texblendSwitch", 0, modulePath) % 2;
+	texgenstyle = GetPrivateProfileInt("SkyGfx", "texgenSwitch", 0, modulePath) % 2;
 	if(GetPrivateProfileInt("SkyGfx", "IIIReflections", FALSE, modulePath)){
 		MemoryVP::InjectHook(0x57A8BA, createIIIEnvFrame);
 		MemoryVP::InjectHook(0x57A8C7, 0x57A8F4, PATCH_JUMP);
 	}
 	MemoryVP::Patch<DWORD>(0x699D44, 0x3f800000);
 	MemoryVP::InjectHook(0x6765C8, rpMatFXD3D8AtomicMatFXEnvRender_dual);
+	MemoryVP::InjectHook(0x6755D0, ApplyEnvMapTextureMatrix, PATCH_JUMP);
+
 
 	if(GetPrivateProfileInt("SkyGfx", "dualPass", TRUE, modulePath))
 		MemoryVP::InjectHook(0x678D69, dualPassHook, PATCH_JUMP);
 
+	if(GetPrivateProfileInt("SkyGfx", "disableBackfaceCulling", FALSE, modulePath)){
+		// hope I didn't miss anything
+		MemoryVP::Patch<BYTE>(0x4C9E5F, 1);	// in CRenderer::RenderOneNonRoad()
+		MemoryVP::Patch<BYTE>(0x4C9F08, 1);	// in CRenderer::RenderBoats()
+		MemoryVP::Patch<BYTE>(0x4C9F5D, 1);	// in CRenderer::RenderEverythingBarRoads()
+		MemoryVP::Patch<BYTE>(0x4CA157, 1);	// in CRenderer::RenderFadingInEntities()
+		MemoryVP::Patch<BYTE>(0x4CA199, 1);	// in CReenvnderer::RenderRoads()
+	}
+
 	MemoryVP::Patch<BYTE>(0x5D4EEE, rwBLENDINVSRCALPHA);
 
 //	MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
-
-/*
-	FILE *f = fopen("animgrp.txt", "w");
-	for(int i = 0; i < 61; i++){
-		AnimAssocDefinition *def = &animAssocDefinitions[i];
-		fprintf(f, "%s, %s, %d, %d\n", def->name, def->blockName, def->modelIndex, def->animCount);
-		char **names = def->animNames;
-		int *p = (int*)def->animInfoList;
-		for(int j = 0; j < def->animCount; j++)
-			fprintf(f, "\t%d, %s, %X\n", p[j*2+0], names[j], p[j*2+1]);
-		fprintf(f, "\n");
-	}
-	fclose(f);
-*/
 }
 
 BOOL WINAPI
@@ -386,12 +502,10 @@ DllMain(HINSTANCE hInst, DWORD reason, LPVOID)
 	if(reason == DLL_PROCESS_ATTACH){
 		dllModule = hInst;
 
-/*
-		AllocConsole();
+/*		AllocConsole();
 		freopen("CONIN$", "r", stdin);
 		freopen("CONOUT$", "w", stdout);
-		freopen("CONOUT$", "w", stderr);
-*/
+		freopen("CONOUT$", "w", stderr);*/
 
 		if (*(DWORD*)0x667BF5 == 0xB85548EC)	// 1.0
 			patch10();
