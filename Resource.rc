@@ -1,0 +1,4 @@
+#include "resource.h"
+#include <windows.h>
+
+IDR_XBOXVEHICLEVS RCDATA "Release\\xboxvehicleVS.cso"

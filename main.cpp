@@ -1,4 +1,6 @@
 #include "skygfx_vc.h"
+#include "d3d8.h"
+#include "d3d8types.h"
 
 HMODULE dllModule;
 
@@ -16,9 +18,18 @@ int &maxNumLights = *(int*)0x789BF4;
 int &lightsCache = *(int*)0x789BF8;
 
 RwMatrix &defmat = *(RwMatrix*)0x67FB18;
+RwTexture *&reflectionTex = *(RwTexture**)0x9B5EF8;
 
 WRAPPER int rwD3D8RasterIsCubeRaster(RwRaster*) { EAXJMP(0x63EE40); }
 
+int is9initialized = 0;
+
+IDirect3DDevice8 *&RwD3DDevice = *(IDirect3DDevice8**)0x7897A8;
+
+RpLight *&pAmbient = *(RpLight**)0x974B44;
+RpLight *&pDirect = *(RpLight**)0x94DD40;
+RpLight **pExtraDirectionals = (RpLight**)0x69A140;
+int &NumExtraDirLightsInWorld = *(int*)0x94DB48;
 
 int blendstyle, texgenstyle;
 int blendkey, texgenkey;
@@ -61,9 +72,25 @@ d3dtorwmat(RwMatrix *rw, D3DMATRIX *d3d)
 	rw->pos.z	= d3d->m[3][2];
 }
 
+int reftex = 0;
+
 void
 ApplyEnvMapTextureMatrix(RwTexture *tex, int n, RwFrame *frame)
 {
+/*
+	{
+		static bool keystate = false;
+		if(GetAsyncKeyState(VK_F6) & 0x8000){
+			if(!keystate){
+				keystate = true;
+				reftex = (reftex+1)%2;
+			}
+		}else
+			keystate = false;
+	}
+	if(reftex)
+		tex = reflectionTex;
+*/
 	RwD3D8SetTexture(tex, n);
 	if(rwD3D8RasterIsCubeRaster(tex->raster)){
 		RwD3D8SetTextureStageState(n, D3DTSS_TEXCOORDINDEX, 0x30000);
@@ -192,6 +219,88 @@ rpMatFXD3D8AtomicMatFXEnvRender_hook(RxD3D8InstanceData *inst, int flags, int se
 	return 0;
 }
 
+float specPower = 0.25f;
+
+void
+reloadLights(void)
+{
+	char tmp[32];
+	char modulePath[MAX_PATH];
+
+	GetModuleFileName(dllModule, modulePath, MAX_PATH);
+	size_t nLen = strlen(modulePath);
+	modulePath[nLen-1] = L'i';
+	modulePath[nLen-2] = L'n';
+	modulePath[nLen-3] = L'i';
+
+	GetPrivateProfileString("SkyGfx", "specPower", "25", tmp, sizeof(tmp), modulePath);
+	specPower = atof(tmp);
+}
+
+RwBool
+RwD3D8SetLight_Specular(RwInt32 index, D3DLIGHT8 *light)
+{
+	light->Specular = light->Diffuse;
+	if(index == 0){
+//		light->Specular.r = light->Specular.g = light->Specular.b = 0.5f;
+//		light->Specular.a = 1.0f;
+		float scale = 1/255.0f;
+		light->Specular.r = 178*scale;
+		light->Specular.g = 178*scale;
+		light->Specular.b = 178*scale;
+		light->Specular.a = 1.0f;
+	}
+	return RwD3D8SetLight(index, light);
+}
+
+static void *xboxVS = NULL, *xboxPS = NULL;
+
+void
+uploadConstants(void)
+{
+	D3DMATRIX worldMat, viewMat, projMat;
+
+	RwD3D8GetTransform(D3DTS_WORLD, &worldMat);
+	RwD3D8GetTransform(D3DTS_VIEW, &viewMat);
+	RwD3D8GetTransform(D3DTS_PROJECTION, &projMat);
+	RwD3D9SetVertexShaderConstant(LOC_world, (void*)&worldMat, 4);
+//	RwMatrix out, world;
+//	d3dtorwmat(&world, &worldMat);
+//	world.flags = 0;
+//	RwMatrixInvert(&out, &world);
+//	rwtod3dmat(&worldMat, &out);
+	RwD3D9SetVertexShaderConstant(LOC_worldIT, (void*)&worldMat, 4);
+	RwD3D9SetVertexShaderConstant(LOC_view, (void*)&viewMat, 4);
+	RwD3D9SetVertexShaderConstant(LOC_proj, (void*)&projMat, 4);
+
+	RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera));
+	RwD3D9SetVertexShaderConstant(LOC_eye, (void*)RwMatrixGetPos(camfrm), 1);
+
+	RwRGBAReal col;
+	RwD3D9SetVertexShaderConstant(LOC_ambient, (void*)&pAmbient->color, 1);
+	RwD3D9SetVertexShaderConstant(LOC_directDir, (void*)RwMatrixGetAt(RwFrameGetLTM(RpLightGetFrame(pDirect))), 1);
+	col = pDirect->color;
+	col.alpha = 1.0f;
+	RwD3D9SetVertexShaderConstant(LOC_directDiff, (void*)&col, 1);
+	col.red   = 178/255.0f;
+	col.green = 178/255.0f;
+	col.blue  = 178/255.0f;
+	col.alpha = 0.5f;
+	RwD3D9SetVertexShaderConstant(LOC_directSpec, (void*)&col, 1);
+	int i = 0;
+	for(i = 0 ; i < NumExtraDirLightsInWorld; i++){
+		RwD3D9SetVertexShaderConstant(LOC_lights+i*2, (void*)RwMatrixGetAt(RwFrameGetLTM(RpLightGetFrame(pExtraDirectionals[i]))), 1);
+		col = pExtraDirectionals[i]->color;
+		col.alpha = 0.5f;
+		RwD3D9SetVertexShaderConstant(LOC_lights+i*2+1, (void*)&col, 1);
+	}
+	static float zero[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	for(; i < 4; i++){
+		RwD3D9SetVertexShaderConstant(LOC_lights+i*2, (void*)zero, 1);
+		RwD3D9SetVertexShaderConstant(LOC_lights+i*2+1, (void*)zero, 1);
+	}
+}
+
 int
 rpMatFXD3D8AtomicMatFXEnvRender_spec(RxD3D8InstanceData *inst, int flags, int sel, RwTexture *texture, RwTexture *envMap)
 {
@@ -200,6 +309,28 @@ rpMatFXD3D8AtomicMatFXEnvRender_spec(RxD3D8InstanceData *inst, int flags, int se
 	float factor = env->envCoeff*255.0f;
 	RwUInt8 intens = factor;
 	RpMaterial *m = inst->material;
+
+	{
+		static bool keystate = false;
+		if(GetAsyncKeyState(VK_F10) & 0x8000){
+			if(!keystate){
+				keystate = true;
+				reloadLights();
+			}
+		}else
+			keystate = false;
+	}
+
+	if(is9initialized == 0)
+		is9initialized = initD3D9((IDirect3DDevice8*)RwD3DDevice);
+	if(xboxVS == NULL){
+		HRSRC resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_XBOXVEHICLEVS), RT_RCDATA);
+		RwUInt32 *shader = (RwUInt32*)LoadResource(dllModule, resource);
+		RwD3D9CreateVertexShader(shader, &xboxVS);
+		assert(xboxVS);
+		FreeResource(shader);
+	}
+
 
 	if(factor == 0.0f || !envMap){
 		if(sel == 0)
@@ -218,48 +349,41 @@ rpMatFXD3D8AtomicMatFXEnvRender_spec(RxD3D8InstanceData *inst, int flags, int se
 	else
 		RwD3D8SetTexture(NULL, 0);
 
-//	float mult = m->surfaceProps.specular/255.0f;
 	float mult = 1.0f/255.0f;
-	gMaterial.Specular.r = m->color.red * mult;
-	gMaterial.Specular.g = m->color.green * mult;
-	gMaterial.Specular.b = m->color.blue * mult;
-	gMaterial.Specular.a = m->color.alpha * mult;
-	gMaterial.Power = 20.0f;
-	gLastMaterial.Diffuse.r++;	// invalidate cache
-	RwD3D8SetSurfaceProperties(&m->color, &m->surfaceProps, flags & 0x40);
-	D3DLIGHT8 light;
-	RwD3D8GetLight(0, &light);
-	// taken from SA
-//	light.Diffuse.r = light.Diffuse.g = light.Diffuse.b = 0.25f;
-	light.Diffuse.r = light.Diffuse.g = light.Diffuse.b = 0.0f;
-	light.Diffuse.a = 1.0f;
-//	light.Ambient.r = light.Ambient.g = light.Ambient.b = 0.75f;
-	light.Ambient.r = light.Ambient.g = light.Ambient.b = 0.0f;
-	light.Ambient.a = 1.0f;
-//	light.Specular.r = light.Specular.g = light.Specular.b = 0.65f;
-	light.Specular.r = light.Specular.g = light.Specular.b = 1.0f;
-	light.Specular.a = 1.0f;
-	light.Range = 1000.0f;
-	light.Falloff = 0.0f;
-	light.Attenuation0 = 1.0f;
-	light.Attenuation1 = 0.0f;
-	light.Attenuation2 = 0.0f;
-	RwD3D8SetLight(maxNumLights-1, &light);
-	RwD3D8EnableLight(maxNumLights-1, 1);
+//	gMaterial.Specular.r = 1.0f;//m->color.red * mult;
+//	gMaterial.Specular.g = 1.0f;//m->color.green * mult;
+//	gMaterial.Specular.b = 1.0f;//m->color.blue * mult;
+//	gMaterial.Specular.a = 1.0f;//m->color.alpha * mult;
+//	gMaterial.Power = specPower;
+//	gLastMaterial.Diffuse.r++;	// invalidate cache
+//	RwSurfaceProperties sp = m->surfaceProps;
+//	RwD3D8SetSurfaceProperties(&m->color, &m->surfaceProps, flags & 0x40);
 
-	RwD3D8SetRenderState(D3DRS_SPECULARENABLE, 1);
-	RwD3D8SetRenderState(D3DRS_LOCALVIEWER, 0);
-	RwD3D8SetRenderState(D3DRS_SPECULARMATERIALSOURCE, 0);
+//	RwD3D8SetRenderState(D3DRS_SPECULARENABLE, 1);
+//	RwD3D8SetRenderState(D3DRS_LOCALVIEWER, 1);
+//	RwD3D8SetRenderState(D3DRS_SPECULARMATERIALSOURCE, 0);
 
-	RwD3D8SetVertexShader(inst->vertexShader);
+//	if(!(GetAsyncKeyState(VK_F6) & 0x8000)){
+		RwD3D8SetVertexShader(NULL);
+		RwD3D9SetFVF(inst->vertexShader);
+		RwD3D9SetVertexShader(xboxVS);
+		uploadConstants();
+		RwD3D9SetVertexShaderConstant(LOC_surfProps, (void*)&m->surfaceProps, 1);
+		RwRGBAReal color;
+		RwRGBARealFromRwRGBA(&color, &m->color);
+		RwD3D9SetVertexShaderConstant(LOC_matCol, (void*)&color, 1);
+//	}else{
+//		RwD3D8SetVertexShader(inst->vertexShader);
+//	}
+
 	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
 	RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
+
 	if(inst->indexBuffer)
 		RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
 	else
 		RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
-	RwD3D8SetRenderState(D3DRS_SPECULARENABLE, 0);
-	RwD3D8EnableLight(maxNumLights-1, 0);
+//	RwD3D8SetRenderState(D3DRS_SPECULARENABLE, 0);
 	return 0;
 }
 
@@ -278,7 +402,7 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 		if(GetAsyncKeyState(blendkey) & 0x8000){
 			if(!keystate){
 				keystate = true;
-				blendstyle = (blendstyle+1)%2;
+				blendstyle = (blendstyle+1)%3;
 			}
 		}else
 			keystate = false;
@@ -468,7 +592,7 @@ patch10(void)
 	blendkey = readhex(tmp);
 	GetPrivateProfileString("SkyGfx", "texgenSwitchKey", "0x77", tmp, sizeof(tmp), modulePath);
 	texgenkey = readhex(tmp);
-	blendstyle = GetPrivateProfileInt("SkyGfx", "texblendSwitch", 0, modulePath) % 2;
+	blendstyle = GetPrivateProfileInt("SkyGfx", "texblendSwitch", 0, modulePath) % 3;
 	texgenstyle = GetPrivateProfileInt("SkyGfx", "texgenSwitch", 0, modulePath) % 2;
 	if(GetPrivateProfileInt("SkyGfx", "IIIReflections", FALSE, modulePath)){
 		MemoryVP::InjectHook(0x57A8BA, createIIIEnvFrame);
@@ -491,9 +615,22 @@ patch10(void)
 		MemoryVP::Patch<BYTE>(0x4CA199, 1);	// in CReenvnderer::RenderRoads()
 	}
 
+	MemoryVP::InjectHook(0x679C48, RwD3D8SetLight_Specular);
+	MemoryVP::InjectHook(0x679F0B, RwD3D8SetLight_Specular);
+
 	MemoryVP::Patch<BYTE>(0x5D4EEE, rwBLENDINVSRCALPHA);
 
-//	MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
+//	MemoryVP::Nop(0x600F1C, 2);
+//	MemoryVP::Nop(0x600F56, 2);
+//
+//	MemoryVP::Nop(0x6018DA, 6);
+//	MemoryVP::Nop(0x601910, 2);
+//	char *fmtstr = "%lu Y %lu Y %lu";
+//	MemoryVP::Patch(0x601970, fmtstr);
+
+	reloadLights();
+
+	MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
 }
 
 BOOL WINAPI
@@ -502,10 +639,10 @@ DllMain(HINSTANCE hInst, DWORD reason, LPVOID)
 	if(reason == DLL_PROCESS_ATTACH){
 		dllModule = hInst;
 
-/*		AllocConsole();
+		AllocConsole();
 		freopen("CONIN$", "r", stdin);
 		freopen("CONOUT$", "w", stdout);
-		freopen("CONOUT$", "w", stderr);*/
+		freopen("CONOUT$", "w", stderr);
 
 		if (*(DWORD*)0x667BF5 == 0xB85548EC)	// 1.0
 			patch10();
