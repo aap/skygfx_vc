@@ -2,3 +2,5 @@
 #include <windows.h>
 
 IDR_XBOXVEHICLEVS RCDATA "Release\\xboxvehicleVS.cso"
+IDR_XBOXVEHICLEPS RCDATA "Release\\xboxvehiclePS.cso"
+IDR_RIMVS RCDATA "Release\\rimVS.cso"

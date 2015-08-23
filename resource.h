@@ -1,1 +1,3 @@
 #define IDR_XBOXVEHICLEVS			101
+#define IDR_XBOXVEHICLEPS			102
+#define IDR_RIMVS				103

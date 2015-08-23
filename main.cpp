@@ -6,11 +6,7 @@ HMODULE dllModule;
 
 WRAPPER int rpMatFXD3D8AtomicMatFXEnvRender(RxD3D8InstanceData*, int, int, RwTexture*, RwTexture*) { EAXJMP(0x674EE0); }
 WRAPPER int rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData*, int, RwTexture*) { EAXJMP(0x674380); }
-WRAPPER RwBool rwD3D8RenderStateIsVertexAlphaEnable(void) { EAXJMP(0x659F60); };
-WRAPPER void rwD3D8RenderStateVertexAlphaEnable(RwBool x) { EAXJMP(0x659CF0); };
 int &MatFXMaterialDataOffset = *(int*)0x7876CC;
-
-void **&RwEngineInst = *(void***)0x7870C0;
 
 D3DMATERIAL8 &gMaterial = *(D3DMATERIAL8*)0x6DDEB8;
 D3DMATERIAL8 &gLastMaterial = *(D3DMATERIAL8*)0x789760;
@@ -22,14 +18,16 @@ RwTexture *&reflectionTex = *(RwTexture**)0x9B5EF8;
 
 WRAPPER int rwD3D8RasterIsCubeRaster(RwRaster*) { EAXJMP(0x63EE40); }
 
-int is9initialized = 0;
+IUnknown *&RwD3DDevice = *(IUnknown**)0x7897A8;
 
-IDirect3DDevice8 *&RwD3DDevice = *(IDirect3DDevice8**)0x7897A8;
-
+int iCanHasD3D9 = 0;
+void **&RwEngineInst = *(void***)0x7870C0;
 RpLight *&pAmbient = *(RpLight**)0x974B44;
 RpLight *&pDirect = *(RpLight**)0x94DD40;
 RpLight **pExtraDirectionals = (RpLight**)0x69A140;
 int &NumExtraDirLightsInWorld = *(int*)0x94DB48;
+
+
 
 int blendstyle, texgenstyle;
 int blendkey, texgenkey;
@@ -263,41 +261,41 @@ uploadConstants(void)
 	RwD3D8GetTransform(D3DTS_WORLD, &worldMat);
 	RwD3D8GetTransform(D3DTS_VIEW, &viewMat);
 	RwD3D8GetTransform(D3DTS_PROJECTION, &projMat);
-	RwD3D9SetVertexShaderConstant(LOC_world, (void*)&worldMat, 4);
+	RwD3D9SetVertexPixelShaderConstant(LOC_world, (void*)&worldMat, 4);
 //	RwMatrix out, world;
 //	d3dtorwmat(&world, &worldMat);
 //	world.flags = 0;
 //	RwMatrixInvert(&out, &world);
 //	rwtod3dmat(&worldMat, &out);
-	RwD3D9SetVertexShaderConstant(LOC_worldIT, (void*)&worldMat, 4);
-	RwD3D9SetVertexShaderConstant(LOC_view, (void*)&viewMat, 4);
-	RwD3D9SetVertexShaderConstant(LOC_proj, (void*)&projMat, 4);
+	RwD3D9SetVertexPixelShaderConstant(LOC_worldIT, (void*)&worldMat, 4);
+	RwD3D9SetVertexPixelShaderConstant(LOC_view, (void*)&viewMat, 4);
+	RwD3D9SetVertexPixelShaderConstant(LOC_proj, (void*)&projMat, 4);
 
 	RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera));
-	RwD3D9SetVertexShaderConstant(LOC_eye, (void*)RwMatrixGetPos(camfrm), 1);
+	RwD3D9SetVertexPixelShaderConstant(LOC_eye, (void*)RwMatrixGetPos(camfrm), 1);
 
 	RwRGBAReal col;
-	RwD3D9SetVertexShaderConstant(LOC_ambient, (void*)&pAmbient->color, 1);
-	RwD3D9SetVertexShaderConstant(LOC_directDir, (void*)RwMatrixGetAt(RwFrameGetLTM(RpLightGetFrame(pDirect))), 1);
+	RwD3D9SetVertexPixelShaderConstant(LOC_ambient, (void*)&pAmbient->color, 1);
+	RwD3D9SetVertexPixelShaderConstant(LOC_directDir, (void*)RwMatrixGetAt(RwFrameGetLTM(RpLightGetFrame(pDirect))), 1);
 	col = pDirect->color;
 	col.alpha = 1.0f;
-	RwD3D9SetVertexShaderConstant(LOC_directDiff, (void*)&col, 1);
+	RwD3D9SetVertexPixelShaderConstant(LOC_directDiff, (void*)&col, 1);
 	col.red   = 178/255.0f;
 	col.green = 178/255.0f;
 	col.blue  = 178/255.0f;
-	col.alpha = 0.5f;
-	RwD3D9SetVertexShaderConstant(LOC_directSpec, (void*)&col, 1);
+	col.alpha = 0.4f;
+	RwD3D9SetVertexPixelShaderConstant(LOC_directSpec, (void*)&col, 1);
 	int i = 0;
 	for(i = 0 ; i < NumExtraDirLightsInWorld; i++){
-		RwD3D9SetVertexShaderConstant(LOC_lights+i*2, (void*)RwMatrixGetAt(RwFrameGetLTM(RpLightGetFrame(pExtraDirectionals[i]))), 1);
+		RwD3D9SetVertexPixelShaderConstant(LOC_lights+i*2, (void*)RwMatrixGetAt(RwFrameGetLTM(RpLightGetFrame(pExtraDirectionals[i]))), 1);
 		col = pExtraDirectionals[i]->color;
-		col.alpha = 0.5f;
-		RwD3D9SetVertexShaderConstant(LOC_lights+i*2+1, (void*)&col, 1);
+		col.alpha = 0.4f;
+		RwD3D9SetVertexPixelShaderConstant(LOC_lights+i*2+1, (void*)&col, 1);
 	}
 	static float zero[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 	for(; i < 4; i++){
-		RwD3D9SetVertexShaderConstant(LOC_lights+i*2, (void*)zero, 1);
-		RwD3D9SetVertexShaderConstant(LOC_lights+i*2+1, (void*)zero, 1);
+		RwD3D9SetVertexPixelShaderConstant(LOC_lights+i*2, (void*)zero, 1);
+		RwD3D9SetVertexPixelShaderConstant(LOC_lights+i*2+1, (void*)zero, 1);
 	}
 }
 
@@ -321,13 +319,17 @@ rpMatFXD3D8AtomicMatFXEnvRender_spec(RxD3D8InstanceData *inst, int flags, int se
 			keystate = false;
 	}
 
-	if(is9initialized == 0)
-		is9initialized = initD3D9((IDirect3DDevice8*)RwD3DDevice);
 	if(xboxVS == NULL){
 		HRSRC resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_XBOXVEHICLEVS), RT_RCDATA);
 		RwUInt32 *shader = (RwUInt32*)LoadResource(dllModule, resource);
 		RwD3D9CreateVertexShader(shader, &xboxVS);
 		assert(xboxVS);
+		FreeResource(shader);
+
+		resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_XBOXVEHICLEPS), RT_RCDATA);
+		shader = (RwUInt32*)LoadResource(dllModule, resource);
+		RwD3D9CreatePixelShader(shader, &xboxPS);
+		assert(xboxPS);
 		FreeResource(shader);
 	}
 
@@ -367,11 +369,14 @@ rpMatFXD3D8AtomicMatFXEnvRender_spec(RxD3D8InstanceData *inst, int flags, int se
 		RwD3D8SetVertexShader(NULL);
 		RwD3D9SetFVF(inst->vertexShader);
 		RwD3D9SetVertexShader(xboxVS);
+		RwD3D9SetPixelShader(xboxPS);
 		uploadConstants();
-		RwD3D9SetVertexShaderConstant(LOC_surfProps, (void*)&m->surfaceProps, 1);
+		RwSurfaceProperties sp = m->surfaceProps;
+		sp.specular = specPower;
+		RwD3D9SetVertexPixelShaderConstant(LOC_surfProps, (void*)&sp, 1);
 		RwRGBAReal color;
 		RwRGBARealFromRwRGBA(&color, &m->color);
-		RwD3D9SetVertexShaderConstant(LOC_matCol, (void*)&color, 1);
+		RwD3D9SetVertexPixelShaderConstant(LOC_matCol, (void*)&color, 1);
 //	}else{
 //		RwD3D8SetVertexShader(inst->vertexShader);
 //	}
@@ -384,6 +389,8 @@ rpMatFXD3D8AtomicMatFXEnvRender_spec(RxD3D8InstanceData *inst, int flags, int se
 	else
 		RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
 //	RwD3D8SetRenderState(D3DRS_SPECULARENABLE, 0);
+	RwD3D9SetVertexShader(NULL);
+	RwD3D9SetPixelShader(NULL);
 	return 0;
 }
 
@@ -567,6 +574,15 @@ dualPassHook(void)
 	}
 }
 
+WRAPPER void D3D8DeviceSystemStart(void) { EAXJMP(0x65BFC0); }
+
+void
+D3D8DeviceSystemStart_hook(void)
+{
+	D3D8DeviceSystemStart();
+	iCanHasD3D9 = initD3D9((IDirect3DDevice8*)RwD3DDevice);
+}
+
 int
 readhex(char *str)
 {
@@ -615,10 +631,14 @@ patch10(void)
 		MemoryVP::Patch<BYTE>(0x4CA199, 1);	// in CReenvnderer::RenderRoads()
 	}
 
+	MemoryVP::InjectHook(0x65BB1F, D3D8DeviceSystemStart_hook);
+
 	MemoryVP::InjectHook(0x679C48, RwD3D8SetLight_Specular);
 	MemoryVP::InjectHook(0x679F0B, RwD3D8SetLight_Specular);
 
 	MemoryVP::Patch<BYTE>(0x5D4EEE, rwBLENDINVSRCALPHA);
+
+	MemoryVP::InjectHook(0x66D65E, rpSkinD3D8CreatePlainPipe_hook);
 
 //	MemoryVP::Nop(0x600F1C, 2);
 //	MemoryVP::Nop(0x600F56, 2);
@@ -639,10 +659,10 @@ DllMain(HINSTANCE hInst, DWORD reason, LPVOID)
 	if(reason == DLL_PROCESS_ATTACH){
 		dllModule = hInst;
 
-		AllocConsole();
+/*		AllocConsole();
 		freopen("CONIN$", "r", stdin);
 		freopen("CONOUT$", "w", stdout);
-		freopen("CONOUT$", "w", stderr);
+		freopen("CONOUT$", "w", stderr);*/
 
 		if (*(DWORD*)0x667BF5 == 0xB85548EC)	// 1.0
 			patch10();

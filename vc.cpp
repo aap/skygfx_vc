@@ -17,6 +17,7 @@ WRAPPER RwBool RwD3D8SetRenderState(RwUInt32, RwUInt32) { EAXJMP(0x6582A0); }
 WRAPPER void RwD3D8GetRenderState(RwUInt32, void*) { EAXJMP(0x6582F0); }
 WRAPPER RwBool RwD3D8SetTextureStageState(RwUInt32, RwUInt32, RwUInt32) { EAXJMP(0x658310); }
 WRAPPER RwBool RwD3D8SetVertexShader(RwUInt32) { EAXJMP(0x65F2F0); }
+WRAPPER RwBool RwD3D8SetPixelShader(RwUInt32) { EAXJMP(0x65F330); }
 WRAPPER RwBool RwD3D8SetStreamSource(RwUInt32, void*, RwUInt32) { EAXJMP(0x65F370); }
 WRAPPER RwBool RwD3D8SetIndices(void*, RwUInt32) { EAXJMP(0x65F3C0); }
 WRAPPER RwBool RwD3D8DrawIndexedPrimitive(RwUInt32, RwUInt32, RwUInt32, RwUInt32, RwUInt32) { EAXJMP(0x65F410); }
@@ -27,3 +28,8 @@ WRAPPER void RwD3D8GetTransform(RwUInt32, void*) { EAXJMP(0x65F670); }
 
 WRAPPER RwBool RwD3D8SetLight(RwInt32, const void*) { EAXJMP(0x65FB20); }
 WRAPPER RwBool RwD3D8EnableLight(RwInt32, RwBool) { EAXJMP(0x65FC10); }
+
+WRAPPER RwBool rwD3D8RenderStateIsVertexAlphaEnable(void) { EAXJMP(0x659F60); };
+WRAPPER void rwD3D8RenderStateVertexAlphaEnable(RwBool x) { EAXJMP(0x659CF0); };
+WRAPPER const RwSphere *RpAtomicGetWorldBoundingSphere(RpAtomic*) { EAXJMP(0x640710); };
+WRAPPER RwBool RwD3D8CameraIsBBoxFullyInsideFrustum(const void*, const void*) { EAXJMP(0x660010); };
