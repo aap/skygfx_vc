@@ -4,3 +4,5 @@
 IDR_XBOXVEHICLEVS RCDATA "Release\\xboxvehicleVS.cso"
 IDR_XBOXVEHICLEPS RCDATA "Release\\xboxvehiclePS.cso"
 IDR_RIMVS RCDATA "Release\\rimVS.cso"
+IDR_VEHICLEONEVS RCDATA "Release\\vehiclePass1VS.cso"
+IDR_VEHICLETWOVS RCDATA "Release\\vehiclePass2VS.cso"

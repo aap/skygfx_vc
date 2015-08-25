@@ -4,6 +4,7 @@
 #include <rwcore.h>
 #include <rwplcore.h>
 #include <rpworld.h>
+#include <rtbmp.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
@@ -27,7 +28,7 @@ struct MatFX
 	int effects;
 };
 
-void uploadConstants(void);
+void uploadConstants(float f);
 void rpSkinD3D8CreatePlainPipe_hook(void);
 
 extern HMODULE dllModule;

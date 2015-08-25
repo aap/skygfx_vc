@@ -57,7 +57,7 @@ rxD3D8SkinRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUIn
 		}
 	}
 
-	uploadConstants();
+	uploadConstants(1.0f);
 	RwRGBAReal rampStart, rampEnd;
 	rampStart.red = rampStart.green = rampStart.blue = 0.0f;
 	rampEnd.red = rampEnd.green = rampEnd.blue = 1.0f;
@@ -125,7 +125,7 @@ rxD3D8SkinRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUIn
 		RwD3D8SetRenderState(D3DRS_SHADEMODE, shademode);
 		if(rwD3D8RWGetRasterStage(0)){
 			RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-			RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TEXTURE);
+			RwD3D8SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 			RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
 		}else{
 			RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);

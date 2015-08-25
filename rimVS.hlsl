@@ -60,15 +60,6 @@ mainVS(in VS_INPUT In)
 //	float3 V = -mul(view, float4(0.0, 0.0, -1.0, 0.0));
 	float3 N = mul(worldIT, In.Normal).xyz;
 
-/*
-	float4 rimStart = float4(0.0, 0.0, 0.0, 1.0);
-	float4 rimEnd = float4(1.0, 1.0, 1.0, 1.0);
-	float f = 1 - max(0.0, dot(N, V));
-	f = f*1.0 - 0.5;	// scale + offset
-	f *= 2.0;	// scaling (or later?)
-	f = saturate(f);
-	float4 rim = lerp(rimStart, rimEnd, f);
-*/
 	float f = rim.x - rim.y*dot(N, V);	// not really V
 	float4 r = lerp(rampStart, rampEnd, f)*rim.z;
 	r = saturate(r);
