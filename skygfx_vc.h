@@ -28,10 +28,12 @@ struct MatFX
 	int effects;
 };
 
-void uploadConstants(float f);
-void rpSkinD3D8CreatePlainPipe_hook(void);
-
 extern HMODULE dllModule;
+
+//void uploadConstants(float f);
+void rpSkinD3D8CreatePlainPipe_hook(void);
+void RenderEnvTex(void);
+int rpMatFXD3D8AtomicMatFXEnvRender_xbox(RxD3D8InstanceData*, int, int, RwTexture*, RwTexture*);
 
 extern int iCanHasD3D9;
 extern void **&RwEngineInst;
@@ -39,6 +41,7 @@ extern RpLight *&pAmbient;
 extern RpLight *&pDirect;
 extern RpLight **pExtraDirectionals;
 extern int &NumExtraDirLightsInWorld;
+extern int &MatFXMaterialDataOffset;
 
 RwBool rwD3D8RenderStateIsVertexAlphaEnable(void);
 void rwD3D8RenderStateVertexAlphaEnable(RwBool x);

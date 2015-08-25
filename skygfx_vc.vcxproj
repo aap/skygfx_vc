@@ -81,7 +81,7 @@
   <ItemGroup>
     <ClCompile Include="d3d9.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="skin.cpp" />
+    <ClCompile Include="xbox.cpp" />
     <ClCompile Include="vc.cpp" />
   </ItemGroup>
   <ItemGroup>
