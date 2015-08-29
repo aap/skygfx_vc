@@ -17,6 +17,52 @@ enum
 	PATCH_NOTHING,
 };
 
+enum
+{
+	III_10 = 1,
+	III_11,
+	III_STEAM,
+	VC_10,
+	VC_11,
+	VC_STEAM
+};
+
+extern int gtaversion;
+
+template<typename T>
+inline T AddressByVersion(uint32_t addressIII10, uint32_t addressvc10)
+{
+	if(gtaversion == -1){
+		     if(*(uint32_t*)0x5C1E75 == 0xB85548EC) gtaversion = III_10;
+		else if(*(uint32_t*)0x5C2135 == 0xB85548EC) gtaversion = III_11;
+		else if(*(uint32_t*)0x5C6FD5 == 0xB85548EC) gtaversion = III_STEAM;
+		else if(*(uint32_t*)0x667BF5 == 0xB85548EC) gtaversion = VC_10;
+		else if(*(uint32_t*)0x667C45 == 0xB85548EC) gtaversion = VC_11;
+		else if(*(uint32_t*)0x666BA5 == 0xB85548EC) gtaversion = VC_STEAM;
+		else gtaversion = 0;
+	}
+	switch(gtaversion){
+	case III_10:
+		return (T)addressIII10;
+	case VC_10:
+		return (T)addressvc10;
+	default:
+		return (T)0;
+	}
+}
+
+inline bool
+isIII(void)
+{
+	return gtaversion >= III_10 && gtaversion <= III_STEAM;
+}
+
+inline bool
+isVC(void)
+{
+	return gtaversion >= VC_10 && gtaversion <= VC_STEAM;
+}
+
 template<typename AT>
 inline AT DynBaseAddress(AT address)
 {

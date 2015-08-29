@@ -1,18 +1,41 @@
-#include "skygfx_vc.h"
+#include <windows.h>
+#include <rwcore.h>
 #include <initguid.h>
 #include <d3d9.h>
 #include <d3d9types.h>
+#include "MemoryMgr.h"
 
 IDirect3DDevice9 *d3d9device = NULL;
 
+IUnknown *&RwD3DDevice = *(IUnknown**)0x7897A8;
+
+WRAPPER void D3D8DeviceSystemStart(void) { EAXJMP(0x65BFC0); }
+
+// get d3d9 device when d3d8 device is created
 int
-initD3D9(void *d3d8device)
+D3D8DeviceSystemStart_hook(void)
 {
-	IUnknown *foo = (IUnknown*)d3d8device;
-	foo->QueryInterface(IID_IDirect3DDevice9, (void**)&d3d9device);
-	if(d3d9device == NULL)
-		return 0;
+	D3D8DeviceSystemStart();
+	RwD3DDevice->QueryInterface(IID_IDirect3DDevice9, (void**)&d3d9device);
 	return 1;
+}
+
+void
+d3d9attach(void)
+{
+	MemoryVP::InjectHook(0x65BB1F, D3D8DeviceSystemStart_hook);
+	if(*(void**)0x8100BC){
+		// loaded late (camera is created)
+		RwD3DDevice->QueryInterface(IID_IDirect3DDevice9, (void**)&d3d9device);
+	}else{
+		// loaded early (no camera yet)
+	}
+}
+
+RwBool
+RwD3D9Supported(void)
+{
+	return d3d9device != NULL;
 }
 
 void
@@ -30,7 +53,6 @@ RwD3D9SetPixelShader(void *shader)
 RwBool
 RwD3D9CreateVertexShader(const RwUInt32 *function, void **shader)
 {
-	// TODO: cache
 	HRESULT res = d3d9device->CreateVertexShader((DWORD*)function, (IDirect3DVertexShader9**)shader);
 	return res >= 0;
 }
@@ -38,7 +60,6 @@ RwD3D9CreateVertexShader(const RwUInt32 *function, void **shader)
 RwBool
 RwD3D9CreatePixelShader(const RwUInt32 *function, void **shader)
 {
-	// TODO: cache
 	HRESULT res = d3d9device->CreatePixelShader((DWORD*)function, (IDirect3DPixelShader9**)shader);
 	return res >= 0;
 }
@@ -64,6 +85,6 @@ RwD3D9SetPixelShaderConstant(RwUInt32 registerAddress, const void *constantData,
 void
 RwD3D9SetVertexPixelShaderConstant(RwUInt32 registerAddress, const void *constantData, RwUInt32 constantCount)
 {
-	d3d9device->SetVertexShaderConstantF(registerAddress, (const float*)constantData, constantCount);
-	d3d9device->SetPixelShaderConstantF(registerAddress, (const float*)constantData, constantCount);
+	RwD3D9SetVertexShaderConstant(registerAddress, constantData, constantCount);
+	RwD3D9SetPixelShaderConstant(registerAddress, constantData, constantCount);
 }
