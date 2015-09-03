@@ -7,12 +7,15 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "skygfx_vc", "skygfx_vc.vcxp
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Win32 = Debug|Win32
+		Debug - III|Win32 = Debug - III|Win32
+		Debug - VC|Win32 = Debug - VC|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{61570E02-8CC7-4696-9C57-18F43407E95E}.Debug|Win32.ActiveCfg = Debug|Win32
-		{61570E02-8CC7-4696-9C57-18F43407E95E}.Debug|Win32.Build.0 = Debug|Win32
+		{61570E02-8CC7-4696-9C57-18F43407E95E}.Debug - III|Win32.ActiveCfg = Debug - III|Win32
+		{61570E02-8CC7-4696-9C57-18F43407E95E}.Debug - III|Win32.Build.0 = Debug - III|Win32
+		{61570E02-8CC7-4696-9C57-18F43407E95E}.Debug - VC|Win32.ActiveCfg = Debug - VC|Win32
+		{61570E02-8CC7-4696-9C57-18F43407E95E}.Debug - VC|Win32.Build.0 = Debug - VC|Win32
 		{61570E02-8CC7-4696-9C57-18F43407E95E}.Release|Win32.ActiveCfg = Release|Win32
 		{61570E02-8CC7-4696-9C57-18F43407E95E}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection

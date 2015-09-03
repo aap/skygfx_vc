@@ -47,7 +47,7 @@ diffuseTerm(float3 N, float3 L)
 }
 
 VS_OUTPUT
-mainVS(in VS_INPUT In)
+main(in VS_INPUT In)
 {
 	VS_OUTPUT Out;
 
@@ -73,15 +73,3 @@ mainVS(in VS_INPUT In)
 
 	return Out;
 }
-
-/*
-sampler2D tex0 : register(s0);
-
-float4
-mainPS(VS_OUTPUT In) : COLOR
-{
-	float4 result = tex2D(tex0, In.texcoord0.xy) * color;
-	result += specColor;
-	return result;
-}
-*/

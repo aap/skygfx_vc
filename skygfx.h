@@ -4,6 +4,7 @@
 #include <rwcore.h>
 #include <rwplcore.h>
 #include <rpworld.h>
+#include <rpmatfx.h>
 #include <rtbmp.h>
 #include "rwd3d9.h"
 #include <stdio.h>
@@ -31,10 +32,14 @@ struct MatFX
 
 extern HMODULE dllModule;
 
-//void uploadConstants(float f);
-void rpSkinD3D8CreatePlainPipe_hook(void);
+// ini switches
+extern int blendstyle, blendkey;
+extern int texgenstyle, texgenkey;
+extern int xboxcarpipe, xboxcarpipekey;
+extern int rimlight, rimlightkey;
+
+void neoInit(void);
 void RenderEnvTex(void);
-int rpMatFXD3D8AtomicMatFXEnvRender_xbox(RxD3D8InstanceData*, int, int, RwTexture*, RwTexture*);
 
 extern void **&RwEngineInst;
 extern RpLight *&pAmbient;
@@ -42,7 +47,10 @@ extern RpLight *&pDirect;
 extern RpLight **pExtraDirectionals;
 extern int &NumExtraDirLightsInWorld;
 extern int &MatFXMaterialDataOffset;
+extern int &MatFXAtomicDataOffset;
 
+void rxD3D8DefaultRenderCallback(RwResEntry*, void*, RwUInt8, RwUInt32);
+void rwD3D8AtomicMatFXRenderCallback(RwResEntry*, void*, RwUInt8, RwUInt32);
 RwBool rwD3D8RenderStateIsVertexAlphaEnable(void);
 void rwD3D8RenderStateVertexAlphaEnable(RwBool x);
 

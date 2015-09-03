@@ -1,4 +1,4 @@
-#include "skygfx_vc.h"
+#include "skygfx.h"
 #include "d3d8.h"
 #include "d3d8types.h"
 
@@ -6,29 +6,25 @@ HMODULE dllModule;
 int gtaversion = -1;
 
 WRAPPER int rwD3D8RasterIsCubeRaster(RwRaster*) { EAXJMP(0x63EE40); }	// VC only
-static uint32_t rpMatFXD3D8AtomicMatFXEnvRender_A = AddressByVersion<uint32_t>(0x5CF6C0, 0x674EE0);
+static uint32_t rpMatFXD3D8AtomicMatFXEnvRender_A = AddressByVersion<uint32_t>(0x5CF6C0, 0x5CF980, 0x674EE0);
 WRAPPER int rpMatFXD3D8AtomicMatFXEnvRender(RxD3D8InstanceData*, int, int, RwTexture*, RwTexture*) { VARJMP(rpMatFXD3D8AtomicMatFXEnvRender_A); }
-static uint32_t rpMatFXD3D8AtomicMatFXDefaultRender_A = AddressByVersion<uint32_t>(0x5CEB80, 0x674380);
+static uint32_t rpMatFXD3D8AtomicMatFXDefaultRender_A = AddressByVersion<uint32_t>(0x5CEB80, 0x5CEE40, 0x674380);
 WRAPPER int rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData*, int, RwTexture*) { VARJMP(rpMatFXD3D8AtomicMatFXDefaultRender_A); }
-int &MatFXMaterialDataOffset = *AddressByVersion<int*>(0x66188C, 0x7876CC);
+int &MatFXMaterialDataOffset = *AddressByVersion<int*>(0x66188C, 0x66188C, 0x7876CC);
+int &MatFXAtomicDataOffset = *AddressByVersion<int*>(0x66189C, 0x66189C, 0x7876DC);
 
-//D3DMATERIAL8 &gMaterial = *(D3DMATERIAL8*)0x6DDEB8;
-//D3DMATERIAL8 &gLastMaterial = *(D3DMATERIAL8*)0x789760;
-//int &maxNumLights = *(int*)0x789BF4;
-//int &lightsCache = *(int*)0x789BF8;
+RwMatrix &defmat = *AddressByVersion<RwMatrix*>(0x5E6738, 0x5E6738, 0x67FB18);
 
-RwMatrix &defmat = *AddressByVersion<RwMatrix*>(0x5E6738, 0x67FB18);
-//RwTexture *&reflectionTex = *(RwTexture**)0x9B5EF8;
+void **&RwEngineInst = *AddressByVersion<void***>(0x661228, 0x661228, 0x7870C0);
+RpLight *&pAmbient = *AddressByVersion<RpLight**>(0x885B6C, 0x885B1C, 0x974B44);
+RpLight *&pDirect = *AddressByVersion<RpLight**>(0x880F7C, 0x880F2C, 0x94DD40);
+RpLight **pExtraDirectionals = AddressByVersion<RpLight**>(0x60009C, 0x5FFE84, 0x69A140);
+int &NumExtraDirLightsInWorld = *AddressByVersion<int*>(0x64C608, 0x64C608, 0x94DB48);
 
-
-void **&RwEngineInst = *AddressByVersion<void***>(0x661228, 0x7870C0);
-RpLight *&pAmbient = *AddressByVersion<RpLight**>(0x885B6C, 0x974B44);
-RpLight *&pDirect = *AddressByVersion<RpLight**>(0x880F7C, 0x94DD40);
-RpLight **pExtraDirectionals = AddressByVersion<RpLight**>(0x60009C, 0x69A140);
-int &NumExtraDirLightsInWorld = *AddressByVersion<int*>(0x64C608, 0x94DB48);
-
-int blendstyle, texgenstyle;
-int blendkey, texgenkey;
+int blendstyle, blendkey;
+int texgenstyle, texgenkey;
+int xboxcarpipe, xboxcarpipekey;
+int rimlight, rimlightkey;
 
 void
 rwtod3dmat(D3DMATRIX *d3d, RwMatrix *rw)
@@ -68,25 +64,22 @@ d3dtorwmat(RwMatrix *rw, D3DMATRIX *d3d)
 	rw->pos.z	= d3d->m[3][2];
 }
 
-int reftex = 0;
+static uint32_t ApplyEnvMapTextureMatrix_A = AddressByVersion<uint32_t>(0x5CFD40, 0x5D0000, 0x6755D0);
+WRAPPER void ApplyEnvMapTextureMatrix(RwTexture*, int, RwFrame*) { VARJMP(ApplyEnvMapTextureMatrix_A); }
 
 void
-ApplyEnvMapTextureMatrix(RwTexture *tex, int n, RwFrame *frame)
+ApplyEnvMapTextureMatrix_hook(RwTexture *tex, int n, RwFrame *frame)
 {
-/*
 	{
 		static bool keystate = false;
-		if(GetAsyncKeyState(VK_F6) & 0x8000){
+		if(GetAsyncKeyState(texgenkey) & 0x8000){
 			if(!keystate){
 				keystate = true;
-				reftex = (reftex+1)%2;
+				texgenstyle = (texgenstyle+1)%2;
 			}
 		}else
 			keystate = false;
 	}
-	if(reftex)
-		tex = reflectionTex;
-*/
 	RwD3D8SetTexture(tex, n);
 	if(isVC() && rwD3D8RasterIsCubeRaster(tex->raster)){
 		RwD3D8SetTextureStageState(n, D3DTSS_TEXCOORDINDEX, 0x30000);
@@ -133,6 +126,7 @@ ApplyEnvMapTextureMatrix(RwTexture *tex, int n, RwFrame *frame)
 			m3->pos.x *= -0.5f;
 			m3->pos.y *= -0.5f;
 			m3->pos.z *= -0.5f;
+			m3->flags = 0;
 			RwMatrixMultiply(m1, m2, m3);
 	
 			rwtod3dmat(&invmat, m1);
@@ -143,10 +137,10 @@ ApplyEnvMapTextureMatrix(RwTexture *tex, int n, RwFrame *frame)
 			m2->right.x = -m2->right.x;
 			m2->right.y = -m2->right.y;
 			m2->right.z = -m2->right.z;
-			m2->flags = 0;
 			m2->pos.x = 0.0f;
 			m2->pos.y = 0.0f;
 			m2->pos.z = 0.0f;
+			m2->flags = 0;
 			RwMatrixMultiply(m1, m2, &defmat);
 			rwtod3dmat(&invmat, m1);
 			RwD3D8SetTransform(D3DTS_TEXTURE0+n, &invmat);
@@ -160,13 +154,7 @@ ApplyEnvMapTextureMatrix(RwTexture *tex, int n, RwFrame *frame)
 	RwD3D8SetTransform(D3DTS_TEXTURE0+n, &defmat);
 }
 
-/*void RwD3D8GetLight(RwInt32 n, void *light)
-{
-	if(n >= maxNumLights)
-		memset(light, 0, 0x68);
-	memcpy(light, (const void *)(lightsCache + 108 * n), 0x68);
-}*/
-
+/*
 int
 rpMatFXD3D8AtomicMatFXEnvRender_hook(RxD3D8InstanceData *inst, int flags, int sel, RwTexture *texture, RwTexture *envMap)
 {
@@ -213,46 +201,32 @@ rpMatFXD3D8AtomicMatFXEnvRender_hook(RxD3D8InstanceData *inst, int flags, int se
 	RwD3D8SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, 1);
 	return 0;
 }
+*/
+
+RwTexture *&pWaterTexReflection = *(RwTexture**)0x77FA5C;
 
 int
 rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int sel, RwTexture *texture, RwTexture *envMap)
 {
 	MatFX *matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);
 	MatFXEnv *env = &matfx->fx[sel];
-	float factor = env->envCoeff*255.0f;
-	if(isIII())
-		factor *= 2.0f;
-	RwUInt8 intens = factor;
-
 	{
 		static bool keystate = false;
 		if(GetAsyncKeyState(blendkey) & 0x8000){
 			if(!keystate){
 				keystate = true;
-				blendstyle = (blendstyle+1)%3;
+				blendstyle = (blendstyle+1)%2;
 			}
 		}else
 			keystate = false;
 	}
-	{
-		static bool keystate = false;
-		if(GetAsyncKeyState(texgenkey) & 0x8000){
-			if(!keystate){
-				keystate = true;
-				texgenstyle = (texgenstyle+1)%2;
-			}
-		}else
-			keystate = false;
-	}
-	if(blendstyle == 1){
-		float saved = env->envCoeff;
-		env->envCoeff *= 0.25f;
-		int ret = rpMatFXD3D8AtomicMatFXEnvRender(inst, flags, sel, texture, envMap);
-		env->envCoeff = saved;
-		return ret;
-	}
-	if(blendstyle == 2)
-		return rpMatFXD3D8AtomicMatFXEnvRender_xbox(inst, flags, sel, texture, envMap);
+	// rather ugly way to single out water. more research needed here
+	if(blendstyle == 1 || isVC() && envMap == pWaterTexReflection)
+		return rpMatFXD3D8AtomicMatFXEnvRender(inst, flags, sel, texture, envMap);
+
+	static float mult = isIII() ? 2.0f : 4.0f;
+	float factor = env->envCoeff*mult*255.0f;
+	RwUInt8 intens = factor;
 
 	if(factor == 0.0f || !envMap){
 		if(sel == 0)
@@ -382,7 +356,7 @@ drawDualPass(RxD3D8InstanceData *inst)
 	}
 }
 
-static uint32_t dualPassHook_R = AddressByVersion<uint32_t>(0x5DFBD8, 0x678DA8); 
+static uint32_t dualPassHook_R = AddressByVersion<uint32_t>(0x5DFBD8, 0x5DFE98, 0x678DA8); 
 void __declspec(naked)
 dualPassHook(void)
 {
@@ -416,16 +390,15 @@ CreateTextureFilterFlags(RwRaster *raster)
 	return tex;
 }
 
-static uint32_t RenderScene_A = AddressByVersion<uint32_t>(0x48E030, 0x4A6570); 
-WRAPPER void RenderScene(void) { VARJMP(RenderScene_A); }
+static uint32_t CGame__InitialiseRenderWare_A = AddressByVersion<uint32_t>(0x48BBA0, 0x48BC90, 0x4A51A0);
+WRAPPER bool CGame__InitialiseRenderWare(void) { VARJMP(CGame__InitialiseRenderWare_A); }
 
-void
-RenderScene_hook(void)
+bool
+CGame__InitialiseRenderWare_hook(void)
 {
-	RenderScene();
-
-	if(blendstyle == 2)
-		RenderEnvTex();
+	bool ret = CGame__InitialiseRenderWare();
+	neoInit();
+	return ret;
 }
 
 int
@@ -437,8 +410,10 @@ readhex(char *str)
 	return n;
 }
 
+RwCamera *&pRwCamera = *AddressByVersion<RwCamera**>(0x72676C, 0x72676C, 0x8100BC);
+
 void
-patch10(void)
+patch(void)
 {
 	char tmp[32];
 	char modulePath[MAX_PATH];
@@ -453,26 +428,36 @@ patch10(void)
 	blendkey = readhex(tmp);
 	GetPrivateProfileString("SkyGfx", "texgenSwitchKey", "0x77", tmp, sizeof(tmp), modulePath);
 	texgenkey = readhex(tmp);
-	blendstyle = GetPrivateProfileInt("SkyGfx", "texblendSwitch", 0, modulePath) % 3;
-	texgenstyle = GetPrivateProfileInt("SkyGfx", "texgenSwitch", 0, modulePath) % 2;
+	GetPrivateProfileString("SkyGfx", "xboxCarPipeKey", "0x75", tmp, sizeof(tmp), modulePath);
+	xboxcarpipekey = readhex(tmp);
+	GetPrivateProfileString("SkyGfx", "rimLightKey", "0x74", tmp, sizeof(tmp), modulePath);
+	rimlightkey = readhex(tmp);
+	blendstyle = GetPrivateProfileInt("SkyGfx", "texblendSwitch", 0, modulePath);
+	if(blendstyle >= 0)
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5D0CE8, 0x5D0FA8, 0x6765C8), rpMatFXD3D8AtomicMatFXEnvRender_dual);
+	blendstyle %= 2;
+	texgenstyle = GetPrivateProfileInt("SkyGfx", "texgenSwitch", 0, modulePath);
+	if(texgenstyle >= 0)
+		MemoryVP::InjectHook(ApplyEnvMapTextureMatrix_A, ApplyEnvMapTextureMatrix_hook, PATCH_JUMP);
+	texgenstyle %= 2;
 	if(isVC() && GetPrivateProfileInt("SkyGfx", "IIIReflections", FALSE, modulePath)){
 		MemoryVP::InjectHook(0x57A8BA, createIIIEnvFrame);
 		MemoryVP::InjectHook(0x57A8C7, 0x57A8F4, PATCH_JUMP);
 	}
-	if(isIII() && GetPrivateProfileInt("SkyGfx", "viceCityReflections", FALSE, modulePath)){
-		MemoryVP::InjectHook(0x5218A2, createVCEnvFrame);
-		MemoryVP::InjectHook(0x5218AC, 0x52195E, PATCH_JUMP);
+	if(isIII() && GetPrivateProfileInt("SkyGfx", "VCReflections", FALSE, modulePath)){
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5218A2, 0x521AE2, 0), createVCEnvFrame);
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5218AC, 0x521AEC, 0),
+		                     AddressByVersion<uint32_t>(0x52195E, 0x521B9E, 0), PATCH_JUMP);
 	}
-	if(isVC())
-		MemoryVP::Patch<DWORD>(0x699D44, 0x3f800000);
-	MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5D0CE8, 0x6765C8), rpMatFXD3D8AtomicMatFXEnvRender_dual);
-	MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5CFD40, 0x6755D0), ApplyEnvMapTextureMatrix, PATCH_JUMP);
-	if(isIII())
-		MemoryVP::InjectHook(0x59BABF, CreateTextureFilterFlags);
 
+	if(isIII())
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x59BABF, 0x59BD7F, 0), CreateTextureFilterFlags);
+
+	xboxcarpipe = GetPrivateProfileInt("SkyGfx", "xboxCarPipe", 0, modulePath);
+	rimlight = GetPrivateProfileInt("SkyGfx", "rimLight", 0, modulePath);
 
 	if(GetPrivateProfileInt("SkyGfx", "dualPass", TRUE, modulePath))
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5DFB99, 0x678D69), dualPassHook, PATCH_JUMP);
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5DFB99, 0x5DFE59, 0x678D69), dualPassHook, PATCH_JUMP);
 
 	if(isVC() && GetPrivateProfileInt("SkyGfx", "disableBackfaceCulling", FALSE, modulePath)){
 		// hope I didn't miss anything
@@ -483,22 +468,15 @@ patch10(void)
 		MemoryVP::Patch<BYTE>(0x4CA199, 1);	// in CReenvnderer::RenderRoads()
 	}
 
-	// inject code to render xbox env map
-	MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48E5F9, 0x4A604A), RenderScene_hook);
-
 	// fix auto aim alpha
 	if(isVC())
 		MemoryVP::Patch<BYTE>(0x5D4EEE, rwBLENDINVSRCALPHA);
 
-	MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5CDE9E, 0x66D65E), rpSkinD3D8CreatePlainPipe_hook);
-
-//	MemoryVP::Nop(0x600F1C, 2);
-//	MemoryVP::Nop(0x600F56, 2);
-//
-//	MemoryVP::Nop(0x6018DA, 6);
-//	MemoryVP::Nop(0x601910, 2);
-//	char *fmtstr = "%lu Y %lu Y %lu";
-//	MemoryVP::Patch(0x601970, fmtstr);
+	// when loaded late, init here; otherwise init with RW
+	if(pRwCamera)
+		neoInit();
+	else
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48D52F, 0x48D62F, 0x4A5B6B), CGame__InitialiseRenderWare_hook);
 
 //	MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
 }
@@ -514,9 +492,9 @@ DllMain(HINSTANCE hInst, DWORD reason, LPVOID)
 		freopen("CONOUT$", "w", stdout);
 		freopen("CONOUT$", "w", stderr);*/
 
-		AddressByVersion<uint32_t>(0, 0);
-		if(gtaversion == III_10 || gtaversion == VC_10)
-			patch10();
+		AddressByVersion<uint32_t>(0, 0, 0);
+		if(gtaversion == III_10 || gtaversion == III_11 ||gtaversion == VC_10)
+			patch();
 	}
 
 	return TRUE;

@@ -30,7 +30,7 @@ enum
 extern int gtaversion;
 
 template<typename T>
-inline T AddressByVersion(uint32_t addressIII10, uint32_t addressvc10)
+inline T AddressByVersion(uint32_t addressIII10, uint32_t addressIII11, uint32_t addressvc10)
 {
 	if(gtaversion == -1){
 		     if(*(uint32_t*)0x5C1E75 == 0xB85548EC) gtaversion = III_10;
@@ -44,6 +44,8 @@ inline T AddressByVersion(uint32_t addressIII10, uint32_t addressvc10)
 	switch(gtaversion){
 	case III_10:
 		return (T)addressIII10;
+	case III_11:
+		return (T)addressIII11;
 	case VC_10:
 		return (T)addressvc10;
 	default:
