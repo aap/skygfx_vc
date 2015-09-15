@@ -25,6 +25,7 @@ int blendstyle, blendkey;
 int texgenstyle, texgenkey;
 int xboxcarpipe, xboxcarpipekey;
 int rimlight, rimlightkey;
+int envMapSize;
 
 void
 rwtod3dmat(D3DMATRIX *d3d, RwMatrix *rw)
@@ -370,6 +371,48 @@ dualPassHook(void)
 	}
 }
 
+RwD3D8Vertex *blurVertices = AddressByVersion<RwD3D8Vertex*>(0x62F780, 0x62F780, 0x7097A8);
+RwImVertexIndex *blurIndices = AddressByVersion<RwImVertexIndex*>(0x5FDD90, 0x5FDB78, 0x697D48);
+static uint32_t DefinedState_A = AddressByVersion<uint32_t>(0x526330, 0x526570, 0x57F9C0);
+WRAPPER void DefinedState(void) { VARJMP(DefinedState_A); }
+
+void
+renderSniperTrails(RwRaster *raster)
+{
+	RwRGBA color;
+	color.red = 180;
+	color.green = 255;
+	color.blue = 180;
+	color.alpha = 120;
+
+	DefinedState();
+	RwRenderStateSet(rwRENDERSTATETEXTUREFILTER, (void*)1);
+	RwRenderStateSet(rwRENDERSTATEFOGENABLE, 0);
+	RwRenderStateSet(rwRENDERSTATEZTESTENABLE, 0);
+	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, 0);
+	RwRenderStateSet(rwRENDERSTATETEXTURERASTER, raster);
+	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)1);
+	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
+	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDINVSRCALPHA);
+	RwUInt32 emissiveColor = D3DCOLOR_ARGB(color.alpha, color.red, color.green, color.blue);
+	for(int i = 0; i < 4; i++)
+		blurVertices[i].emissiveColor = emissiveColor;
+	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, blurVertices, 4, blurIndices, 6);
+}
+
+void __declspec(naked)
+sniperTrailsHook(void)
+{
+	_asm{
+		push	[esp+28h];
+		call	renderSniperTrails
+		pop	eax
+		mov	ds:[0x97F888], 0
+		push	dword ptr 0x55EB90
+		retn
+	}
+}
+
 RwFrame*
 createVCEnvFrame(void)
 {
@@ -454,7 +497,11 @@ patch(void)
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x59BABF, 0x59BD7F, 0), CreateTextureFilterFlags);
 
 	xboxcarpipe = GetPrivateProfileInt("SkyGfx", "xboxCarPipe", 0, modulePath);
+	envMapSize = GetPrivateProfileInt("SkyGfx", "envMapSize", 128, modulePath);
 	rimlight = GetPrivateProfileInt("SkyGfx", "rimLight", 0, modulePath);
+	int n = 1;
+	while(n < envMapSize) n *= 2;
+	envMapSize = n;
 
 	if(GetPrivateProfileInt("SkyGfx", "dualPass", TRUE, modulePath))
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5DFB99, 0x5DFE59, 0x678D69), dualPassHook, PATCH_JUMP);
@@ -468,9 +515,16 @@ patch(void)
 		MemoryVP::Patch<BYTE>(0x4CA199, 1);	// in CReenvnderer::RenderRoads()
 	}
 
-	// fix auto aim alpha
-	if(isVC())
+	// fix blend mode
+	if(isVC()){
+		// auto aim
 		MemoryVP::Patch<BYTE>(0x5D4EEE, rwBLENDINVSRCALPHA);
+		// sniper dot
+		MemoryVP::Patch<BYTE>(0x558024, rwBLENDINVSRCALPHA);
+	}
+
+	if(isVC())
+		MemoryVP::InjectHook(0x55EA39, sniperTrailsHook, PATCH_JUMP);
 
 	// when loaded late, init here; otherwise init with RW
 	if(pRwCamera)

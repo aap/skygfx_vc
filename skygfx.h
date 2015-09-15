@@ -37,6 +37,7 @@ extern int blendstyle, blendkey;
 extern int texgenstyle, texgenkey;
 extern int xboxcarpipe, xboxcarpipekey;
 extern int rimlight, rimlightkey;
+extern int envMapSize;
 
 void neoInit(void);
 void RenderEnvTex(void);

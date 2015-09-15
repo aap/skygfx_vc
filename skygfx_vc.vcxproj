@@ -145,7 +145,8 @@
       <AdditionalDependencies>rwd3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y "$(TargetPath)" "C:\Users\aap\Desktop\gtavc\scripts\skygfx.asi"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

@@ -147,6 +147,21 @@ uploadConstants(float f)
 	}
 }
 
+/*
+WRAPPER void rpGeometryNativeWrite(RwStream*, RpGeometry*) { EAXJMP(0x673720); }
+WRAPPER RwStream *RwStreamOpen(RwStreamType, RwStreamAccessType, const void*) { EAXJMP(0x6459C0); }
+WRAPPER RwBool RwStreamClose(RwStream*, void*) { EAXJMP(0x6458F0); }
+
+void
+writenative(RpGeometry *g)
+{
+	RwStream *stream = RwStreamOpen(rwSTREAMFILENAME, rwSTREAMWRITE, "nativeout.dff");
+	g->flags |= rpGEOMETRYNATIVE;
+	rpGeometryNativeWrite(stream, g);
+	RwStreamClose(stream, NULL);
+}
+*/
+
 void
 carRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
@@ -167,6 +182,12 @@ carRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 	}
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
+
+//	static int written = 0;
+//	if(written == 0){
+//		writenative(atomic->geometry);
+//		written = 1;
+//	}
 
 	RwD3D9SetFVF(inst->vertexShader);
 	uploadConstants(currentSpecular.alpha);
@@ -711,8 +732,8 @@ neoInit(void)
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48C9A2, 0x48CAA2, 0x4A45F5), updateTweakValues);
 
 		// reflection things
-		RwRaster *envFB = RwRasterCreate(128, 128, 0, rwRASTERTYPECAMERATEXTURE);
-		RwRaster *envZB = RwRasterCreate(128, 128, 0, rwRASTERTYPEZBUFFER);
+		RwRaster *envFB = RwRasterCreate(envMapSize, envMapSize, 0, rwRASTERTYPECAMERATEXTURE);
+		RwRaster *envZB = RwRasterCreate(envMapSize, envMapSize, 0, rwRASTERTYPEZBUFFER);
 		envCam = RwCameraCreate();
 		RwCameraSetRaster(envCam, envFB);
 		RwCameraSetZRaster(envCam, envZB);
