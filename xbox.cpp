@@ -7,28 +7,28 @@
 
 #define MAXWEATHER 7
 
-static uint32_t CRenderer__RenderEverythingBarRoads_A = AddressByVersion<uint32_t>(0x4A7930, 0x4A7A20, 0x4C9F40);
+static uint32_t CRenderer__RenderEverythingBarRoads_A = AddressByVersion<uint32_t>(0x4A7930, 0x4A7A20, 0x4A79B0, 0x4C9F40, 0x4C9F60, 0x4C9E00);
 WRAPPER void CRenderer__RenderEverythingBarRoads(void) { VARJMP(CRenderer__RenderEverythingBarRoads_A); }
-static uint32_t CRenderer__RenderFadingInEntities_A = AddressByVersion<uint32_t>(0x4A7910, 0x4A7A00, 0x4CA140);
+static uint32_t CRenderer__RenderFadingInEntities_A = AddressByVersion<uint32_t>(0x4A7910, 0x4A7A00, 0x4A7990, 0x4CA140, 0x4CA160, 0x4CA000);
 WRAPPER void CRenderer__RenderFadingInEntities(void) { VARJMP(CRenderer__RenderFadingInEntities_A); }
-static uint32_t CTimeCycle__Update_A = AddressByVersion<uint32_t>(0x4ABF40, 0x4AC030, 0x4CEA40);
+static uint32_t CTimeCycle__Update_A = AddressByVersion<uint32_t>(0x4ABF40, 0x4AC030, 0x4ABFC0, 0x4CEA40, 0x4CEA60, 0x4CE900);
 WRAPPER void CTimeCycle__Update(void) { VARJMP(CTimeCycle__Update_A); }
 
-static uint32_t rwD3D8RWGetRasterStage_A = AddressByVersion<uint32_t>(0x5B5390, 0x5B5650, 0x659840);
+static uint32_t rwD3D8RWGetRasterStage_A = AddressByVersion<uint32_t>(0x5B5390, 0x5B5650, 0x5BA2C0, 0x659840, 0x659890, 0x6587F0);
 WRAPPER int rwD3D8RWGetRasterStage(int) { VARJMP(rwD3D8RWGetRasterStage_A); }
-static uint32_t rpSkinD3D8CreatePlainPipe_A = AddressByVersion<uint32_t>(0x5E0660, 0x5E0920, 0x6796D0);
+static uint32_t rpSkinD3D8CreatePlainPipe_A = AddressByVersion<uint32_t>(0x5E0660, 0x5E0920, 0x5D6ED0, 0x6796D0, 0x679720, 0x678680);
 WRAPPER void rpSkinD3D8CreatePlainPipe(void) { VARJMP(rpSkinD3D8CreatePlainPipe_A); }
 
-int &skyBotRed = *AddressByVersion<int*>(0x9414D0, 0x941688, 0xA0D958);
-int &skyBotGreen = *AddressByVersion<int*>(0x8F2BD0, 0x8F2C84, 0x97F208);
-int &skyBotBlue = *AddressByVersion<int*>(0x8F625C, 0x8F6414, 0x9B6DF4);
+int &skyBotRed = *AddressByVersion<int*>(0x9414D0, 0x941688, 0x9517C8, 0xA0D958, 0xA0D960, 0xA0C960);
+int &skyBotGreen = *AddressByVersion<int*>(0x8F2BD0, 0x8F2C84, 0x902DC4, 0x97F208, 0x97F210, 0x97E210);
+int &skyBotBlue = *AddressByVersion<int*>(0x8F625C, 0x8F6414, 0x906554, 0x9B6DF4, 0x9B6DFC, 0x9B5DFC);
 
-byte &clockHour = *AddressByVersion<byte*>(0x95CDA6, 0x95CF5F, 0xA10B6B);
-byte &clockMinute = *AddressByVersion<byte*>(0x95CDC8, 0x95CF80, 0xA10B92);
-byte &clockSecond = *(byte*)0xA10A3C;	// no seconds in III
-short &oldWeather = *AddressByVersion<short*>(0x95CCEC, 0x95CEA4, 0xA10AAA);
-short &newWeather = *AddressByVersion<short*>(0x95CC70, 0x95CE28, 0xA10A2E);
-float &weatherInterp = *AddressByVersion<float*>(0x8F2520, 0x8F25D4, 0x9787D8);
+byte &clockHour = *AddressByVersion<byte*>(0x95CDA6, 0x95CF5F, 0x96D09F, 0xA10B6B, 0xA10B74, 0xA0FB75);
+byte &clockMinute = *AddressByVersion<byte*>(0x95CDC8, 0x95CF80, 0x96D0C0, 0xA10B92, 0xA10B9B, 0xA0FB9C);
+byte &clockSecond = *AddressByVersion<byte*>(0, 0, 0, 0xA10A3C, 0xA10A44, 0xA0FA44);;	// no seconds in III
+short &oldWeather = *AddressByVersion<short*>(0x95CCEC, 0x95CEA4, 0x96CFE4, 0xA10AAA, 0xA10AB2, 0xA0FAB2);
+short &newWeather = *AddressByVersion<short*>(0x95CC70, 0x95CE28, 0x96CF68, 0xA10A2E, 0xA10A36, 0xA0FA36);
+float &weatherInterp = *AddressByVersion<float*>(0x8F2520, 0x8F25D4, 0x902714, 0x9787D8, 0x9787E0, 0x9777E0);
 
 
 // car tweak
@@ -310,7 +310,6 @@ rimRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 		rxD3D8DefaultRenderCallback(repEntry, object, type, flags);
 		return;
 	}
-
 	RpAtomic *atomic = (RpAtomic*)object;
 	int lighting, dither, shademode;
 	int foo = 0;
@@ -333,7 +332,7 @@ rimRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 			RwD3D8SetRenderState(D3DRS_SHADEMODE, 1);
 		}
 	}
-
+	
 	int clip;
 	if(type != 1){
 		if(RwD3D8CameraIsBBoxFullyInsideFrustum((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera,
@@ -357,12 +356,12 @@ rimRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 			RwD3D8SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
 		}
 	}
-
+	
 	uploadConstants(1.0f);
 	RwD3D9SetVertexPixelShaderConstant(LOC_rampStart, (void*)&currentRampStart, 1);
 	RwD3D9SetVertexPixelShaderConstant(LOC_rampEnd, (void*)&currentRampEnd, 1);
 	float rim[4] = { currentOffset, currentScale, currentScaling, 0.0f };
-
+	
 //	static float off = 0.0f, sc = 1.5f, scl = 0.2f;
 //	if(GetAsyncKeyState(VK_F4) & 0x8000)
 //		off += 0.1f;
@@ -379,16 +378,16 @@ rimRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 //	float rim[4] = { off, sc, scl, 0.0f };
 //	printf("%f %f %f\n", off, sc, scl);
 	RwD3D9SetVertexPixelShaderConstant(LOC_rim, (void*)&rim, 1);
-
+	
 	int alpha = rwD3D8RenderStateIsVertexAlphaEnable();
 	int bar = -1;
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
-
+	
 	RwD3D9SetFVF(inst->vertexShader);
 	RwD3D9SetVertexShader(rimVS);
 	RwD3D9SetPixelShader(NULL);
-
+	
 	for(int i = 0; i < header->numMeshes; i++){
 		if(flags & (rpGEOMETRYTEXTURED|rpGEOMETRYTEXTURED2)){
 			RwD3D8SetTexture(inst->material->texture, 0);
@@ -432,7 +431,7 @@ rimRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 
 		inst++;
 	}
-
+	
 	if(foo){
 		RwD3D8SetRenderState(D3DRS_DITHERENABLE, dither);
 		RwD3D8SetRenderState(D3DRS_SHADEMODE, shademode);
@@ -639,7 +638,7 @@ public:
 	void SetClump_hook(RpClump *clump);
 };
 
-static uint32_t CVehicleModelInfo__SetClump_A = AddressByVersion<uint32_t>(0x51FC60, 0x51FE90, 0x57A800);
+static uint32_t CVehicleModelInfo__SetClump_A = AddressByVersion<uint32_t>(0x51FC60, 0x51FE90, 0x51FE20, 0x57A800, 0x57A820, 0x57A6F0);
 WRAPPER void CVehicleModelInfo::SetClump(RpClump*) { VARJMP(CVehicleModelInfo__SetClump_A); }
 
 static RpAtomic*
@@ -658,7 +657,7 @@ CVehicleModelInfo::SetClump_hook(RpClump *clump)
 	RpClumpForAllAtomics(clump, setAtomicPipelineCB, carpipe);
 }
 
-static uint32_t RenderScene_A = AddressByVersion<uint32_t>(0x48E030, 0x48E0F0, 0x4A6570);
+static uint32_t RenderScene_A = AddressByVersion<uint32_t>(0x48E030, 0x48E0F0, 0x48E080, 0x4A6570, 0x4A6590, 0x4A6440);
 WRAPPER void RenderScene(void) { VARJMP(RenderScene_A); }
 
 void
@@ -688,7 +687,7 @@ createPipe(void)
 	return NULL;
 }
 
-RxPipeline *&skinpipe = *AddressByVersion<RxPipeline**>(0x663CAC, 0x663CAC, 0x78A0D4);
+RxPipeline *&skinpipe = *AddressByVersion<RxPipeline**>(0x663CAC, 0x663CAC, 0x673DB0, 0x78A0D4, 0x78A0DC, 0x7890DC);
 
 void
 neoInit(void)
@@ -707,8 +706,8 @@ neoInit(void)
 		RxNodeDefinition *nodedef = RxNodeDefinitionGetD3D8AtomicAllInOne();
 		node = RxPipelineFindNodeByName(carpipe, nodedef->name, NULL, NULL);
 		RxD3D8AllInOneSetRenderCallBack(node, carRenderCB);
-		MemoryVP::Patch(AddressByVersion<uint32_t>(0x5FDFF0, 0x5FDDD8, 0x698088), &CVehicleModelInfo::SetClump_hook);
-
+		MemoryVP::Patch(AddressByVersion<uint32_t>(0x5FDFF0, 0x5FDDD8, 0x60ADD0, 0x698088, 0x698088, 0x697090), &CVehicleModelInfo::SetClump_hook);
+		
 		resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_VEHICLEONEVS), RT_RCDATA);
 		shader = (RwUInt32*)LoadResource(dllModule, resource);
 		RwD3D9CreateVertexShader(shader, &pass1VS);
@@ -720,7 +719,7 @@ neoInit(void)
 		RwD3D9CreateVertexShader(shader, &pass2VS);
 		assert(pass2VS);
 		FreeResource(shader);
-
+		
 		dat = fopen("neo\\carTweakingTable.dat", "r");
 		assert(dat && "couldn't load 'neo\\carTweakingTable.dat'");
 		readWeatherTimeBlock(dat, readFloat, fresnelTable);		// default 0.4
@@ -729,8 +728,8 @@ neoInit(void)
 		readWeatherTimeBlock(dat, readLight, specularTable);		// default 0.7, 0.7, 0.7, 1.0
 		fclose(dat);
 		// make it update
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48C9A2, 0x48CAA2, 0x4A45F5), updateTweakValues);
-
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48C9A2, 0x48CAA2, 0x48CA32, 0x4A45F5, 0x4A4615, 0x4A446F), updateTweakValues);
+		
 		// reflection things
 		RwRaster *envFB = RwRasterCreate(envMapSize, envMapSize, 0, rwRASTERTYPECAMERATEXTURE);
 		RwRaster *envZB = RwRasterCreate(envMapSize, envMapSize, 0, rwRASTERTYPEZBUFFER);
@@ -743,10 +742,10 @@ neoInit(void)
 		RwV2d vw;
 		vw.x = vw.y = 0.4f;
 		RwCameraSetViewWindow(envCam, &vw);
-
+		
 		envTex = RwTextureCreate(envFB);
 		RwTextureSetFilterMode(envTex, rwFILTERLINEAR);
-
+		
 		RwImage *envMaskI = RtBMPImageRead("neo\\CarReflectionMask.bmp");
 		assert(envMaskI);
 		RwInt32 width, height, depth, format;
@@ -755,7 +754,7 @@ neoInit(void)
 		RwRasterSetFromImage(envMask, envMaskI);
 		envMaskTex = RwTextureCreate(envMask);
 		RwImageDestroy(envMaskI);
-
+		
 		envMatrix = RwMatrixCreate();
 		envMatrix->right.x = -1.0f;
 		envMatrix->right.y = 0.0f;
@@ -766,10 +765,10 @@ neoInit(void)
 		envMatrix->at.x = 0.0f;
 		envMatrix->at.y = 0.0f;
 		envMatrix->at.z = 1.0f;
-
+		
 		makeScreenQuad();
-
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48E5F9, 0x48E6B9, 0x4A604A), RenderScene_hook);
+		
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48E5F9, 0x48E6B9, 0x48E649, 0x4A604A, 0x4A606A, 0x4A5F1A), RenderScene_hook);
 	}
 
 	// rim pipeline
@@ -802,6 +801,6 @@ neoInit(void)
 			initFloat(scalingTable, 2.0f);
 		}
 		// make it update
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48C9A2, 0x48CAA2, 0x4A45F5), updateTweakValues);
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48C9A2, 0x48CAA2, 0x48CA32, 0x4A45F5, 0x4A4615, 0x4A446F), updateTweakValues);
 	}
 }
