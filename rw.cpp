@@ -1,9 +1,11 @@
 #include "skygfx.h"
 
-WRAPPER RwTexture *RwTextureRead(const RwChar*, const RwChar*) { EAXJMP(0x5A7580); }
-WRAPPER RwTexDictionary *RwTexDictionaryGetCurrent(void) { EAXJMP(0x5A7570); }
-WRAPPER RwTexDictionary *RwTexDictionarySetCurrent(RwTexDictionary * dict) { EAXJMP(0x5A7550); }
-
+static uint32_t RwTextureRead_A = AddressByVersion<uint32_t>(0x5A7580, 0x5A7840, 0x5A8E00, 0, 0, 0);
+WRAPPER RwTexture *RwTextureRead(const RwChar*, const RwChar*) { VARJMP(RwTextureRead_A); }
+static uint32_t RwTexDictionaryGetCurrent_A = AddressByVersion<uint32_t>(0x5A7570, 0x5A7830, 0x5A8DA0, 0, 0, 0);
+WRAPPER RwTexDictionary *RwTexDictionaryGetCurrent(void) { VARJMP(RwTexDictionaryGetCurrent_A); }
+static uint32_t RwTexDictionarySetCurrent_A = AddressByVersion<uint32_t>(0x5A7550, 0x5A7810, 0x5A8D80, 0, 0, 0);
+WRAPPER RwTexDictionary *RwTexDictionarySetCurrent(RwTexDictionary * dict) { VARJMP(RwTexDictionarySetCurrent_A); }
 
 
 static uint32_t RwMatrixCreate_A = AddressByVersion<uint32_t>(0x5A3330, 0x5A35F0, 0x5A3FA0, 0x644620, 0x644670, 0x6435D0);

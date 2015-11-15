@@ -3,6 +3,7 @@
 #include "d3d8types.h"
 
 HMODULE dllModule;
+char asipath[MAX_PATH];
 int gtaversion = -1;
 static uint32_t rwD3D8RasterIsCubeRaster_A = AddressByVersion<uint32_t>(0, 0, 0, 0x63EE40, 0x63EE90, 0x63DDF0); // VC only
 WRAPPER int rwD3D8RasterIsCubeRaster(RwRaster*) { VARJMP(rwD3D8RasterIsCubeRaster_A); }
@@ -40,6 +41,7 @@ int blendstyle, blendkey;
 int texgenstyle, texgenkey;
 int xboxcarpipe, xboxcarpipekey;
 int rimlight, rimlightkey;
+int xboxworldpipe, xboxworldpipekey;
 int envMapSize;
 
 void
@@ -732,10 +734,14 @@ struct TxdStore {
 	static void SetCurrentTxd(RwTexDictionary*);
 };
 
-WRAPPER void TxdStore::PushCurrentTxd(void) { EAXJMP(0x527900); }
-WRAPPER RwTexDictionary *TxdStore::PopCurrentTxd(void) { EAXJMP(0x527910); }
-WRAPPER RwTexDictionary *TxdStore::FindTxdSlot(char*) { EAXJMP(0x5275D0); }
-WRAPPER void TxdStore::SetCurrentTxd(RwTexDictionary*) { EAXJMP(0x5278C0); }
+static uint32_t TxdStore_PushCurrentTxd_A = AddressByVersion<uint32_t>(0x527900, 0x527B40, 0x527AD0, 0, 0, 0);
+WRAPPER void TxdStore::PushCurrentTxd(void) { VARJMP(TxdStore_PushCurrentTxd_A); }
+static uint32_t TxdStore_PopCurrentTxd_A = AddressByVersion<uint32_t>(0x527910, 0x527B50, 0x527AE0, 0, 0, 0);
+WRAPPER RwTexDictionary *TxdStore::PopCurrentTxd(void) { VARJMP(TxdStore_PopCurrentTxd_A); }
+static uint32_t TxdStore_FindTxdSlot_A = AddressByVersion<uint32_t>(0x5275D0, 0x527810, 0x5277A0, 0, 0, 0);
+WRAPPER RwTexDictionary *TxdStore::FindTxdSlot(char*) { VARJMP(TxdStore_FindTxdSlot_A); }
+static uint32_t TxdStore_SetCurrentTxd_A = AddressByVersion<uint32_t>(0x5278C0, 0x527B00, 0x527A90, 0, 0, 0);
+WRAPPER void TxdStore::SetCurrentTxd(RwTexDictionary*) { VARJMP(TxdStore_SetCurrentTxd_A); }
 
 RwTexture*
 RwTextureRead_generic(char *name, char *mask)
@@ -762,6 +768,9 @@ patch(void)
 	char modulePath[MAX_PATH];
 
 	GetModuleFileName(dllModule, modulePath, MAX_PATH);
+	strncpy(asipath, modulePath, MAX_PATH);
+	char *p = strrchr(asipath, '\\');
+	if(p) p[1] = '\0';
 	size_t nLen = strlen(modulePath);
 	modulePath[nLen-1] = L'i';
 	modulePath[nLen-2] = L'n';
@@ -775,6 +784,8 @@ patch(void)
 	xboxcarpipekey = readhex(tmp);
 	GetPrivateProfileString("SkyGfx", "rimLightKey", "0x74", tmp, sizeof(tmp), modulePath);
 	rimlightkey = readhex(tmp);
+	GetPrivateProfileString("SkyGfx", "xboxWorldPipeKey", "0x73", tmp, sizeof(tmp), modulePath);
+	xboxworldpipekey = readhex(tmp);
 	blendstyle = GetPrivateProfileInt("SkyGfx", "texblendSwitch", 0, modulePath);
 	if(blendstyle >= 0)
 	{
@@ -813,6 +824,7 @@ patch(void)
 	int n = 1;
 	while(n < envMapSize) n *= 2;
 	envMapSize = n;
+	xboxworldpipe = GetPrivateProfileInt("SkyGfx", "xboxWorldPipe", -1, modulePath);
 
 	if(GetPrivateProfileInt("SkyGfx", "dualPass", TRUE, modulePath))
 	{
@@ -848,8 +860,18 @@ patch(void)
 	else
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48D52F, 0x48D62F, 0x48D5BF, 0x4A5B6B, 0x4A5B8B, 0x4A5A3B), CGame__InitialiseRenderWare_hook);
 
-	if(gtaversion == III_10){
+	if(isIII()){
+		int n = GetPrivateProfileInt("SkyGfx", "txdLimit", 850, modulePath);
+		if(n != 850){
+			MemoryVP::Patch<int>(0x406979, n); //same address for all versions, lol
+			MemoryVP::Patch<int>(AddressByVersion<uint32_t>(0x527458, 0x527698, 0x527628, 0, 0, 0), n);
+		}
+
+		// fall back to generic.txd when reading from dff
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
+	}
 /*
+	if(gtaversion == III_10){
 //		MemoryVP::Patch<float>(0x45C120, 80.0f);
 		*tanvalCar[1] = 9.0f;
 		*(float*)0x5F53C4 = 1.244444444f;
@@ -857,18 +879,14 @@ patch(void)
 		MemoryVP::InjectHook(0x459A9B, &CCam::Process_FollowPed_hook);
 //		MemoryVP::InjectHook(0x459C97, &CCam::Process_Editor_hook);
 //		MemoryVP::InjectHook(0x459ABA, &CCam::Process_Debug_hook);
-*/
 
-		// txd limit for xbox map
-		MemoryVP::Patch<int>(0x406979, 1024);
-		MemoryVP::Patch<int>(0x527458, 1024);
-
-		MemoryVP::InjectHook(0x5AAE1B, RwTextureRead_generic);
+		MemoryVP::Patch<int>(0x4A17F0, 6000);
 
 		//MemoryVP::Nop(0x48C2FD, 5);
 		//MemoryVP::Patch<char*>(0x524ED6, "DATA_ps2\\cullzone.dat");
 		//MemoryVP::Patch<int>(0x524F4D, 9830);
 	}
+*/
 	//if(gtaversion == VC_10){
 	//	MemoryVP::InjectHook(0x40FBD3, openfile);
 	//	MemoryVP::InjectHook(0x40FBE9, readfile);

@@ -59,6 +59,27 @@ static RwMatrix *envMatrix;
 static RwIm2DVertex screenQuad[4];
 static RwImVertexIndex screenindices[6] = { 0, 1, 2, 0, 2, 3 };
 
+char*
+getpath(char *path)
+{
+	static char tmppath[MAX_PATH];
+	FILE *f;
+
+	f = fopen(path, "r");
+	if(f){
+		fclose(f);
+		return path;
+	}
+	strncpy(tmppath, asipath, MAX_PATH);
+	strcat(tmppath, path);
+	f = fopen(tmppath, "r");
+	if(f){
+		fclose(f);
+		return tmppath;
+	}
+	return NULL;
+}
+
 void
 RenderReflectionScene(void)
 {
@@ -297,26 +318,19 @@ carRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 // World
 //
 
-int xboxworldpipe = 1;
-int xboxworldpipekey = VK_F5;
-
 void
 worldRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
-//	{
-//		static bool keystate = false;
-//		if(GetAsyncKeyState(xboxworldpipekey) & 0x8000){
-//			if(!keystate){
-//				keystate = true;
-//				xboxworldpipe = (xboxworldpipe+1)%2;
-//			}
-//		}else
-//			keystate = false;
-//	}
-//	if(!xboxworldpipe){
-//		rxD3D8DefaultRenderCallback(repEntry, object, type, flags);
-//		return;
-//	}
+	{
+		static bool keystate = false;
+		if(GetAsyncKeyState(xboxworldpipekey) & 0x8000){
+			if(!keystate){
+				keystate = true;
+				xboxworldpipe = (xboxworldpipe+1)%2;
+			}
+		}else
+			keystate = false;
+	}
 	MatFX *matfx;
 	RpAtomic *atomic = (RpAtomic*)object;
 	RwTexture *lightmap = NULL;
@@ -360,10 +374,10 @@ worldRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 		}
 	}
 
-	float lm[4] = { currentLmBlend, currentLmBlend, currentLmBlend, 1.0f };
+	float a = xboxworldpipe ? currentLmBlend : 0.0f;
+	float lm[4] = { a, a, a, 1.0f };
 
 	int alpha = rwD3D8RenderStateIsVertexAlphaEnable();
-	int bar = -1;
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
 	RwD3D8SetVertexShader(inst->vertexShader);
@@ -425,7 +439,8 @@ worldRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 	}
 }
 
-WRAPPER RwBool D3D8AtomicDefaultInstanceCallback(void*, RxD3D8InstanceData*, RwBool) { EAXJMP(0x5DB450); }
+static uint32_t D3D8AtomicDefaultInstanceCallback_A = AddressByVersion<uint32_t>(0x5DB450, 0x5DB710, 0x5EC520, 0, 0, 0);
+WRAPPER RwBool D3D8AtomicDefaultInstanceCallback(void*, RxD3D8InstanceData*, RwBool) { VARJMP(D3D8AtomicDefaultInstanceCallback_A); }
 
 RwBool
 worldInstanceCB(void *object, RxD3D8InstanceData *instancedData, RwBool reinstance)
@@ -529,7 +544,6 @@ rimRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 	RwD3D9SetVertexPixelShaderConstant(LOC_rim, (void*)&rim, 1);
 	
 	int alpha = rwD3D8RenderStateIsVertexAlphaEnable();
-	int bar = -1;
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
 	
@@ -807,8 +821,14 @@ CVehicleModelInfo::SetClump_hook(RpClump *clump)
 	RpClumpForAllAtomics(clump, setAtomicPipelineCB, carpipe);
 }
 
-WRAPPER void CVisibilityPlugins__SetClumpModelInfo(RpClump*, CClumpModelInfo*) { EAXJMP(0x528ED0); }
-WRAPPER void __fastcall CBaseModelInfo__AddTexDictionaryRef(CClumpModelInfo*) { EAXJMP(0x4F6B80); }
+static uint32_t CVisibilityPlugins__SetClumpModelInfo_A = AddressByVersion<uint32_t>(0x528ED0, 0x529110, 0x529110, 0, 0, 0);
+WRAPPER void CVisibilityPlugins__SetClumpModelInfo(RpClump*, CClumpModelInfo*) { VARJMP(CVisibilityPlugins__SetClumpModelInfo_A); }
+static uint32_t CBaseModelInfo__AddTexDictionaryRef_A = AddressByVersion<uint32_t>(0x4F6B80, 0x4F6C30, 0x4F6BC0, 0, 0, 0);
+WRAPPER void __fastcall CBaseModelInfo__AddTexDictionaryRef(CClumpModelInfo*) { VARJMP(CBaseModelInfo__AddTexDictionaryRef_A); }
+
+
+static RpAtomicCallBack CClumpModelInfo__SetAtomicRendererCB_A = AddressByVersion<RpAtomicCallBack>(0x4F8940, 0x4F8A20, 0x4F89B0, 0, 0, 0);
+static void *CVisibilityPlugins__RenderPlayerCB_A = AddressByVersion<void*>(0x528B30, 0x528D70, 0x528D00, 0, 0, 0);
 
 void
 CClumpModelInfo::SetClump(RpClump *clump)
@@ -816,14 +836,15 @@ CClumpModelInfo::SetClump(RpClump *clump)
 	this->clump = clump;
 	CVisibilityPlugins__SetClumpModelInfo(clump, this);
 	CBaseModelInfo__AddTexDictionaryRef(this);
-	RpClumpForAllAtomics(clump, (RpAtomicCallBack)0x4F8940, 0);	// CClumpModelInfo::SetAtomicRendererCB
+	RpClumpForAllAtomics(clump, CClumpModelInfo__SetAtomicRendererCB_A, 0);
 	if(this->unk1[2] == 1 || this->unk1[2] == 3 || this->unk1[2] == 4)
 		RpClumpForAllAtomics(clump, setAtomicPipelineCB, worldpipe);
 	if(strcmp(this->name, "playerh") == 0)
-		RpClumpForAllAtomics(clump, (RpAtomicCallBack)0x4F8940, (void*)0x528B30);	// CClumpModelInfo::SetAtomicRendererCB, CVisibilityPlugins::RenderPlayerCB
+		RpClumpForAllAtomics(clump, CClumpModelInfo__SetAtomicRendererCB_A, CVisibilityPlugins__RenderPlayerCB_A);
 }
 
-WRAPPER void CSimpleModelInfo::SetAtomic(int, RpAtomic*) { EAXJMP(0x517950); }
+static uint32_t CSimpleModelInfo__SetAtomic_A = AddressByVersion<uint32_t>(0x517950, 0x517B60, 0x517AF0, 0, 0, 0);
+WRAPPER void CSimpleModelInfo::SetAtomic(int, RpAtomic*) { VARJMP(CSimpleModelInfo__SetAtomic_A); }
 
 void
 CSimpleModelInfo::SetAtomic_hook(int n, RpAtomic *atomic)
@@ -891,6 +912,7 @@ neoInit(void)
 	RwUInt32 *shader;
 	RxPipelineNode *node;
 	FILE *dat;
+	char *path;
 
 	if(!RwD3D9Supported())
 		return;
@@ -915,8 +937,9 @@ neoInit(void)
 		assert(pass2VS);
 		FreeResource(shader);
 		
-		dat = fopen("neo\\carTweakingTable.dat", "r");
-		assert(dat && "couldn't load 'neo\\carTweakingTable.dat'");
+		path = getpath("neo\\carTweakingTable.dat");
+		assert(path && "couldn't load 'neo\\carTweakingTable.dat'");
+		dat = fopen(path, "r");
 		readWeatherTimeBlock(dat, readFloat, fresnelTable);		// default 0.4
 		readWeatherTimeBlock(dat, readFloat, specPowerTable);		// default 18.0
 		readWeatherTimeBlock(dat, readLight, diffuseTable);		// default 0.0, 0.0, 0.0, 0.0
@@ -940,8 +963,10 @@ neoInit(void)
 		
 		envTex = RwTextureCreate(envFB);
 		RwTextureSetFilterMode(envTex, rwFILTERLINEAR);
-		
-		RwImage *envMaskI = RtBMPImageRead("neo\\CarReflectionMask.bmp");
+
+		path = getpath("neo\\CarReflectionMask.bmp");
+		assert(path && "couldn't load 'neo\\CarReflectionMask.bmp'");
+		RwImage *envMaskI = RtBMPImageRead(path);
 		assert(envMaskI);
 		RwInt32 width, height, depth, format;
 		RwImageFindRasterFormat(envMaskI, 4, &width, &height, &depth, &format);
@@ -977,8 +1002,9 @@ neoInit(void)
 		node = RxPipelineFindNodeByName(skinpipe, "nodeD3D8SkinAtomicAllInOne.csl", NULL, NULL);
 		*(void**)node->privateData = rimRenderCB;
 
-		dat = fopen("neo\\rimTweakingTable.dat", "r");
-		assert(dat && "couldn't load 'neo\\rimTweakingTable.dat'");
+		path = getpath("neo\\rimTweakingTable.dat");
+		assert(path && "couldn't load 'neo\\rimTweakingTable.dat'");
+		dat = fopen(path, "r");
 		readWeatherTimeBlock(dat, readColor, rampStartTable);		// default 0.0, 0.0, 0.0, 1.0
 		readWeatherTimeBlock(dat, readColor, rampEndTable);		// default 1.0, 1.0, 1.0, 1.0
 		readWeatherTimeBlock(dat, readFloat, offsetTable);		// default 0.5
@@ -999,7 +1025,8 @@ neoInit(void)
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48C9A2, 0x48CAA2, 0x48CA32, 0x4A45F5, 0x4A4615, 0x4A446F), updateTweakValues);
 	}
 
-	if(gtaversion == III_10){
+	// world pipeline
+	if(xboxworldpipe >= 0 && isIII()){
 		worldpipe = createPipe();
 		RxNodeDefinition *nodedef = RxNodeDefinitionGetD3D8AtomicAllInOne();
 		node = RxPipelineFindNodeByName(worldpipe, nodedef->name, NULL, NULL);
@@ -1012,13 +1039,13 @@ neoInit(void)
 		assert(worldPS);
 		FreeResource(shader);
 
-		dat = fopen("neo\\worldTweakingTable.dat", "r");
-		assert(dat && "couldn't load 'neo\\worldTweakingTable.dat'");
+		path = getpath("neo\\worldTweakingTable.dat");
+		assert(path && "couldn't load 'neo\\worldTweakingTable.dat'");
+		dat = fopen(path, "r");
 		readWeatherTimeBlock(dat, readFloat, lmBlendTable);		// default 1.0
 		fclose(dat);
 
-		// TODO:
-		MemoryVP::InjectHook(0x4F8830, &CClumpModelInfo::SetClump, PATCH_JUMP);
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x4F8830, 0x4F8910, 0x4F88A0, 0, 0, 0), &CClumpModelInfo::SetClump, PATCH_JUMP);
 		MemoryVP::InjectHook(0x4768F1, &CSimpleModelInfo::SetAtomic_hook);
 		MemoryVP::InjectHook(0x476707, &CSimpleModelInfo::SetAtomic_hook);
 	}

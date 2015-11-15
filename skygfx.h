@@ -78,12 +78,14 @@ struct CSimpleModelInfo
 };
 
 extern HMODULE dllModule;
+extern char asipath[MAX_PATH];
 
 // ini switches
 extern int blendstyle, blendkey;
 extern int texgenstyle, texgenkey;
 extern int xboxcarpipe, xboxcarpipekey;
 extern int rimlight, rimlightkey;
+extern int xboxworldpipe, xboxworldpipekey;
 extern int envMapSize;
 
 void neoInit(void);
