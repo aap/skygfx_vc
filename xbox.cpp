@@ -44,8 +44,12 @@ static float offsetTable[24][MAXWEATHER], currentOffset;
 static float scaleTable[24][MAXWEATHER], currentScale;
 static float scalingTable[24][MAXWEATHER], currentScaling;
 
-static void *pass1VS = NULL, *pass2VS = NULL;
-static void *rimVS = NULL;
+// world tweak
+static float lmBlendTable[24][MAXWEATHER], currentLmBlend;
+
+static void *pass1VS, *pass2VS;
+static void *rimVS;
+static void *worldPS;
 
 
 static RwTexture *envTex, *envMaskTex;
@@ -289,6 +293,150 @@ carRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)dst);
 }
 
+//
+// World
+//
+
+int xboxworldpipe = 1;
+int xboxworldpipekey = VK_F5;
+
+void
+worldRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
+{
+//	{
+//		static bool keystate = false;
+//		if(GetAsyncKeyState(xboxworldpipekey) & 0x8000){
+//			if(!keystate){
+//				keystate = true;
+//				xboxworldpipe = (xboxworldpipe+1)%2;
+//			}
+//		}else
+//			keystate = false;
+//	}
+//	if(!xboxworldpipe){
+//		rxD3D8DefaultRenderCallback(repEntry, object, type, flags);
+//		return;
+//	}
+	MatFX *matfx;
+	RpAtomic *atomic = (RpAtomic*)object;
+	RwTexture *lightmap = NULL;
+	int lighting, dither, shademode;
+	int foo = 0;
+
+	RwD3D8GetRenderState(D3DRS_LIGHTING, &lighting);
+	if(lighting){
+		if(flags & rpGEOMETRYPRELIT){
+			RwD3D8SetRenderState(D3DRS_COLORVERTEX, 1);
+			RwD3D8SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, 1);
+		}else{
+			RwD3D8SetRenderState(D3DRS_COLORVERTEX, 0);
+			RwD3D8SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, 0);
+		}
+	}else{
+		if(!(flags & rpGEOMETRYPRELIT)){
+			foo = 1;
+			RwD3D8GetRenderState(D3DRS_DITHERENABLE, &dither);
+			RwD3D8GetRenderState(D3DRS_SHADEMODE, &shademode);
+			RwD3D8SetRenderState(D3DRS_TEXTUREFACTOR, 0xFF000000u);
+			RwD3D8SetRenderState(D3DRS_DITHERENABLE, 0);
+			RwD3D8SetRenderState(D3DRS_SHADEMODE, 1);
+		}
+	}
+	
+	int clip;
+	if(type != 1)
+		clip = !RwD3D8CameraIsBBoxFullyInsideFrustum((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera,
+		                                             (char*)object + 104);
+	else
+		clip = !RwD3D8CameraIsBBoxFullyInsideFrustum((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera,
+		                                             RpAtomicGetWorldBoundingSphere(atomic));
+	RwD3D8SetRenderState(D3DRS_CLIPPING, clip);
+	if(!(flags & (rpGEOMETRYTEXTURED|rpGEOMETRYTEXTURED2))){
+		RwD3D8SetTexture(0, 0);
+		if(foo){
+			RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
+			RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+			RwD3D8SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+		}
+	}
+
+	float lm[4] = { currentLmBlend, currentLmBlend, currentLmBlend, 1.0f };
+
+	int alpha = rwD3D8RenderStateIsVertexAlphaEnable();
+	int bar = -1;
+	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
+	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
+	RwD3D8SetVertexShader(inst->vertexShader);
+
+	for(int i = 0; i < header->numMeshes; i++){
+		matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);
+		lightmap = matfx ? ((MatFXDual*)matfx->fx)[0].tex : NULL;
+
+		RwD3D9SetPixelShader(lightmap ? worldPS : NULL);
+		lm[3] = inst->material->color.alpha/255.0f;
+		RwD3D9SetPixelShaderConstant(0, lm, 1);
+		RwD3D8SetTexture(lightmap, 1);
+		if(flags & (rpGEOMETRYTEXTURED|rpGEOMETRYTEXTURED2)){
+			RwD3D8SetTexture(inst->material->texture, 0);
+			if(foo){
+				RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
+				RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+			}
+		}
+		if(inst->vertexAlpha || inst->material->color.alpha != 0xFFu){
+			if(!alpha){
+				alpha = 1;
+				rwD3D8RenderStateVertexAlphaEnable(1);
+			}
+		}else{
+			if(alpha){
+				alpha = 0;
+				rwD3D8RenderStateVertexAlphaEnable(0);
+			}
+		}
+		if(lighting){
+			RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha != 0);
+			RwRGBA col = { 255, 255, 255, 255 };
+			col.alpha = inst->material->color.alpha;
+			RwD3D8SetSurfaceProperties(&col, &inst->material->surfaceProps, flags & 0x40);
+		}
+		RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
+		if(inst->indexBuffer){
+			RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
+			RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
+		}else
+			RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
+
+		inst++;
+	}
+	
+	RwD3D8SetTexture(NULL, 1);
+	if(foo){
+		RwD3D8SetRenderState(D3DRS_DITHERENABLE, dither);
+		RwD3D8SetRenderState(D3DRS_SHADEMODE, shademode);
+		if(rwD3D8RWGetRasterStage(0)){
+			RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+			RwD3D8SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+			RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+		}else{
+			RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
+			RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+		}
+	}
+}
+
+WRAPPER RwBool D3D8AtomicDefaultInstanceCallback(void*, RxD3D8InstanceData*, RwBool) { EAXJMP(0x5DB450); }
+
+RwBool
+worldInstanceCB(void *object, RxD3D8InstanceData *instancedData, RwBool reinstance)
+{
+	static RwRGBA white = { 255, 255, 255, 255 };
+	RwRGBA col = instancedData->material->color;
+	instancedData->material->color = white;
+	RwBool ret = D3D8AtomicDefaultInstanceCallback(object, instancedData, reinstance);
+	instancedData->material->color = col;
+	return ret;
+}
 
 //
 // Rim
@@ -296,7 +444,8 @@ carRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 
 void
 rimRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
-{	{
+{
+	{
 		static bool keystate = false;
 		if(GetAsyncKeyState(rimlightkey) & 0x8000){
 			if(!keystate){
@@ -546,6 +695,7 @@ updateTweakValues(void)
 	currentOffset = interploateFloat(offsetTable[clockHour], offsetTable[nextHour]);
 	currentScale = interploateFloat(scaleTable[clockHour], scaleTable[nextHour]);
 	currentScaling = interploateFloat(scalingTable[clockHour], scalingTable[nextHour]);
+	currentLmBlend = interploateFloat(lmBlendTable[clockHour], lmBlendTable[nextHour]);
 	interploateRGBA(&currentDiffuse, diffuseTable[clockHour], diffuseTable[nextHour]);
 	interploateRGBA(&currentSpecular, specularTable[clockHour], specularTable[nextHour]);
 	interploateRGBA(&currentRampStart, rampStartTable[clockHour], rampStartTable[nextHour]);
@@ -630,7 +780,7 @@ readWeatherTimeBlock(FILE *file, void (*func)(char *s, int line, int field, void
 	ungetc(c, file);
 }
 
-RxPipeline *carpipe;
+RxPipeline *carpipe, *worldpipe;
 
 class CVehicleModelInfo {
 public:
@@ -657,12 +807,51 @@ CVehicleModelInfo::SetClump_hook(RpClump *clump)
 	RpClumpForAllAtomics(clump, setAtomicPipelineCB, carpipe);
 }
 
+WRAPPER void CVisibilityPlugins__SetClumpModelInfo(RpClump*, CClumpModelInfo*) { EAXJMP(0x528ED0); }
+WRAPPER void __fastcall CBaseModelInfo__AddTexDictionaryRef(CClumpModelInfo*) { EAXJMP(0x4F6B80); }
+
+void
+CClumpModelInfo::SetClump(RpClump *clump)
+{
+	this->clump = clump;
+	CVisibilityPlugins__SetClumpModelInfo(clump, this);
+	CBaseModelInfo__AddTexDictionaryRef(this);
+	RpClumpForAllAtomics(clump, (RpAtomicCallBack)0x4F8940, 0);	// CClumpModelInfo::SetAtomicRendererCB
+	if(this->unk1[2] == 1 || this->unk1[2] == 3 || this->unk1[2] == 4)
+		RpClumpForAllAtomics(clump, setAtomicPipelineCB, worldpipe);
+	if(strcmp(this->name, "playerh") == 0)
+		RpClumpForAllAtomics(clump, (RpAtomicCallBack)0x4F8940, (void*)0x528B30);	// CClumpModelInfo::SetAtomicRendererCB, CVisibilityPlugins::RenderPlayerCB
+}
+
+WRAPPER void CSimpleModelInfo::SetAtomic(int, RpAtomic*) { EAXJMP(0x517950); }
+
+void
+CSimpleModelInfo::SetAtomic_hook(int n, RpAtomic *atomic)
+{
+	this->SetAtomic(n, atomic);
+	setAtomicPipelineCB(atomic, worldpipe);
+}
+
 static uint32_t RenderScene_A = AddressByVersion<uint32_t>(0x48E030, 0x48E0F0, 0x48E080, 0x4A6570, 0x4A6590, 0x4A6440);
 WRAPPER void RenderScene(void) { VARJMP(RenderScene_A); }
+//static uint32_t CTimeCycle__Initialise_A = AddressByVersion<uint32_t>(0x4ABAE0, 0, 0, 0x4D05E0, 0, 0);
+//WRAPPER void CTimeCycle__Initialise(void) { VARJMP(CTimeCycle__Initialise_A); }
 
 void
 RenderScene_hook(void)
 {
+//	{
+//		static bool keystate = false;
+//		if(GetAsyncKeyState(VK_F5) & 0x8000){
+//			if(!keystate){
+//				keystate = true;
+//				if(CTimeCycle__Initialise_A)
+//					CTimeCycle__Initialise();
+//			}
+//		}else
+//			keystate = false;
+//	}
+
 	RenderScene();
 	if(xboxcarpipe)
 		RenderEnvTex();
@@ -685,6 +874,12 @@ createPipe(void)
 		RxPipelineDestroy(pipe);
 	}
 	return NULL;
+}
+
+void
+RxD3D8AllInOneSetInstanceCallBack(RxPipelineNode *node, RxD3D8AllInOneInstanceCallBack callback)
+{
+	*(RxD3D8AllInOneInstanceCallBack*)node->privateData = callback;
 }
 
 RxPipeline *&skinpipe = *AddressByVersion<RxPipeline**>(0x663CAC, 0x663CAC, 0x673DB0, 0x78A0D4, 0x78A0DC, 0x7890DC);
@@ -802,5 +997,29 @@ neoInit(void)
 		}
 		// make it update
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48C9A2, 0x48CAA2, 0x48CA32, 0x4A45F5, 0x4A4615, 0x4A446F), updateTweakValues);
+	}
+
+	if(gtaversion == III_10){
+		worldpipe = createPipe();
+		RxNodeDefinition *nodedef = RxNodeDefinitionGetD3D8AtomicAllInOne();
+		node = RxPipelineFindNodeByName(worldpipe, nodedef->name, NULL, NULL);
+		RxD3D8AllInOneSetRenderCallBack(node, worldRenderCB);
+		RxD3D8AllInOneSetInstanceCallBack(node, worldInstanceCB);
+
+		resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_WORLDPS), RT_RCDATA);
+		shader = (RwUInt32*)LoadResource(dllModule, resource);
+		RwD3D9CreatePixelShader(shader, &worldPS);
+		assert(worldPS);
+		FreeResource(shader);
+
+		dat = fopen("neo\\worldTweakingTable.dat", "r");
+		assert(dat && "couldn't load 'neo\\worldTweakingTable.dat'");
+		readWeatherTimeBlock(dat, readFloat, lmBlendTable);		// default 1.0
+		fclose(dat);
+
+		// TODO:
+		MemoryVP::InjectHook(0x4F8830, &CClumpModelInfo::SetClump, PATCH_JUMP);
+		MemoryVP::InjectHook(0x4768F1, &CSimpleModelInfo::SetAtomic_hook);
+		MemoryVP::InjectHook(0x476707, &CSimpleModelInfo::SetAtomic_hook);
 	}
 }

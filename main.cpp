@@ -531,6 +531,230 @@ WRAPPER void ApplyEnvMapTextureMatrix_hook_IIISteam()
 	}
 }
 
+struct CControllerState
+{
+  __int16 LEFTSTICKX;
+  __int16 LEFTSTICKY;
+  __int16 RIGHTSTICKX;
+  __int16 RIGHTSTICKY;
+  __int16 LEFTSHOULDER1;
+  __int16 LEFTSHOULDER2;
+  __int16 RIGHTSHOULDER1;
+  __int16 RIGHTSHOULDER2;
+  __int16 DPADUP;
+  __int16 DPADDOWN;
+  __int16 DPADLEFT;
+  __int16 DPADRIGHT;
+  __int16 START;
+  __int16 SELECT;
+  __int16 SQUARE;
+  __int16 TRIANGLE;
+  __int16 CROSS;
+  __int16 CIRCLE;
+  __int16 LEFTSHOCK;
+  __int16 RIGHTSHOCK;
+  __int16 NETWORK_TALK;
+};
+
+#pragma pack(push, 1)
+struct CPad
+{
+  CControllerState NewState;
+  CControllerState OldState;
+  CControllerState PCTempKeyState;
+  CControllerState PCTempJoyState;
+  CControllerState PCTempMouseState;
+  char Phase;
+  char gap_d3[1];
+  __int16 Mode;
+  __int16 ShakeDur;
+  char ShakeFreq;
+  char bHornHistory[5];
+  char iCurrHornHistory;
+  char DisablePlayerControls;
+  char JustOutOfFrontEnd;
+  char bApplyBrakes;
+  char field_e2[12];
+  char gap_ee[2];
+  int LastTimeTouched;
+  int AverageWeapon;
+  int AverageEntries;
+};
+#pragma pack(pop)
+
+CPad *Pads = (CPad*)0x6F0360;
+
+struct CCam {
+	void WorkOutCamHeight(float *vec, float a, float b);
+	void WorkOutCamHeight_hook(float *vec, float a, float b);
+	void Process_FollowPed(float *vec, float a, float b, float c);
+	void Process_FollowPed_hook(float *vec, float a, float b, float c);
+	void Process_Editor(float *vec, float a, float b, float c);
+	void Process_Editor_hook(float *vec, float a, float b, float c);
+	void Process_Debug(float *vec, float a, float b, float c);
+	void Process_Debug_hook(float *vec, float a, float b, float c);
+
+	char bytes[12];
+	short mode;
+	char pad8[90];
+	float offset;
+	char pad7[60];
+	float angle1;
+	float timething;
+	float fov;
+	char pad6[4];
+	float angle2;
+	char pad5[20];
+	float unkflt1;
+	char pad4[36];
+	float vec2[3];
+	char pad3[60];
+	float vec1[3];
+	float pos[3];
+	float pos2[3];
+	float up[3];
+	char pad2[24];
+	int attachment;
+	char pad1[12];
+	int unk3;
+	int unk2;
+	int unk1;
+};
+WRAPPER void CCam::WorkOutCamHeight(float *vec, float a, float b) { EAXJMP(0x466650); }
+WRAPPER void CCam::Process_FollowPed(float *vec, float a, float b, float c) { EAXJMP(0x45E3A0); }
+WRAPPER void CCam::Process_Editor(float *vec, float a, float b, float c) { EAXJMP(0x45C590); }
+WRAPPER void CCam::Process_Debug(float *vec, float a, float b, float c) { EAXJMP(0x45CCC0); }
+
+void
+CCam::Process_Editor_hook(float *vec, float a, float b, float c)
+{
+	Pads[1] = Pads[0];
+	this->Process_Editor(vec, a, b, c);
+}
+
+void
+CCam::Process_Debug_hook(float *vec, float a, float b, float c)
+{
+	Pads[1] = Pads[0];
+	this->Process_Debug(vec, a, b, c);
+}
+
+// distance values around 468953
+
+float *tanvalCar[3] = {
+	(float*)0x5F08C4,
+	(float*)0x5F08C8,
+	(float*)0x5F046C
+};
+float *distCar[3] = {
+	(float*)0x468959,
+	(float*)0x468978,
+	(float*)0x468998
+};
+float &carViewMode = *(float*)0x6FADD0;
+float carFov = 85.0f;
+float foo;
+
+void
+CCam::Process_FollowPed_hook(float *vec, float a, float b, float c)
+{
+	this->Process_FollowPed(vec, a, b, c);
+	this->fov = carFov;
+}
+
+// 2: fov 75, tan 12.5 (gta3_30.jpg)
+// 2: fov 85, tan 7.5 (gta3_30.jpg)
+// 2: fov 85, tan 9.0 (gta3_30.jpg)
+
+void
+CCam::WorkOutCamHeight_hook(float *vec, float a, float b)
+{
+	this->WorkOutCamHeight(vec, a, b);
+	int i = (int)carViewMode - 1;
+	if(i < 1 && i > 3)
+		return;
+
+	if((GetAsyncKeyState('1') & 0x8000) && (GetAsyncKeyState(VK_LMENU) & 0x8000))
+		carFov -= 0.1f;
+	if((GetAsyncKeyState('2') & 0x8000) && (GetAsyncKeyState(VK_LMENU) & 0x8000))
+		carFov += 0.1f;
+	this->fov = carFov;
+
+	if((GetAsyncKeyState('3') & 0x8000) && (GetAsyncKeyState(VK_LMENU) & 0x8000))
+		*tanvalCar[i] -= 0.1f;
+	if((GetAsyncKeyState('4') & 0x8000) && (GetAsyncKeyState(VK_LMENU) & 0x8000))
+		*tanvalCar[i] += 0.1f;
+
+	if((GetAsyncKeyState('5') & 0x8000) && (GetAsyncKeyState(VK_LMENU) & 0x8000))
+		*distCar[i] -= 0.1f;
+	if((GetAsyncKeyState('6') & 0x8000) && (GetAsyncKeyState(VK_LMENU) & 0x8000))
+		*distCar[i] += 0.1f;
+
+	printf("%f %f %f %f\n", carViewMode, this->fov, *tanvalCar[i], *distCar[i]);
+//	printf("%f\n", tanval1);
+//	printf("(%f %f %f) (%f %f %f) %f %f %f %f\n", this->vec1[0], this->vec1[1], this->vec1[2],
+//		this->pos[0], this->pos[1], this->pos[2],
+//		this->angle1, this->angle2, this->offset, foo);
+}
+
+WRAPPER int readfile_(void*, void*, int) { EAXJMP(0x48DF50); }
+WRAPPER void *openfile_(char*, char*) { EAXJMP(0x48DF90); }
+
+struct dirent {
+	int off, siz;
+	char name[24];
+};
+
+FILE *logfile;
+
+void*
+openfile(char *path, char *mode)
+{
+	printf("opening %s\n", path);
+	return openfile_(path, mode);
+}
+
+int
+readfile(void *f, void *dst, int n)
+{
+	int ret = readfile_(f, dst, n);
+	if(ret){
+		dirent *d = (dirent*)dst;
+		printf("%d %x %x %s\n", ret, d->off, d->siz, d->name);
+	}
+	return ret;
+}
+
+struct TxdStore {
+	static void PushCurrentTxd(void);
+	static RwTexDictionary *PopCurrentTxd(void);
+	static RwTexDictionary *FindTxdSlot(char*);
+	static void SetCurrentTxd(RwTexDictionary*);
+};
+
+WRAPPER void TxdStore::PushCurrentTxd(void) { EAXJMP(0x527900); }
+WRAPPER RwTexDictionary *TxdStore::PopCurrentTxd(void) { EAXJMP(0x527910); }
+WRAPPER RwTexDictionary *TxdStore::FindTxdSlot(char*) { EAXJMP(0x5275D0); }
+WRAPPER void TxdStore::SetCurrentTxd(RwTexDictionary*) { EAXJMP(0x5278C0); }
+
+RwTexture*
+RwTextureRead_generic(char *name, char *mask)
+{
+	RwTexture *tex;
+	RwTexDictionary *dict;
+	static RwTexDictionary *generic = NULL;
+	tex = RwTextureRead(name, mask);
+	if(tex)
+		return tex;
+	TxdStore::PushCurrentTxd();
+	if(!generic)
+		generic = TxdStore::FindTxdSlot("generic");
+	TxdStore::SetCurrentTxd(generic);
+	tex = RwTextureRead(name, mask);
+	TxdStore::PopCurrentTxd();
+	return tex;
+}
+
 void
 patch(void)
 {
@@ -623,7 +847,34 @@ patch(void)
 		neoInit();
 	else
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48D52F, 0x48D62F, 0x48D5BF, 0x4A5B6B, 0x4A5B8B, 0x4A5A3B), CGame__InitialiseRenderWare_hook);
-//	MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
+
+	if(gtaversion == III_10){
+/*
+//		MemoryVP::Patch<float>(0x45C120, 80.0f);
+		*tanvalCar[1] = 9.0f;
+		*(float*)0x5F53C4 = 1.244444444f;
+		MemoryVP::InjectHook(0x45C334, &CCam::WorkOutCamHeight_hook);
+		MemoryVP::InjectHook(0x459A9B, &CCam::Process_FollowPed_hook);
+//		MemoryVP::InjectHook(0x459C97, &CCam::Process_Editor_hook);
+//		MemoryVP::InjectHook(0x459ABA, &CCam::Process_Debug_hook);
+*/
+
+		// txd limit for xbox map
+		MemoryVP::Patch<int>(0x406979, 1024);
+		MemoryVP::Patch<int>(0x527458, 1024);
+
+		MemoryVP::InjectHook(0x5AAE1B, RwTextureRead_generic);
+
+		//MemoryVP::Nop(0x48C2FD, 5);
+		//MemoryVP::Patch<char*>(0x524ED6, "DATA_ps2\\cullzone.dat");
+		//MemoryVP::Patch<int>(0x524F4D, 9830);
+	}
+	//if(gtaversion == VC_10){
+	//	MemoryVP::InjectHook(0x40FBD3, openfile);
+	//	MemoryVP::InjectHook(0x40FBE9, readfile);
+	//	MemoryVP::InjectHook(0x40FDD9, readfile);
+	//	MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
+	//}
 }
 
 BOOL WINAPI
@@ -632,11 +883,12 @@ DllMain(HINSTANCE hInst, DWORD reason, LPVOID)
 	if(reason == DLL_PROCESS_ATTACH){
 		dllModule = hInst;
 
-/*		AllocConsole();
-		freopen("CONIN$", "r", stdin);
-		freopen("CONOUT$", "w", stdout);
-		freopen("CONOUT$", "w", stderr);*/
-		
+		if(GetAsyncKeyState(VK_F8) & 0x8000){
+			AllocConsole();
+			freopen("CONIN$", "r", stdin);
+			freopen("CONOUT$", "w", stdout);
+			freopen("CONOUT$", "w", stderr);
+		}
 		AddressByVersion<uint32_t>(0, 0, 0, 0, 0, 0);
 		if (gtaversion != -1)
 			patch();

@@ -1,5 +1,11 @@
 #include "skygfx.h"
 
+WRAPPER RwTexture *RwTextureRead(const RwChar*, const RwChar*) { EAXJMP(0x5A7580); }
+WRAPPER RwTexDictionary *RwTexDictionaryGetCurrent(void) { EAXJMP(0x5A7570); }
+WRAPPER RwTexDictionary *RwTexDictionarySetCurrent(RwTexDictionary * dict) { EAXJMP(0x5A7550); }
+
+
+
 static uint32_t RwMatrixCreate_A = AddressByVersion<uint32_t>(0x5A3330, 0x5A35F0, 0x5A3FA0, 0x644620, 0x644670, 0x6435D0);
 WRAPPER RwMatrix *RwMatrixCreate(void) { VARJMP(RwMatrixCreate_A); }
 static uint32_t RwMatrixDestroy_A = AddressByVersion<uint32_t>(0x5A3300, 0x5A35C0, 0x5A3F70, 0x6445F0, 0x644640, 0x6435A0);

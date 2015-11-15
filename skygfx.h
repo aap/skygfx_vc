@@ -23,11 +23,58 @@ struct MatFXEnv
 	int effect;
 };
 
+struct MatFXDual {
+	RwTexture *tex;
+	RwInt32 srcBlend;
+	RwInt32 dstBlend;
+};
 
 struct MatFX
 {
 	MatFXEnv fx[2];
 	int effects;
+};
+
+struct CClumpModelInfo
+{
+	void **vtable;
+	char     name[24];
+	RwInt32 data1[3];
+	RwUInt8 unk1[4];
+	RwInt32 unk2;
+	RpClump *clump;
+
+	RpClump *CreateInstance(void);
+	void SetClump(RpClump*);
+	void SetFrameIds(int ids);
+};
+
+struct CBaseModelInfo
+{
+	void *__vmt;
+	char m_cName[24];
+	void *m_pColModel;
+	void *m_p2dEffect;
+	WORD m_wObjectDataId;
+	WORD m_wRefCount;
+	WORD m_wTxdId;
+	BYTE m_bType;
+	BYTE m_bNum2dEffects;
+	BYTE __field_2C;
+	BYTE __padding0[3];
+};
+
+struct CSimpleModelInfo
+{
+	CBaseModelInfo __parent;
+	void *atomics[3];
+	float lodDistances[3];
+	BYTE numAtomics;
+	BYTE alpha;
+	WORD flags;
+
+	void SetAtomic(int n, RpAtomic *atomic);
+	void SetAtomic_hook(int n, RpAtomic *atomic);
 };
 
 extern HMODULE dllModule;
