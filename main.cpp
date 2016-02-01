@@ -44,6 +44,8 @@ int rimlight, rimlightkey;
 int xboxworldpipe, xboxworldpipekey;
 int envMapSize;
 
+int dualpass;
+
 void
 rwtod3dmat(D3DMATRIX *d3d, RwMatrix *rw)
 {
@@ -296,6 +298,7 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 	RwD3D8GetRenderState(D3DRS_LIGHTING, &lighting);
 	RwD3D8GetRenderState(D3DRS_ZWRITEENABLE, &zwrite);
 	RwD3D8GetRenderState(D3DRS_FOGENABLE, &fog);
+	RwD3D8SetRenderState(D3DRS_FOGENABLE, 0);
 //	RwD3D8SetRenderState(D3DRS_LIGHTING, 0);
 	RwD3D8SetRenderState(D3DRS_ZWRITEENABLE, 0);
 	if(fog){
@@ -358,6 +361,15 @@ createIIIEnvFrame(void)
 void
 drawDualPass(RxD3D8InstanceData *inst)
 {
+	if(!dualpass){
+		if(inst->indexBuffer){
+			RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
+			RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
+		}else
+			RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
+		return;
+	}
+
 	RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
 
 	int hasAlpha, alphafunc, alpharef;
@@ -699,15 +711,33 @@ CCam::WorkOutCamHeight_hook(float *vec, float a, float b)
 //		this->angle1, this->angle2, this->offset, foo);
 }
 
-WRAPPER int readfile_(void*, void*, int) { EAXJMP(0x48DF50); }
-WRAPPER void *openfile_(char*, char*) { EAXJMP(0x48DF90); }
+// VC 1.0
+//WRAPPER void *openfile_(char*, char*) { EAXJMP(0x48DF90); }
+//WRAPPER int readfile_(void*, void*, int) { EAXJMP(0x48DF50); }
+// III 1.0
+WRAPPER void *openfile_(char*, char*) { EAXJMP(0x479100); }
+WRAPPER int readfile_(void*, void*, int) { EAXJMP(0x479140); }
 
 struct dirent {
 	int off, siz;
 	char name[24];
 };
 
-FILE *logfile;
+struct TxdStore {
+	static void PushCurrentTxd(void);
+	static int PopCurrentTxd(void);
+	static int FindTxdSlot(char*);
+	static void SetCurrentTxd(int);
+};
+
+static uint32_t TxdStore_PushCurrentTxd_A = AddressByVersion<uint32_t>(0x527900, 0x527B40, 0x527AD0, 0, 0, 0);
+WRAPPER void TxdStore::PushCurrentTxd(void) { VARJMP(TxdStore_PushCurrentTxd_A); }
+static uint32_t TxdStore_PopCurrentTxd_A = AddressByVersion<uint32_t>(0x527910, 0x527B50, 0x527AE0, 0, 0, 0);
+WRAPPER int TxdStore::PopCurrentTxd(void) { VARJMP(TxdStore_PopCurrentTxd_A); }
+static uint32_t TxdStore_FindTxdSlot_A = AddressByVersion<uint32_t>(0x5275D0, 0x527810, 0x5277A0, 0, 0, 0);
+WRAPPER int TxdStore::FindTxdSlot(char*) { VARJMP(TxdStore_FindTxdSlot_A); }
+static uint32_t TxdStore_SetCurrentTxd_A = AddressByVersion<uint32_t>(0x5278C0, 0x527B00, 0x527A90, 0, 0, 0);
+WRAPPER void TxdStore::SetCurrentTxd(int) { VARJMP(TxdStore_SetCurrentTxd_A); }
 
 void*
 openfile(char *path, char *mode)
@@ -716,49 +746,182 @@ openfile(char *path, char *mode)
 	return openfile_(path, mode);
 }
 
+//int txdcount = 0;
+
 int
 readfile(void *f, void *dst, int n)
 {
 	int ret = readfile_(f, dst, n);
 	if(ret){
 		dirent *d = (dirent*)dst;
-		printf("%d %x %x %s\n", ret, d->off, d->siz, d->name);
+		if(strcmp(d->name, "radar24.txd") == 0)
+			ret = ret;
+		int r24 = TxdStore::FindTxdSlot("radar24");
+		int r25 = TxdStore::FindTxdSlot("radar25");
+		printf("%d %x %x %s %d %d\n", ret, d->off, d->siz, d->name, r24, r25);
+		//{
+		//	char *pos = strrchr(d->name, '.h');
+		//	if(pos &&
+		//	   (strcmp(pos+1, "txd") == 0 ||
+		//	   strcmp(pos+1, "TXD") == 0))
+		//		txdcount++;
+		//}
 	}
 	return ret;
 }
 
-struct TxdStore {
-	static void PushCurrentTxd(void);
-	static RwTexDictionary *PopCurrentTxd(void);
-	static RwTexDictionary *FindTxdSlot(char*);
-	static void SetCurrentTxd(RwTexDictionary*);
-};
 
-static uint32_t TxdStore_PushCurrentTxd_A = AddressByVersion<uint32_t>(0x527900, 0x527B40, 0x527AD0, 0, 0, 0);
-WRAPPER void TxdStore::PushCurrentTxd(void) { VARJMP(TxdStore_PushCurrentTxd_A); }
-static uint32_t TxdStore_PopCurrentTxd_A = AddressByVersion<uint32_t>(0x527910, 0x527B50, 0x527AE0, 0, 0, 0);
-WRAPPER RwTexDictionary *TxdStore::PopCurrentTxd(void) { VARJMP(TxdStore_PopCurrentTxd_A); }
-static uint32_t TxdStore_FindTxdSlot_A = AddressByVersion<uint32_t>(0x5275D0, 0x527810, 0x5277A0, 0, 0, 0);
-WRAPPER RwTexDictionary *TxdStore::FindTxdSlot(char*) { VARJMP(TxdStore_FindTxdSlot_A); }
-static uint32_t TxdStore_SetCurrentTxd_A = AddressByVersion<uint32_t>(0x5278C0, 0x527B00, 0x527A90, 0, 0, 0);
-WRAPPER void TxdStore::SetCurrentTxd(RwTexDictionary*) { VARJMP(TxdStore_SetCurrentTxd_A); }
+static int &gameTxdSlot = *AddressByVersion<int*>(0x628D88, 0x628D88, 0x638D88, 0, 0, 0); // TODO
 
 RwTexture*
 RwTextureRead_generic(char *name, char *mask)
 {
 	RwTexture *tex;
-	RwTexDictionary *dict;
-	static RwTexDictionary *generic = NULL;
 	tex = RwTextureRead(name, mask);
 	if(tex)
 		return tex;
 	TxdStore::PushCurrentTxd();
-	if(!generic)
-		generic = TxdStore::FindTxdSlot("generic");
-	TxdStore::SetCurrentTxd(generic);
+	TxdStore::SetCurrentTxd(gameTxdSlot);
 	tex = RwTextureRead(name, mask);
 	TxdStore::PopCurrentTxd();
 	return tex;
+}
+
+void *curvePS;
+void *overridePS;
+
+RwBool
+RwD3D8SetPixelShader_hook(RwUInt32 handle)
+{
+	if(overridePS){
+		RwD3D9SetPixelShader(overridePS);
+		return 1;
+	}
+	return RwD3D8SetPixelShader(handle);
+}
+
+void
+hookPixelShader(void)
+{
+	if(isVC()){
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0, 0, 0, 0x6666B8, 0x666708, 0x665668), RwD3D8SetPixelShader_hook);
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0, 0, 0, 0x666928, 0x666978, 0x6658D8), RwD3D8SetPixelShader_hook);
+	}else{
+		if (gtaversion == III_STEAM)
+			MemoryVP::InjectHook(0x5C353A, RwD3D8SetPixelShader_hook);
+		else{
+			MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5BF9D6, 0x5BFC96, 0, 0, 0, 0), RwD3D8SetPixelShader_hook);
+			MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5BFBD3, 0x5BFE93, 0, 0, 0, 0), RwD3D8SetPixelShader_hook);
+		}
+	}
+}
+
+void
+setcurveps(void)
+{
+	if(curvePS == NULL){
+		HRSRC resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_CURVEPS), RT_RCDATA);
+		RwUInt32 *shader = (RwUInt32*)LoadResource(dllModule, resource);
+		RwD3D9CreatePixelShader(shader, &curvePS);
+		assert(curvePS);
+		FreeResource(shader);
+	}
+	overridePS = curvePS;
+}
+
+class CMBlur {
+public: static RwRaster *&pFrontBuffer;
+	static void CreateImmediateModeData(RwCamera*, RwRect*);
+};
+RwRaster *&CMBlur::pFrontBuffer = *AddressByVersion<RwRaster**>(0x8E2C48, 0x8E2CFC, 0x8F2E3C, 0x9753A4, 0x9753AC, 0x9743AC);
+WRAPPER void CMBlur::CreateImmediateModeData(RwCamera*, RwRect*) { EAXJMP(0x50A800); }
+
+unsigned int curveIdx;
+
+#define KEYDOWN(k) (GetAsyncKeyState(k) & 0x8000)
+void
+applyCurve(void)
+{
+	RwCamera *cam = *(RwCamera**)(0x6FACF8 + 0x7A0);
+
+	if(GetAsyncKeyState(VK_F9) & 0x8000)
+		return;
+
+
+	{
+		static bool keystate = false;
+		if(KEYDOWN(VK_CONTROL) && KEYDOWN(VK_LEFT)){
+			if(!keystate){
+				keystate = true;
+				curveIdx = (curveIdx-1) % 256;
+			}
+		}else
+			keystate = false;
+	}
+	{
+		static bool keystate = false;
+		if(KEYDOWN(VK_CONTROL) && KEYDOWN(VK_RIGHT)){
+			if(!keystate){
+				keystate = true;
+				curveIdx = (curveIdx+1) % 256;
+			}
+		}else
+			keystate = false;
+	}	
+	{
+		static bool keystate = false;
+		if(KEYDOWN(VK_CONTROL) && KEYDOWN(VK_DOWN)){
+			if(!keystate){
+				keystate = true;
+				curveIdx = 0;
+			}
+		}else
+			keystate = false;
+	}	
+
+	static RwRaster *rampRaster = NULL;
+	if(rampTex == NULL){
+		reloadRamp();
+		rampTex->filterAddressing = 0x3301;
+		int w, h;
+		for(w = 1; w < cam->frameBuffer->width; w <<= 1);
+		for(h = 1; h < cam->frameBuffer->height; h <<= 1);
+		rampRaster = RwRasterCreate(w, h, 0, 5);
+		RwRect rect = { 0, 0, w, h };
+		CMBlur::CreateImmediateModeData(cam, &rect);
+	}
+
+	RwRasterPushContext(rampRaster);
+	RwRasterRenderFast(cam->frameBuffer, 0, 0);
+	RwRasterPopContext();
+
+	float v = curveIdx/255.0f;
+	RwD3D9SetPixelShaderConstant(0, &v, 1);
+	RwD3D8SetTexture(rampTex, 1);
+
+	DefinedState();
+	RwRenderStateSet(rwRENDERSTATETEXTUREFILTER, (void*)rwFILTERNEAREST);
+	RwRenderStateSet(rwRENDERSTATEFOGENABLE, 0);
+	RwRenderStateSet(rwRENDERSTATEZTESTENABLE, 0);
+	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, 0);
+	RwRenderStateSet(rwRENDERSTATETEXTURERASTER, rampRaster);
+	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, 0);
+	hookPixelShader();
+	setcurveps();
+	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, blurVertices, 4, blurIndices, 6);
+	overridePS = NULL;
+	DefinedState();
+	RwD3D8SetTexture(NULL, 1);
+}
+
+void __declspec(naked)
+curvehook(void)
+{
+	_asm{
+		pop	ebx
+		call	applyCurve
+		retn
+	}
 }
 
 void
@@ -826,8 +989,7 @@ patch(void)
 	envMapSize = n;
 	xboxworldpipe = GetPrivateProfileInt("SkyGfx", "xboxWorldPipe", -1, modulePath);
 
-	if(GetPrivateProfileInt("SkyGfx", "dualPass", TRUE, modulePath))
-	{
+	if(dualpass = GetPrivateProfileInt("SkyGfx", "dualPass", TRUE, modulePath)){
 		if (gtaversion != III_STEAM)
 			MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5DFB99, 0x5DFE59, 0, 0x678D69, 0x678DB9, 0x677D19), dualPassHook, PATCH_JUMP);
 		else
@@ -840,7 +1002,8 @@ patch(void)
 		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4C9F08, 0x4C9F28, 0x4C9DC8), 1);	// in CRenderer::RenderBoats()
 		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4C9F5D, 0x4C9F7D, 0x4C9E1D), 1);	// in CRenderer::RenderEverythingBarRoads()
 		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4CA157, 0x4CA177, 0x4CA017), 1);	// in CRenderer::RenderFadingInEntities()
-		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4CA199, 0x4CA1B9, 0x4CA059), 1);	// in CReenvnderer::RenderRoads()
+		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4CA199, 0x4CA1B9, 0x4CA059), 1);	// in CRenderer::RenderRoads()
+		// 4E0146		// in CCutsceneObject::Render()
 	}
 
 	// fix blend mode
@@ -866,33 +1029,44 @@ patch(void)
 			MemoryVP::Patch<int>(0x406979, n); //same address for all versions, lol
 			MemoryVP::Patch<int>(AddressByVersion<uint32_t>(0x527458, 0x527698, 0x527628, 0, 0, 0), n);
 		}
+		// ignore txd.img
+		MemoryVP::InjectHook(0x48C12E, 0x48C14C, PATCH_JUMP);
 
 		// fall back to generic.txd when reading from dff
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
 	}
-/*
 	if(gtaversion == III_10){
 //		MemoryVP::Patch<float>(0x45C120, 80.0f);
-		*tanvalCar[1] = 9.0f;
-		*(float*)0x5F53C4 = 1.244444444f;
-		MemoryVP::InjectHook(0x45C334, &CCam::WorkOutCamHeight_hook);
-		MemoryVP::InjectHook(0x459A9B, &CCam::Process_FollowPed_hook);
+
+//		*tanvalCar[1] = 9.0f;
+//		*(float*)0x5F53C4 = 1.244444444f;
+//		MemoryVP::InjectHook(0x45C334, &CCam::WorkOutCamHeight_hook);
+//		MemoryVP::InjectHook(0x459A9B, &CCam::Process_FollowPed_hook);
+
 //		MemoryVP::InjectHook(0x459C97, &CCam::Process_Editor_hook);
 //		MemoryVP::InjectHook(0x459ABA, &CCam::Process_Debug_hook);
 
 		MemoryVP::Patch<int>(0x4A17F0, 6000);
-
-		//MemoryVP::Nop(0x48C2FD, 5);
-		//MemoryVP::Patch<char*>(0x524ED6, "DATA_ps2\\cullzone.dat");
-		//MemoryVP::Patch<int>(0x524F4D, 9830);
+		MemoryVP::Patch<int>(0x4A180D, 2000);
 	}
-*/
-	//if(gtaversion == VC_10){
-	//	MemoryVP::InjectHook(0x40FBD3, openfile);
-	//	MemoryVP::InjectHook(0x40FBE9, readfile);
-	//	MemoryVP::InjectHook(0x40FDD9, readfile);
-	//	MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
-	//}
+	if(gtaversion == III_10){
+		int i = GetPrivateProfileInt("SkyGfx", "curve", -1, modulePath);
+		if(i >= 0){
+			curveIdx = i % 256;
+			MemoryVP::InjectHook(0x48E44B, curvehook, PATCH_JUMP);
+		}
+
+		//MemoryVP::InjectHook(0x406DB3, openfile);
+		//MemoryVP::InjectHook(0x406DC9, readfile);
+		//MemoryVP::InjectHook(0x407043, readfile);
+		MemoryVP::InjectHook(0x405DB0, printf, PATCH_JUMP);
+	}
+	if(gtaversion == VC_10){
+		//MemoryVP::InjectHook(0x40FBD3, openfile);
+		//MemoryVP::InjectHook(0x40FBE9, readfile);
+		//MemoryVP::InjectHook(0x40FDD9, readfile);
+		MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
+	}
 }
 
 BOOL WINAPI
@@ -901,6 +1075,7 @@ DllMain(HINSTANCE hInst, DWORD reason, LPVOID)
 	if(reason == DLL_PROCESS_ATTACH){
 		dllModule = hInst;
 
+		//freopen("log.txt", "w", stdout);
 		if(GetAsyncKeyState(VK_F8) & 0x8000){
 			AllocConsole();
 			freopen("CONIN$", "r", stdin);

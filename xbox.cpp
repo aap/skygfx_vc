@@ -285,8 +285,10 @@ carRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 	if(!alpha)
 		rwD3D8RenderStateVertexAlphaEnable(1);
 	RwD3D9SetVertexShader(pass2VS);
-	RwUInt32 dst;
+	RwUInt32 dst, fog;
+	RwRenderStateGet(rwRENDERSTATEFOGENABLE, &fog);
 	RwRenderStateGet(rwRENDERSTATEDESTBLEND, &dst);
+	RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)FALSE);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
 	RwD3D8SetTexture(NULL, 0);
 	for(int i = 0; i < header->numMeshes; i++){
@@ -311,6 +313,7 @@ carRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 		inst++;
 	}
 
+	RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)fog);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)dst);
 }
 
@@ -412,15 +415,11 @@ worldRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 			RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha != 0);
 			RwRGBA col = { 255, 255, 255, 255 };
 			col.alpha = inst->material->color.alpha;
+			//col = inst->material->color;
 			RwD3D8SetSurfaceProperties(&col, &inst->material->surfaceProps, flags & 0x40);
 		}
 		RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
-		if(inst->indexBuffer){
-			RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
-			RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
-		}else
-			RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
-
+		drawDualPass(inst);
 		inst++;
 	}
 	
@@ -693,10 +692,17 @@ interploateRGBA(RwRGBAReal *out, RwRGBAReal *c1, RwRGBAReal *c2)
 	             c2[newWeather].alpha*blerp[3];
 }
 
+//float mult = 1.0;
+
 void
 updateTweakValues(void)
 {
 	CTimeCycle__Update();
+
+	//*(float*)0x8F29B4 *= mult;
+	//*(float*)0x94144C *= mult;
+	//*(float*)0x942FC0 *= mult;
+
 	int nextHour = (clockHour+1)%24;
 	float timeInterp = isVC() ? (clockSecond/60.0f + clockMinute)/60.0f : clockMinute/60.0f;
 	blerp[0] = (1.0f-timeInterp)*(1.0f-weatherInterp);

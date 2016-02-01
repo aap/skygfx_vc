@@ -12,5 +12,7 @@ float4 main(uniform sampler2D Diffuse : register(s0),
 	float4 col;
 	col = t0*Color*(1 + lm*(2*t1-1));
 	col.a = Color.a*t0.a*lm.a;
+
+//	col = t0*Color;
 	return col;
 }

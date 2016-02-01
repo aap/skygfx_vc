@@ -99,6 +99,8 @@ extern int &NumExtraDirLightsInWorld;
 extern int &MatFXMaterialDataOffset;
 extern int &MatFXAtomicDataOffset;
 
+void drawDualPass(RxD3D8InstanceData *inst);
+
 void rxD3D8DefaultRenderCallback(RwResEntry*, void*, RwUInt8, RwUInt32);
 void rwD3D8AtomicMatFXRenderCallback(RwResEntry*, void*, RwUInt8, RwUInt32);
 RwBool rwD3D8RenderStateIsVertexAlphaEnable(void);
@@ -122,3 +124,6 @@ enum {
 	LOC_matCol      = 29,
 	LOC_surfProps   = 30,
 };
+
+extern RwTexture *rampTex;
+void reloadRamp(void);

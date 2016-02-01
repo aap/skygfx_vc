@@ -65,22 +65,22 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>C:\Users\aap\Desktop\RWSDK\RW3.4\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\aap\Desktop\RWSDK\RW34\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
     <TargetExt>.asi</TargetExt>
     <LibraryPath>C:\Users\aap\src\rwd3d9\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">
-    <IncludePath>C:\Users\aap\Desktop\RWSDK\RW3.4\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\aap\Desktop\RWSDK\RW34\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
     <TargetExt>.asi</TargetExt>
     <LibraryPath>C:\Users\aap\src\rwd3d9\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - III|Win32'">
-    <IncludePath>C:\Users\aap\Desktop\RWSDK\RW3.4\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\aap\Desktop\RWSDK\RW34\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
     <TargetExt>.asi</TargetExt>
     <LibraryPath>C:\Users\aap\src\rwd3d9\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>C:\Users\aap\Desktop\RWSDK\RW3.4\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\aap\Desktop\RWSDK\RW34\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
     <TargetExt>.asi</TargetExt>
     <LibraryPath>C:\Users\aap\src\rwd3d9\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -111,7 +111,7 @@
       <AdditionalDependencies>rwd3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy /y "$(TargetPath)" "C:\Users\aap\Desktop\gtavc\skygfx.asi"</Command>
+      <Command>copy /y "$(TargetPath)" "C:\Users\aap\Desktop\gtavc\scripts\skygfx.asi"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - III|Win32'">
@@ -151,6 +151,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="misc.cpp" />
     <ClCompile Include="xbox.cpp" />
     <ClCompile Include="rw.cpp" />
   </ItemGroup>
@@ -162,6 +163,14 @@
     <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="curvePS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug - III|Win32'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug - III|Win32'">2.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">2.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">2.0</ShaderModel>
+    </FxCompile>
     <FxCompile Include="rimVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">2.0</ShaderModel>
@@ -203,6 +212,8 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug - III|Win32'">2.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">2.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">2.0</ShaderModel>
     </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

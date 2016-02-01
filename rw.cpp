@@ -133,6 +133,14 @@ WRAPPER RwImage *RwImageFindRasterFormat(RwImage*, RwInt32, RwInt32*, RwInt32*, 
 static uint32_t RwImageDestroy_A = AddressByVersion<uint32_t>(0x5A9180, 0x5A9440, 0x5AB6A0, 0x6512B0, 0x651300, 0x650260);
 WRAPPER RwBool RwImageDestroy(RwImage*) { VARJMP(RwImageDestroy_A); }
 
+// III
+WRAPPER RwImage *RwImageCreate(RwInt32, RwInt32, RwInt32) { EAXJMP(0x5A9120); }
+WRAPPER RwImage *RwImageAllocatePixels(RwImage *) { EAXJMP(0x5A91E0); }
+WRAPPER RwStream *RwStreamOpen(RwStreamType, RwStreamAccessType, const void*) { EAXJMP(0x5A3FE0); }
+WRAPPER RwBool RwStreamClose(RwStream*, void*) { EAXJMP(0x5A3F10); }
+WRAPPER RwUInt32 RwStreamRead(RwStream*, void*, RwUInt32) { EAXJMP(0x5A3AD0); }
+WRAPPER RwStream *RwStreamSkip(RwStream*, RwUInt32) { EAXJMP(0x5A3DF0); }
+
 static uint32_t RwIm2DGetNearScreenZ_A = AddressByVersion<uint32_t>(0x5A43A0, 0x5A4660, 0x5A5340, 0x649B80, 0x649BD0, 0x648B30);
 WRAPPER RwReal RwIm2DGetNearScreenZ(void) { VARJMP(RwIm2DGetNearScreenZ_A); }
 static uint32_t RwIm2DRenderIndexedPrimitive_A = AddressByVersion<uint32_t>(0x5A4440, 0x5A4700, 0x5A5440, 0x649C20, 0x649C70, 0x648BD0);
