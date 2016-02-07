@@ -788,33 +788,6 @@ RwTextureRead_generic(char *name, char *mask)
 }
 
 void *curvePS;
-void *overridePS;
-
-RwBool
-RwD3D8SetPixelShader_hook(RwUInt32 handle)
-{
-	if(overridePS){
-		RwD3D9SetPixelShader(overridePS);
-		return 1;
-	}
-	return RwD3D8SetPixelShader(handle);
-}
-
-void
-hookPixelShader(void)
-{
-	if(isVC()){
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0, 0, 0, 0x6666B8, 0x666708, 0x665668), RwD3D8SetPixelShader_hook);
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0, 0, 0, 0x666928, 0x666978, 0x6658D8), RwD3D8SetPixelShader_hook);
-	}else{
-		if (gtaversion == III_STEAM)
-			MemoryVP::InjectHook(0x5C353A, RwD3D8SetPixelShader_hook);
-		else{
-			MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5BF9D6, 0x5BFC96, 0, 0, 0, 0), RwD3D8SetPixelShader_hook);
-			MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5BFBD3, 0x5BFE93, 0, 0, 0, 0), RwD3D8SetPixelShader_hook);
-		}
-	}
-}
 
 void
 setcurveps(void)
@@ -826,7 +799,7 @@ setcurveps(void)
 		assert(curvePS);
 		FreeResource(shader);
 	}
-	overridePS = curvePS;
+	RwD3D9SetIm2DPixelShader(curvePS);
 }
 
 class CMBlur {
@@ -906,10 +879,11 @@ applyCurve(void)
 	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, 0);
 	RwRenderStateSet(rwRENDERSTATETEXTURERASTER, rampRaster);
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, 0);
-	hookPixelShader();
+	//hookPixelShader();
 	setcurveps();
 	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, blurVertices, 4, blurIndices, 6);
-	overridePS = NULL;
+	RwD3D9SetIm2DPixelShader(NULL);
+	//overridePS = NULL;
 	DefinedState();
 	RwD3D8SetTexture(NULL, 1);
 }
@@ -1030,7 +1004,7 @@ patch(void)
 			MemoryVP::Patch<int>(AddressByVersion<uint32_t>(0x527458, 0x527698, 0x527628, 0, 0, 0), n);
 		}
 		// ignore txd.img
-		MemoryVP::InjectHook(0x48C12E, 0x48C14C, PATCH_JUMP);
+		//MemoryVP::InjectHook(0x48C12E, 0x48C14C, PATCH_JUMP);
 
 		// fall back to generic.txd when reading from dff
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
