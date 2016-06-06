@@ -1,11 +1,13 @@
 #include "skygfx.h"
 
-static uint32_t RwTextureRead_A = AddressByVersion<uint32_t>(0x5A7580, 0x5A7840, 0x5A8E00, 0, 0, 0);
+static uint32_t RwTextureRead_A = AddressByVersion<uint32_t>(0x5A7580, 0x5A7840, 0x5A8E00, 0x64E110, 0, 0);
 WRAPPER RwTexture *RwTextureRead(const RwChar*, const RwChar*) { VARJMP(RwTextureRead_A); }
-static uint32_t RwTexDictionaryGetCurrent_A = AddressByVersion<uint32_t>(0x5A7570, 0x5A7830, 0x5A8DA0, 0, 0, 0);
+static uint32_t RwTexDictionaryGetCurrent_A = AddressByVersion<uint32_t>(0x5A7570, 0x5A7830, 0x5A8DA0, 0x64E100, 0, 0);
 WRAPPER RwTexDictionary *RwTexDictionaryGetCurrent(void) { VARJMP(RwTexDictionaryGetCurrent_A); }
 static uint32_t RwTexDictionarySetCurrent_A = AddressByVersion<uint32_t>(0x5A7550, 0x5A7810, 0x5A8D80, 0, 0, 0);
 WRAPPER RwTexDictionary *RwTexDictionarySetCurrent(RwTexDictionary * dict) { VARJMP(RwTexDictionarySetCurrent_A); }
+static uint32_t RwTexDictionaryForAllTextures_A = AddressByVersion<uint32_t>(0, 0, 0, 0x64DE20, 0, 0);
+WRAPPER const RwTexDictionary *RwTexDictionaryForAllTextures(const RwTexDictionary*, RwTextureCallBack, void*) { VARJMP(RwTexDictionaryForAllTextures_A); }
 
 
 static uint32_t RwMatrixCreate_A = AddressByVersion<uint32_t>(0x5A3330, 0x5A35F0, 0x5A3FA0, 0x644620, 0x644670, 0x6435D0);
@@ -133,13 +135,19 @@ WRAPPER RwImage *RwImageFindRasterFormat(RwImage*, RwInt32, RwInt32*, RwInt32*, 
 static uint32_t RwImageDestroy_A = AddressByVersion<uint32_t>(0x5A9180, 0x5A9440, 0x5AB6A0, 0x6512B0, 0x651300, 0x650260);
 WRAPPER RwBool RwImageDestroy(RwImage*) { VARJMP(RwImageDestroy_A); }
 
-// III
-WRAPPER RwImage *RwImageCreate(RwInt32, RwInt32, RwInt32) { EAXJMP(0x5A9120); }
-WRAPPER RwImage *RwImageAllocatePixels(RwImage *) { EAXJMP(0x5A91E0); }
-WRAPPER RwStream *RwStreamOpen(RwStreamType, RwStreamAccessType, const void*) { EAXJMP(0x5A3FE0); }
-WRAPPER RwBool RwStreamClose(RwStream*, void*) { EAXJMP(0x5A3F10); }
-WRAPPER RwUInt32 RwStreamRead(RwStream*, void*, RwUInt32) { EAXJMP(0x5A3AD0); }
-WRAPPER RwStream *RwStreamSkip(RwStream*, RwUInt32) { EAXJMP(0x5A3DF0); }
+// III and VC 1.0
+static uint32_t RwImageCreate_A = AddressByVersion<uint32_t>(0x5A9120, 0, 0, 0x651250, 0, 0);
+WRAPPER RwImage *RwImageCreate(RwInt32, RwInt32, RwInt32) { VARJMP(RwImageCreate_A); }
+static uint32_t RwImageAllocatePixels_A = AddressByVersion<uint32_t>(0x5A91E0, 0, 0, 0x651310, 0, 0);
+WRAPPER RwImage *RwImageAllocatePixels(RwImage *) { VARJMP(RwImageAllocatePixels_A); }
+static uint32_t RwStreamOpen_A = AddressByVersion<uint32_t>(0x5A3FE0, 0, 0, 0x6459C0, 0, 0);
+WRAPPER RwStream *RwStreamOpen(RwStreamType, RwStreamAccessType, const void*) { VARJMP(RwStreamOpen_A); }
+static uint32_t RwStreamClose_A = AddressByVersion<uint32_t>(0x5A3F10, 0, 0, 0x6458F0, 0, 0);
+WRAPPER RwBool RwStreamClose(RwStream*, void*) { VARJMP(RwStreamClose_A); }
+static uint32_t RwStreamRead_A = AddressByVersion<uint32_t>(0x5A3AD0, 0, 0, 0x6454B0, 0, 0);
+WRAPPER RwUInt32 RwStreamRead(RwStream*, void*, RwUInt32) { VARJMP(RwStreamRead_A); }
+static uint32_t RwStreamSkip_A = AddressByVersion<uint32_t>(0x5A3DF0, 0, 0, 0x6457D0, 0, 0);
+WRAPPER RwStream *RwStreamSkip(RwStream*, RwUInt32) { VARJMP(RwStreamSkip_A); }
 
 static uint32_t RwIm2DGetNearScreenZ_A = AddressByVersion<uint32_t>(0x5A43A0, 0x5A4660, 0x5A5340, 0x649B80, 0x649BD0, 0x648B30);
 WRAPPER RwReal RwIm2DGetNearScreenZ(void) { VARJMP(RwIm2DGetNearScreenZ_A); }

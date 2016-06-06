@@ -64,7 +64,7 @@ main(in VS_INPUT In)
 	float4 r = lerp(rampStart, rampEnd, f)*rim.z;
 	r = saturate(r);
 
-	Out.color.xyz += directDiff*surfProps.z*diffuseTerm(N, -directDir);
+	Out.color.xyz += directDiff*surfProps.z*diffuseTerm(N, -directDir.xyz);
 	for(int i = 0; i < 4; i++)
 		Out.color.xyz += lights[i].diff*surfProps.z*diffuseTerm(N, -lights[i].dir);
 	Out.color.xyz += surfProps.y*r.xyz;

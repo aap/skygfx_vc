@@ -24,8 +24,8 @@ WRAPPER int rpMatFXD3D8AtomicMatFXEnvRender(RxD3D8InstanceData* a1, int a2, int 
 		jmp rpMatFXD3D8AtomicMatFXEnvRender_A
 	}
 }
-static uint32_t rpMatFXD3D8AtomicMatFXDefaultRender_A = AddressByVersion<uint32_t>(0x5CEB80, 0x5CEE40, 0x5DB760, 0x674380, 0x6743D0, 0x673330);
-WRAPPER int rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData*, int, RwTexture*) { VARJMP(rpMatFXD3D8AtomicMatFXDefaultRender_A); }
+//static uint32_t rpMatFXD3D8AtomicMatFXDefaultRender_A = AddressByVersion<uint32_t>(0x5CEB80, 0x5CEE40, 0x5DB760, 0x674380, 0x6743D0, 0x673330);
+//WRAPPER int rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData*, int, RwTexture*) { VARJMP(rpMatFXD3D8AtomicMatFXDefaultRender_A); }
 int &MatFXMaterialDataOffset = *AddressByVersion<int*>(0x66188C, 0x66188C, 0x671944, 0x7876CC, 0x7876D4, 0x7866D4);
 int &MatFXAtomicDataOffset = *AddressByVersion<int*>(0x66189C, 0x66189C, 0x671930, 0x7876DC, 0x7876E4, 0x7866E4);
 
@@ -237,6 +237,26 @@ ApplyEnvMapTextureMatrix_hook(RwTexture *tex, int n, RwFrame *frame)
 //	return 0;
 //}
 
+int rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData *inst, int flags, RwTexture *texture)
+{
+	if(flags & 0x84 && texture)
+		RwD3D8SetTexture(texture, 0);
+	else
+		RwD3D8SetTexture(NULL, 0);
+	if(inst->vertexAlpha || inst->material->color.alpha != 0xFFu){
+		if(!rwD3D8RenderStateIsVertexAlphaEnable())
+			rwD3D8RenderStateVertexAlphaEnable(1);
+	}else{
+		if(rwD3D8RenderStateIsVertexAlphaEnable())
+			rwD3D8RenderStateVertexAlphaEnable(0);
+	}
+	RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha != 0);
+	RwD3D8SetPixelShader(0);
+	RwD3D8SetVertexShader(inst->vertexShader);
+	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
+	drawDualPass(inst);
+	return 0;
+}
 
 RwTexture *&pWaterTexReflection = *AddressByVersion<RwTexture**>(0, 0, 0, 0x77FA5C, 0x77FA5C, 0x77EA5C);
 
@@ -293,7 +313,8 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 	RwUInt32 src, dst, lighting, zwrite, fog, fogcol;
 	RwRenderStateGet(rwRENDERSTATESRCBLEND, &src);
 	RwRenderStateGet(rwRENDERSTATEDESTBLEND, &dst);
-	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
+//	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
+	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
 	RwD3D8GetRenderState(D3DRS_LIGHTING, &lighting);
 	RwD3D8GetRenderState(D3DRS_ZWRITEENABLE, &zwrite);
@@ -311,9 +332,10 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MODULATE);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
-	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
-	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+	// alpha unused
+	//RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+	//RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
+	//RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
 
 	if(inst->indexBuffer)
 		RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
@@ -372,9 +394,10 @@ drawDualPass(RxD3D8InstanceData *inst)
 
 	RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
 
-	int hasAlpha, alphafunc, alpharef;
+	int hasAlpha, alphafunc, alpharef, zwrite;
 	RwD3D8GetRenderState(D3DRS_ALPHABLENDENABLE, &hasAlpha);
-	if(hasAlpha){
+	RwD3D8GetRenderState(D3DRS_ZWRITEENABLE, &zwrite);
+	if(hasAlpha && zwrite){
 		RwD3D8GetRenderState(D3DRS_ALPHAFUNC, &alphafunc);
 		RwD3D8GetRenderState(D3DRS_ALPHAREF, &alpharef);
 
@@ -545,231 +568,25 @@ WRAPPER void ApplyEnvMapTextureMatrix_hook_IIISteam()
 	}
 }
 
-struct CControllerState
-{
-  __int16 LEFTSTICKX;
-  __int16 LEFTSTICKY;
-  __int16 RIGHTSTICKX;
-  __int16 RIGHTSTICKY;
-  __int16 LEFTSHOULDER1;
-  __int16 LEFTSHOULDER2;
-  __int16 RIGHTSHOULDER1;
-  __int16 RIGHTSHOULDER2;
-  __int16 DPADUP;
-  __int16 DPADDOWN;
-  __int16 DPADLEFT;
-  __int16 DPADRIGHT;
-  __int16 START;
-  __int16 SELECT;
-  __int16 SQUARE;
-  __int16 TRIANGLE;
-  __int16 CROSS;
-  __int16 CIRCLE;
-  __int16 LEFTSHOCK;
-  __int16 RIGHTSHOCK;
-  __int16 NETWORK_TALK;
-};
-
-#pragma pack(push, 1)
-struct CPad
-{
-  CControllerState NewState;
-  CControllerState OldState;
-  CControllerState PCTempKeyState;
-  CControllerState PCTempJoyState;
-  CControllerState PCTempMouseState;
-  char Phase;
-  char gap_d3[1];
-  __int16 Mode;
-  __int16 ShakeDur;
-  char ShakeFreq;
-  char bHornHistory[5];
-  char iCurrHornHistory;
-  char DisablePlayerControls;
-  char JustOutOfFrontEnd;
-  char bApplyBrakes;
-  char field_e2[12];
-  char gap_ee[2];
-  int LastTimeTouched;
-  int AverageWeapon;
-  int AverageEntries;
-};
-#pragma pack(pop)
-
-CPad *Pads = (CPad*)0x6F0360;
-
-struct CCam {
-	void WorkOutCamHeight(float *vec, float a, float b);
-	void WorkOutCamHeight_hook(float *vec, float a, float b);
-	void Process_FollowPed(float *vec, float a, float b, float c);
-	void Process_FollowPed_hook(float *vec, float a, float b, float c);
-	void Process_Editor(float *vec, float a, float b, float c);
-	void Process_Editor_hook(float *vec, float a, float b, float c);
-	void Process_Debug(float *vec, float a, float b, float c);
-	void Process_Debug_hook(float *vec, float a, float b, float c);
-
-	char bytes[12];
-	short mode;
-	char pad8[90];
-	float offset;
-	char pad7[60];
-	float angle1;
-	float timething;
-	float fov;
-	char pad6[4];
-	float angle2;
-	char pad5[20];
-	float unkflt1;
-	char pad4[36];
-	float vec2[3];
-	char pad3[60];
-	float vec1[3];
-	float pos[3];
-	float pos2[3];
-	float up[3];
-	char pad2[24];
-	int attachment;
-	char pad1[12];
-	int unk3;
-	int unk2;
-	int unk1;
-};
-WRAPPER void CCam::WorkOutCamHeight(float *vec, float a, float b) { EAXJMP(0x466650); }
-WRAPPER void CCam::Process_FollowPed(float *vec, float a, float b, float c) { EAXJMP(0x45E3A0); }
-WRAPPER void CCam::Process_Editor(float *vec, float a, float b, float c) { EAXJMP(0x45C590); }
-WRAPPER void CCam::Process_Debug(float *vec, float a, float b, float c) { EAXJMP(0x45CCC0); }
-
-void
-CCam::Process_Editor_hook(float *vec, float a, float b, float c)
-{
-	Pads[1] = Pads[0];
-	this->Process_Editor(vec, a, b, c);
-}
-
-void
-CCam::Process_Debug_hook(float *vec, float a, float b, float c)
-{
-	Pads[1] = Pads[0];
-	this->Process_Debug(vec, a, b, c);
-}
-
-// distance values around 468953
-
-float *tanvalCar[3] = {
-	(float*)0x5F08C4,
-	(float*)0x5F08C8,
-	(float*)0x5F046C
-};
-float *distCar[3] = {
-	(float*)0x468959,
-	(float*)0x468978,
-	(float*)0x468998
-};
-float &carViewMode = *(float*)0x6FADD0;
-float carFov = 85.0f;
-float foo;
-
-void
-CCam::Process_FollowPed_hook(float *vec, float a, float b, float c)
-{
-	this->Process_FollowPed(vec, a, b, c);
-	this->fov = carFov;
-}
-
-// 2: fov 75, tan 12.5 (gta3_30.jpg)
-// 2: fov 85, tan 7.5 (gta3_30.jpg)
-// 2: fov 85, tan 9.0 (gta3_30.jpg)
-
-void
-CCam::WorkOutCamHeight_hook(float *vec, float a, float b)
-{
-	this->WorkOutCamHeight(vec, a, b);
-	int i = (int)carViewMode - 1;
-	if(i < 1 && i > 3)
-		return;
-
-	if((GetAsyncKeyState('1') & 0x8000) && (GetAsyncKeyState(VK_LMENU) & 0x8000))
-		carFov -= 0.1f;
-	if((GetAsyncKeyState('2') & 0x8000) && (GetAsyncKeyState(VK_LMENU) & 0x8000))
-		carFov += 0.1f;
-	this->fov = carFov;
-
-	if((GetAsyncKeyState('3') & 0x8000) && (GetAsyncKeyState(VK_LMENU) & 0x8000))
-		*tanvalCar[i] -= 0.1f;
-	if((GetAsyncKeyState('4') & 0x8000) && (GetAsyncKeyState(VK_LMENU) & 0x8000))
-		*tanvalCar[i] += 0.1f;
-
-	if((GetAsyncKeyState('5') & 0x8000) && (GetAsyncKeyState(VK_LMENU) & 0x8000))
-		*distCar[i] -= 0.1f;
-	if((GetAsyncKeyState('6') & 0x8000) && (GetAsyncKeyState(VK_LMENU) & 0x8000))
-		*distCar[i] += 0.1f;
-
-	printf("%f %f %f %f\n", carViewMode, this->fov, *tanvalCar[i], *distCar[i]);
-//	printf("%f\n", tanval1);
-//	printf("(%f %f %f) (%f %f %f) %f %f %f %f\n", this->vec1[0], this->vec1[1], this->vec1[2],
-//		this->pos[0], this->pos[1], this->pos[2],
-//		this->angle1, this->angle2, this->offset, foo);
-}
-
-// VC 1.0
-//WRAPPER void *openfile_(char*, char*) { EAXJMP(0x48DF90); }
-//WRAPPER int readfile_(void*, void*, int) { EAXJMP(0x48DF50); }
-// III 1.0
-WRAPPER void *openfile_(char*, char*) { EAXJMP(0x479100); }
-WRAPPER int readfile_(void*, void*, int) { EAXJMP(0x479140); }
-
-struct dirent {
-	int off, siz;
-	char name[24];
-};
-
 struct TxdStore {
 	static void PushCurrentTxd(void);
 	static int PopCurrentTxd(void);
 	static int FindTxdSlot(char*);
 	static void SetCurrentTxd(int);
+	//static char *GetTxdName(int handle);
 };
 
 static uint32_t TxdStore_PushCurrentTxd_A = AddressByVersion<uint32_t>(0x527900, 0x527B40, 0x527AD0, 0, 0, 0);
 WRAPPER void TxdStore::PushCurrentTxd(void) { VARJMP(TxdStore_PushCurrentTxd_A); }
 static uint32_t TxdStore_PopCurrentTxd_A = AddressByVersion<uint32_t>(0x527910, 0x527B50, 0x527AE0, 0, 0, 0);
 WRAPPER int TxdStore::PopCurrentTxd(void) { VARJMP(TxdStore_PopCurrentTxd_A); }
-static uint32_t TxdStore_FindTxdSlot_A = AddressByVersion<uint32_t>(0x5275D0, 0x527810, 0x5277A0, 0, 0, 0);
+static uint32_t TxdStore_FindTxdSlot_A = AddressByVersion<uint32_t>(0x5275D0, 0x527810, 0x5277A0, 0x580D70, 0, 0);
 WRAPPER int TxdStore::FindTxdSlot(char*) { VARJMP(TxdStore_FindTxdSlot_A); }
 static uint32_t TxdStore_SetCurrentTxd_A = AddressByVersion<uint32_t>(0x5278C0, 0x527B00, 0x527A90, 0, 0, 0);
 WRAPPER void TxdStore::SetCurrentTxd(int) { VARJMP(TxdStore_SetCurrentTxd_A); }
 
-void*
-openfile(char *path, char *mode)
-{
-	printf("opening %s\n", path);
-	return openfile_(path, mode);
-}
-
-//int txdcount = 0;
-
-int
-readfile(void *f, void *dst, int n)
-{
-	int ret = readfile_(f, dst, n);
-	if(ret){
-		dirent *d = (dirent*)dst;
-		if(strcmp(d->name, "radar24.txd") == 0)
-			ret = ret;
-		int r24 = TxdStore::FindTxdSlot("radar24");
-		int r25 = TxdStore::FindTxdSlot("radar25");
-		printf("%d %x %x %s %d %d\n", ret, d->off, d->siz, d->name, r24, r25);
-		//{
-		//	char *pos = strrchr(d->name, '.h');
-		//	if(pos &&
-		//	   (strcmp(pos+1, "txd") == 0 ||
-		//	   strcmp(pos+1, "TXD") == 0))
-		//		txdcount++;
-		//}
-	}
-	return ret;
-}
-
+//static uint32_t TxdStore_GetTxdName_A = AddressByVersion<uint32_t>(0, 0, 0, 0x580E50, 0, 0);
+//WRAPPER void TxdStore::GetTxdName(int) { VARJMP(TxdStore_SetCurrentTxd_A); }
 
 static int &gameTxdSlot = *AddressByVersion<int*>(0x628D88, 0x628D88, 0x638D88, 0, 0, 0); // TODO
 
@@ -784,6 +601,28 @@ RwTextureRead_generic(char *name, char *mask)
 	TxdStore::SetCurrentTxd(gameTxdSlot);
 	tex = RwTextureRead(name, mask);
 	TxdStore::PopCurrentTxd();
+	return tex;
+}
+
+RwTexture *dumpTxd(RwTexture *texture, void*)
+{
+	printf("  %s %s\n", texture->name, texture->mask);
+	return texture;
+}
+
+RwTexture*
+RwTextureRead_VC(char *name, char *mask)
+{
+	RwTexture *tex;
+	tex = RwTextureRead(name, mask);
+	if(tex)
+		return tex;
+	if(strcmp(name, "greyground256128") == 0)
+		_asm { int 3 };
+	int handle = TxdStore::FindTxdSlot("nbt_hotel02");
+	printf("texture not found: %s %s %d\n", name, mask, handle);
+	RwTexDictionary *txd = RwTexDictionaryGetCurrent();
+	RwTexDictionaryForAllTextures(txd, dumpTxd, NULL);
 	return tex;
 }
 
@@ -898,6 +737,17 @@ curvehook(void)
 	}
 }
 
+static uint32_t RenderEffects_A = AddressByVersion<uint32_t>(0x48E090, 0, 0, 0x4A6510, 0, 0);
+WRAPPER void RenderEffects(void) { VARJMP(RenderEffects_A); }
+
+void
+RenderEffects_hook(void)
+{
+	RenderEffects();
+	WaterDrops::Process();
+	WaterDrops::Render();
+}
+
 void
 patch(void)
 {
@@ -968,6 +818,7 @@ patch(void)
 			MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5DFB99, 0x5DFE59, 0, 0x678D69, 0x678DB9, 0x677D19), dualPassHook, PATCH_JUMP);
 		else
 			MemoryVP::InjectHook(0x5EE675, dualPassHook_IIISteam, PATCH_JUMP);
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5CEB80, 0x5CEE40, 0x5DB760, 0x674380, 0x6743D0, 0x673330), rpMatFXD3D8AtomicMatFXDefaultRender, PATCH_JUMP);
 	}
 
 	if(isVC() && GetPrivateProfileInt("SkyGfx", "disableBackfaceCulling", FALSE, modulePath)){
@@ -998,49 +849,34 @@ patch(void)
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48D52F, 0x48D62F, 0x48D5BF, 0x4A5B6B, 0x4A5B8B, 0x4A5A3B), CGame__InitialiseRenderWare_hook);
 
 	if(isIII()){
+		// WRONG! not enough!
 		int n = GetPrivateProfileInt("SkyGfx", "txdLimit", 850, modulePath);
 		if(n != 850){
 			MemoryVP::Patch<int>(0x406979, n); //same address for all versions, lol
 			MemoryVP::Patch<int>(AddressByVersion<uint32_t>(0x527458, 0x527698, 0x527628, 0, 0, 0), n);
 		}
-		// ignore txd.img
-		//MemoryVP::InjectHook(0x48C12E, 0x48C14C, PATCH_JUMP);
 
 		// fall back to generic.txd when reading from dff
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
 	}
 	if(gtaversion == III_10){
-//		MemoryVP::Patch<float>(0x45C120, 80.0f);
+		// ignore txd.img
+		MemoryVP::InjectHook(0x48C12E, 0x48C14C, PATCH_JUMP);
 
-//		*tanvalCar[1] = 9.0f;
-//		*(float*)0x5F53C4 = 1.244444444f;
-//		MemoryVP::InjectHook(0x45C334, &CCam::WorkOutCamHeight_hook);
-//		MemoryVP::InjectHook(0x459A9B, &CCam::Process_FollowPed_hook);
-
-//		MemoryVP::InjectHook(0x459C97, &CCam::Process_Editor_hook);
-//		MemoryVP::InjectHook(0x459ABA, &CCam::Process_Debug_hook);
-
-		MemoryVP::Patch<int>(0x4A17F0, 6000);
-		MemoryVP::Patch<int>(0x4A180D, 2000);
-	}
-	if(gtaversion == III_10){
 		int i = GetPrivateProfileInt("SkyGfx", "curve", -1, modulePath);
 		if(i >= 0){
 			curveIdx = i % 256;
 			MemoryVP::InjectHook(0x48E44B, curvehook, PATCH_JUMP);
 		}
-
-		//MemoryVP::InjectHook(0x406DB3, openfile);
-		//MemoryVP::InjectHook(0x406DC9, readfile);
-		//MemoryVP::InjectHook(0x407043, readfile);
 		MemoryVP::InjectHook(0x405DB0, printf, PATCH_JUMP);
 	}
 	if(gtaversion == VC_10){
-		//MemoryVP::InjectHook(0x40FBD3, openfile);
-		//MemoryVP::InjectHook(0x40FBE9, readfile);
-		//MemoryVP::InjectHook(0x40FDD9, readfile);
-		MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
+		MemoryVP::Nop(0x40C32B, 5);
+		MemoryVP::InjectHook(0x650ACB, RwTextureRead_VC);
+		//MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
+
 	}
+	MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48E603, 0, 0, 0x4A604F, 0, 0), RenderEffects_hook);
 }
 
 BOOL WINAPI

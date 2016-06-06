@@ -13,6 +13,9 @@
 #include "resource.h"
 #include "MemoryMgr.h"
 
+typedef unsigned char uchar;
+typedef unsigned short ushort;
+
 struct MatFXEnv
 {
 	RwFrame *envFrame;
@@ -35,46 +38,39 @@ struct MatFX
 	int effects;
 };
 
-struct CClumpModelInfo
+struct CBaseModelInfo
 {
-	void **vtable;
-	char     name[24];
-	RwInt32 data1[3];
-	RwUInt8 unk1[4];
-	RwInt32 unk2;
+	void *vmt;
+	char name[24];
+	void *colModel;
+	void *twodEffects;
+	short id;
+	ushort refCount;
+	short txdSlot;
+	uchar type; // ModelInfo type
+	uchar num2dEffects;
+	bool freeCol;
+};
+
+struct CSimpleModelInfo : CBaseModelInfo
+{
+	RpAtomic *atomics[3];
+	float lodDistances[3];
+	uchar numAtomics;
+	uchar alpha;
+	ushort flags;
+
+	void SetAtomic(int n, RpAtomic *atomic);
+	void SetAtomic_hook(int n, RpAtomic *atomic);
+};
+
+struct CClumpModelInfo : CBaseModelInfo
+{
 	RpClump *clump;
 
 	RpClump *CreateInstance(void);
 	void SetClump(RpClump*);
 	void SetFrameIds(int ids);
-};
-
-struct CBaseModelInfo
-{
-	void *__vmt;
-	char m_cName[24];
-	void *m_pColModel;
-	void *m_p2dEffect;
-	WORD m_wObjectDataId;
-	WORD m_wRefCount;
-	WORD m_wTxdId;
-	BYTE m_bType;
-	BYTE m_bNum2dEffects;
-	BYTE __field_2C;
-	BYTE __padding0[3];
-};
-
-struct CSimpleModelInfo
-{
-	CBaseModelInfo __parent;
-	void *atomics[3];
-	float lodDistances[3];
-	BYTE numAtomics;
-	BYTE alpha;
-	WORD flags;
-
-	void SetAtomic(int n, RpAtomic *atomic);
-	void SetAtomic_hook(int n, RpAtomic *atomic);
 };
 
 extern HMODULE dllModule;
@@ -88,8 +84,10 @@ extern int rimlight, rimlightkey;
 extern int xboxworldpipe, xboxworldpipekey;
 extern int envMapSize;
 
+char *getpath(char *path);
 void neoInit(void);
 void RenderEnvTex(void);
+void DefinedState(void);
 
 extern void **&RwEngineInst;
 extern RpLight *&pAmbient;
@@ -127,3 +125,60 @@ enum {
 
 extern RwTexture *rampTex;
 void reloadRamp(void);
+
+class WaterDrop
+{
+public:
+	float x0, y0, time;		// shorts on xbox (short float?)
+	float size, uvsize, ttl;	// "
+	uchar alpha;
+	bool active;
+	bool fades;
+
+	void Fade(void);
+};
+
+struct VertexTex2
+{
+	RwReal      x;
+	RwReal      y;
+	RwReal      z;
+	RwReal      rhw;
+	RwUInt32    emissiveColor;
+	RwReal      u0;
+	RwReal      v0;
+	RwReal      u1;
+	RwReal      v1;
+};
+
+class WaterDrops
+{
+public:
+	enum {
+		MAXDROPS = 2000
+	};
+	static float xOff, yOff;	// not quite sure what these are
+	static WaterDrop drops[MAXDROPS];
+	static int numDrops;
+	static int initialised;
+
+	static RwTexture *maskTex;
+	static RwTexture *tex;	// TODO
+	static RwRaster *maskRaster;
+	static RwRaster *raster;	// TODO
+
+	static int fbWidth, fbHeight;
+
+	static void *vertexBuf;
+	static void *indexBuf;
+	static VertexTex2 *vertPtr;
+	static int numBatchedDrops;
+
+	static void Initialise(RwCamera *cam);
+	static void PlaceNew(float x0, float y0, float x1, float z1, bool flag);
+	static void AddToRenderList(WaterDrop *drop);
+	static void Clear(void);
+	static void FillScreen(int n);
+	static void Process(void);
+	static void Render(void);
+};

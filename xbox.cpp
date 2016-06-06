@@ -843,7 +843,7 @@ CClumpModelInfo::SetClump(RpClump *clump)
 	CVisibilityPlugins__SetClumpModelInfo(clump, this);
 	CBaseModelInfo__AddTexDictionaryRef(this);
 	RpClumpForAllAtomics(clump, CClumpModelInfo__SetAtomicRendererCB_A, 0);
-	if(this->unk1[2] == 1 || this->unk1[2] == 3 || this->unk1[2] == 4)
+	if(this->type == 1 || this->type == 3 || this->type == 4)
 		RpClumpForAllAtomics(clump, setAtomicPipelineCB, worldpipe);
 	if(strcmp(this->name, "playerh") == 0)
 		RpClumpForAllAtomics(clump, CClumpModelInfo__SetAtomicRendererCB_A, CVisibilityPlugins__RenderPlayerCB_A);

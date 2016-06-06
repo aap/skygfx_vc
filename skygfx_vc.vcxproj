@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug - III|Win32">
       <Configuration>Debug - III</Configuration>
@@ -26,25 +26,25 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - III|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -65,22 +65,22 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>C:\Users\aap\Desktop\RWSDK\RW34\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\aap\src\RWSDK\RW34\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
     <TargetExt>.asi</TargetExt>
     <LibraryPath>C:\Users\aap\src\rwd3d9\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">
-    <IncludePath>C:\Users\aap\Desktop\RWSDK\RW34\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\aap\src\RWSDK\RW34\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
     <TargetExt>.asi</TargetExt>
     <LibraryPath>C:\Users\aap\src\rwd3d9\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - III|Win32'">
-    <IncludePath>C:\Users\aap\Desktop\RWSDK\RW34\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\aap\src\RWSDK\RW34\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
     <TargetExt>.asi</TargetExt>
     <LibraryPath>C:\Users\aap\src\rwd3d9\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>C:\Users\aap\Desktop\RWSDK\RW34\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\aap\src\RWSDK\RW34\include\d3d8;C:\Users\aap\src\rwd3d9;$(IncludePath)</IncludePath>
     <TargetExt>.asi</TargetExt>
     <LibraryPath>C:\Users\aap\src\rwd3d9\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
@@ -95,8 +95,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>rwd3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent />
     <PostBuildEvent>
-      <Command>copy /y "$(TargetPath)" "C:\Users\aap\Desktop\gta3\scripts\skygfx.asi"</Command>
+      <Command>copy /y "$(TargetPath)" "C:\Users\aap\games\gta3\scripts\skygfx.asi"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">
@@ -110,8 +111,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>rwd3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent />
     <PostBuildEvent>
-      <Command>copy /y "$(TargetPath)" "C:\Users\aap\Desktop\gtavc\scripts\skygfx.asi"</Command>
+      <Command>copy /y "$(TargetPath)" "C:\Users\aap\games\gtavc\scripts\skygfx.asi"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - III|Win32'">
@@ -125,8 +127,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>rwd3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent />
     <PostBuildEvent>
-      <Command>copy /y "$(TargetPath)" "C:\Users\aap\Desktop\gta3\scripts\skygfx.asi"</Command>
+      <Command>copy /y "$(TargetPath)" "C:\Users\aap\games\gta3\scripts\skygfx.asi"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -145,8 +148,7 @@
       <AdditionalDependencies>rwd3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>copy /y "$(TargetPath)" "C:\Users\aap\games\gta3\scripts\skygfx.asi"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
