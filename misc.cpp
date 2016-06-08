@@ -105,31 +105,41 @@ reloadRamp(void)
 	RwImageDestroy(img);
 }
 
-
+#define MAXSIZE 15
+#define MINSIZE 4
 
 float WaterDrops::xOff, WaterDrops::yOff;	// not quite sure what these are
 WaterDrop WaterDrops::drops[MAXDROPS];
 int WaterDrops::numDrops;
-int WaterDrops::initialised;
+WaterDropMoving WaterDrops::ms_dropsMoving[MAXDROPSMOVING];
+int WaterDrops::ms_numDropsMoving;
+
+bool WaterDrops::ms_movingEnabled = 1;
+
+float WaterDrops::ms_distMoved, WaterDrops::ms_vecLen, WaterDrops::ms_rainStrength;
+RwV3d WaterDrops::ms_vec;
+RwV3d WaterDrops::ms_lastAt;
+RwV3d WaterDrops::ms_lastPos;
+RwV3d WaterDrops::ms_posDelta;
 
 RwTexture *WaterDrops::maskTex;
 RwTexture *WaterDrops::tex;	// TODO
 RwRaster *WaterDrops::maskRaster;
 RwRaster *WaterDrops::raster;	// TODO
-
 int WaterDrops::fbWidth, WaterDrops::fbHeight;
-
 void *WaterDrops::vertexBuf;
 void *WaterDrops::indexBuf;
 VertexTex2 *WaterDrops::vertPtr;
 int WaterDrops::numBatchedDrops;
+int WaterDrops::initialised;
 
 #define DROPFVF (D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX2)
 
 IDirect3DDevice8 *&RwD3DDevice = *AddressByVersion<IDirect3DDevice8**>(0x662EF0, 0x662EF0, 0x67342C, 0x7897A8, 0x7897B0, 0x7887B0);
 
-
-float &CTimer__ms_fTimeStep = *AddressByVersion<float*>(0, 0, 0, 0x975424, 0, 0);
+// ADDRESS
+RwCamera *&rwcam = *AddressByVersion<RwCamera**>(0x72676C, 0, 0, 0x8100BC, 0, 0);
+float &CTimer__ms_fTimeStep = *AddressByVersion<float*>(0x8E2CB4, 0, 0, 0x975424, 0, 0);
 
 void
 WaterDrop::Fade(void)
@@ -143,8 +153,232 @@ WaterDrop::Fade(void)
 		this->alpha = 255 - time/ttl * 255;
 }
 
+
 void
-WaterDrops::Initialise(RwCamera *cam)
+WaterDrops::Process(void)
+{
+	if(!initialised)
+		InitialiseRender(rwcam);
+
+	WaterDrops::CalculateMovement();
+	WaterDrops::SprayDrops();
+	WaterDrops::ProcessMoving();
+	WaterDrops::Fade();
+}
+
+#define RAD2DEG(x) (180.0f*(x)/M_PI)
+
+void
+WaterDrops::CalculateMovement(void)
+{
+	RwV3d pos;
+	RwMatrix *modelMatrix;
+	modelMatrix = &RwCameraGetFrame(rwcam)->modelling;
+	RwV3dSub(&ms_posDelta, &modelMatrix->pos, &ms_lastPos);
+	ms_distMoved = RwV3dLength(&ms_posDelta);
+	pos.x = (modelMatrix->at.x - ms_lastAt.x) * 10.0f;
+	pos.y = (modelMatrix->at.y - ms_lastAt.y) * 10.0f;
+	pos.z = (modelMatrix->at.z - ms_lastAt.z) * 10.0f;
+	// ^ result unused for now
+	ms_lastAt = modelMatrix->at;
+	ms_lastPos = modelMatrix->pos;
+
+	ms_vec.x = RwV3dDotProduct(&modelMatrix->right, &ms_posDelta);
+	ms_vec.y = RwV3dDotProduct(&modelMatrix->up, &ms_posDelta);
+	ms_vec.z = RwV3dDotProduct(&modelMatrix->at, &ms_posDelta);
+	RwV3dScale(&ms_vec, &ms_vec, 10.0f);
+	ms_vecLen = sqrt(ms_vec.y*ms_vec.y + ms_vec.x*ms_vec.x);
+
+	float c = modelMatrix->at.z;
+	if(c > 1.0f) c = 1.0f;
+	if(c < -1.0f) c = -1.0f;
+	ms_rainStrength = RAD2DEG(acos(c));
+}
+
+void
+WaterDrops::SprayDrops(void)
+{
+	{
+		static bool keystate = false;
+		if(GetAsyncKeyState(VK_TAB) & 0x8000){
+			if(!keystate){
+				keystate = true;
+				FillScreenMoving(10.0f);
+			}
+		}else
+			keystate = false;
+	}
+}
+
+void
+WaterDrops::MoveDrop(WaterDropMoving *moving)
+{
+	WaterDrop *drop = moving->drop;
+	if(!ms_movingEnabled)
+		return;
+	if(!drop->active){
+		moving->drop = NULL;
+		ms_numDropsMoving--;
+		return;
+	}
+	if(ms_vec.z <= 0.0f || ms_distMoved <= 0.3f)
+		return;
+
+	if(ms_vecLen <= 0.5f /* || cam shit */){
+		float d = ms_vec.z*0.2f;
+		float dx, dy, sum;
+		dx = drop->x - fbWidth*0.5f + ms_vec.x;
+		// TODO: 1.2 instead of 0.5 when camshit == 16
+		dy = drop->y - fbHeight*0.5f - ms_vec.y;
+		sum = fabs(dx) + fabs(dy);
+		if(sum >= 0.001f){
+			dx *= (1.0/sum);
+			dy *= (1.0/sum);
+		}
+		moving->dist += d;
+		if(moving->dist > 20.0f)
+			NewTrace(moving);
+		drop->x += dx * d;
+		drop->y += dy * d;
+	}else{
+		moving->dist += ms_vecLen;
+		if(moving->dist > 20.0f)
+			NewTrace(moving);
+		drop->x -= ms_vec.x;
+		drop->y += ms_vec.y;
+	}
+//	drop->y += 2.0f;
+//	moving->dist += 2.0f;
+//
+//	if(moving->dist > 20.0f)
+//		NewTrace(moving);
+
+	if(drop->x < 0.0f || drop->y < 0.0f ||
+	   drop->x > fbWidth || drop->y > fbHeight){
+		moving->drop = NULL;
+		ms_numDropsMoving--;
+	}
+}
+
+void
+WaterDrops::ProcessMoving(void)
+{
+	WaterDropMoving *moving;
+	if(!ms_movingEnabled)
+		return;
+	for(moving = ms_dropsMoving; moving < &ms_dropsMoving[MAXDROPSMOVING]; moving++)
+		if(moving->drop)
+			MoveDrop(moving);
+}
+
+void
+WaterDrops::Fade(void)
+{
+	WaterDrop *drop;
+	for(drop = &drops[0]; drop < &drops[MAXDROPS]; drop++)
+		if(drop->active)
+			drop->Fade();
+}
+
+
+WaterDrop*
+WaterDrops::PlaceNew(float x, float y, float size, float ttl, bool fades)
+{
+	WaterDrop *drop;
+	int i;
+
+	// TODO: don't place unconditionally
+
+	for(i = 0, drop = drops; i < MAXDROPS; i++, drop++)
+		if(drops[i].active == 0)
+			goto found;
+	return NULL;
+found:
+	numDrops++;
+	drop->x = x;
+	drop->y = y;
+	drop->size = size;
+	drop->uvsize = (MAXSIZE - size + 1.0f) / (MAXSIZE - MINSIZE + 1.0f);
+	drop->fades = fades;
+	drop->active = 1;
+	drop->alpha = 0xFF;
+	drop->time = 0.0f;
+	drop->ttl = ttl;
+	return drop;
+}
+
+void
+WaterDrops::NewTrace(WaterDropMoving *moving)
+{
+	if(numDrops < MAXDROPS){
+		moving->dist = 0.0f;
+		PlaceNew(moving->drop->x, moving->drop->y, MINSIZE, 500.0f, 1);
+	}
+}
+
+void
+WaterDrops::NewDropMoving(WaterDrop *drop)
+{
+	WaterDropMoving *moving;
+	for(moving = ms_dropsMoving; moving < &ms_dropsMoving[MAXDROPSMOVING]; moving++)
+		if(moving->drop == NULL)
+			goto found;
+	return;
+found:
+	ms_numDropsMoving++;
+	moving->drop = drop;
+	moving->dist = 0.0f;
+}
+
+void
+WaterDrops::FillScreen(int n)
+{
+	float x, y, time;
+	WaterDrop *drop;
+
+	if(!initialised)
+		return;
+	numDrops = 0;
+	for(drop = &drops[0]; drop < &drops[MAXDROPS]; drop++){
+		drop->active = 0;
+		if(drop < &drops[n]){
+			x = rand() % fbWidth;
+			y = rand() % fbHeight;
+			time = rand() % (MAXSIZE - MINSIZE) + MINSIZE;
+			PlaceNew(x, y, time, 2000.0f, 1);
+		}
+	}
+}
+
+void
+WaterDrops::FillScreenMoving(float amount)
+{
+	int n = (ms_vec.z <= 5.0f ? 1.0f : 1.5f)*amount*20.0f;
+	float x, y, time;
+	WaterDrop *drop;
+
+	while(n--)
+		if(numDrops < MAXDROPS && ms_numDropsMoving < MAXDROPSMOVING){
+			x = rand() % fbWidth;
+			y = rand() % fbHeight;
+			time = rand() % (MAXSIZE - MINSIZE) + MINSIZE;
+			drop = PlaceNew(x, y, time, 2000.0f, 1);
+			if(drop)
+				NewDropMoving(drop);
+		}
+}
+
+void
+WaterDrops::Clear(void)
+{
+	WaterDrop *drop;
+	for(drop = &drops[0]; drop < &drops[MAXDROPS]; drop++)
+		drop->active = 0;
+	numDrops = 0;
+}
+
+void
+WaterDrops::InitialiseRender(RwCamera *cam)
 {
 	char *path;
 
@@ -194,34 +428,6 @@ WaterDrops::Initialise(RwCamera *cam)
 }
 
 void
-WaterDrops::PlaceNew(float x0, float y0, float size, float ttl, bool fades)
-{
-	WaterDrop *drop;
-	int i;
-
-	// TODO: don't place unconditionally
-
-	for(i = 0, drop = drops; i < MAXDROPS; i++, drop++)
-		if(drops[i].active == 0)
-			goto found;
-	return;
-found:
-	numDrops++;
-	drop->x0 = x0;
-	drop->y0 = y0;
-	drop->size = size;
-	drop->uvsize = (15.0f - size + 1.0f) / (15.0f - 4.0f + 1.0f);	// lolwut
-	drop->fades = fades;
-	drop->active = 1;
-	drop->alpha = 0xFF;
-	drop->time = 0.0f;
-	drop->ttl = ttl;
-}
-
-// VC
-RwCamera *&rwcam = *(RwCamera**)0x8100BC;
-
-void
 WaterDrops::AddToRenderList(WaterDrop *drop)
 {
 	static float xy[] = {
@@ -240,10 +446,10 @@ WaterDrops::AddToRenderList(WaterDrop *drop)
 	float tmp;
 
 	tmp = drop->uvsize*(300.0f - 40.0f) + 40.0f;
-	u1_1 = drop->x0 + xOff - tmp;
-	v1_1 = drop->y0 + yOff - tmp;
-	u1_2 = drop->x0 + xOff + tmp;
-	v1_2 = drop->y0 + yOff + tmp;
+	u1_1 = drop->x + xOff - tmp;
+	v1_1 = drop->y + yOff - tmp;
+	u1_2 = drop->x + xOff + tmp;
+	v1_2 = drop->y + yOff + tmp;
 	u1_1 = (u1_1 <= 0.0f ? 0.0f : u1_1) / raster->width;
 	v1_1 = (v1_1 <= 0.0f ? 0.0f : v1_1) / raster->height;
 	u1_2 = (u1_2 >= fbWidth  ? fbWidth  : u1_2) / raster->width;
@@ -252,8 +458,8 @@ WaterDrops::AddToRenderList(WaterDrop *drop)
 	scale = drop->size * 0.5f;
 
 	for(i = 0; i < 4; i++, vertPtr++){
-		vertPtr->x = drop->x0 + xy[i*2]*scale + xOff;
-		vertPtr->y = drop->y0 + xy[i*2+1]*scale + yOff;
+		vertPtr->x = drop->x + xy[i*2]*scale + xOff;
+		vertPtr->y = drop->y + xy[i*2+1]*scale + yOff;
 		vertPtr->z = 0.0f;
 		vertPtr->rhw = 1.0f;
 		vertPtr->emissiveColor = D3DCOLOR_ARGB(drop->alpha, 0xFF, 0xFF, 0xFF);	// TODO
@@ -263,59 +469,6 @@ WaterDrops::AddToRenderList(WaterDrop *drop)
 		vertPtr->v1 = i % 3 == 0 ? v1_2 : v1_1;
 	}
 	numBatchedDrops++;
-}
-
-void
-WaterDrops::Clear(void)
-{
-	WaterDrop *drop;
-	for(drop = &drops[0]; drop < &drops[MAXDROPS]; drop++)
-		drop->active = 0;
-	numDrops = 0;
-}
-
-void
-WaterDrops::FillScreen(int n)
-{
-	float x0, y0, x1;
-	WaterDrop *drop;
-
-	if(!initialised)
-		return;
-	numDrops = 0;
-	for(drop = &drops[0]; drop < &drops[MAXDROPS]; drop++){
-		drop->active = 0;
-		if(drop < &drops[n]){
-			x0 = rand() % fbWidth;
-			y0 = rand() % fbHeight;
-			x1 = rand() % ((int)floor(15.0f) - 4) + 4;
-			PlaceNew(x0, y0, x1, 2000.0f, 1);
-		}
-	}
-}
-
-void
-WaterDrops::Process(void)
-{
-	WaterDrop *drop;
-	if(!initialised)
-		Initialise(rwcam);
-
-	{
-		static bool keystate = false;
-		if(GetAsyncKeyState(VK_TAB) & 0x8000){
-			if(!keystate){
-				keystate = true;
-				FillScreen(300);
-			}
-		}else
-			keystate = false;
-	}
-
-	for(drop = &drops[0]; drop < &drops[MAXDROPS]; drop++)
-		if(drop->active)
-			drop->Fade();
-			
 }
 
 void

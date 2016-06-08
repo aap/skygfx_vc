@@ -1,4 +1,5 @@
 #define _CRT_SECURE_NO_WARNINGS
+#define _USE_MATH_DEFINES
 
 #include <windows.h>
 #include <rwcore.h>
@@ -126,17 +127,9 @@ enum {
 extern RwTexture *rampTex;
 void reloadRamp(void);
 
-class WaterDrop
-{
-public:
-	float x0, y0, time;		// shorts on xbox (short float?)
-	float size, uvsize, ttl;	// "
-	uchar alpha;
-	bool active;
-	bool fades;
-
-	void Fade(void);
-};
+/*
+ * Xbox water drops
+ */
 
 struct VertexTex2
 {
@@ -151,34 +144,77 @@ struct VertexTex2
 	RwReal      v1;
 };
 
+class WaterDrop
+{
+public:
+	float x, y, time;		// shorts on xbox (short float?)
+	float size, uvsize, ttl;	// "
+	uchar alpha;
+	bool active;
+	bool fades;
+
+	void Fade(void);
+};
+
+class WaterDropMoving
+{
+public:
+	WaterDrop *drop;
+	float dist;
+};
+
 class WaterDrops
 {
 public:
 	enum {
-		MAXDROPS = 2000
+		MAXDROPS = 2000,
+		MAXDROPSMOVING = 700
 	};
+
+	// Logic
+
 	static float xOff, yOff;	// not quite sure what these are
 	static WaterDrop drops[MAXDROPS];
 	static int numDrops;
-	static int initialised;
+	static WaterDropMoving ms_dropsMoving[MAXDROPSMOVING];
+	static int ms_numDropsMoving;
+
+	static bool ms_movingEnabled;
+
+	static float ms_distMoved, ms_vecLen, ms_rainStrength;
+	static RwV3d ms_vec;
+	static RwV3d ms_lastAt;
+	static RwV3d ms_lastPos;
+	static RwV3d ms_posDelta;
+
+	static void Process(void);
+	static void CalculateMovement(void);
+	static void SprayDrops(void);
+	static void MoveDrop(WaterDropMoving *moving);
+	static void ProcessMoving(void);
+	static void Fade(void);
+
+	static WaterDrop *PlaceNew(float x, float y, float size, float time, bool fades);
+	static void NewTrace(WaterDropMoving*);
+	static void NewDropMoving(WaterDrop*);
+	static void FillScreenMoving(float amount);
+	static void FillScreen(int n);
+	static void Clear(void);
+
+	// Rendering
 
 	static RwTexture *maskTex;
 	static RwTexture *tex;	// TODO
 	static RwRaster *maskRaster;
 	static RwRaster *raster;	// TODO
-
 	static int fbWidth, fbHeight;
-
 	static void *vertexBuf;
 	static void *indexBuf;
 	static VertexTex2 *vertPtr;
 	static int numBatchedDrops;
+	static int initialised;
 
-	static void Initialise(RwCamera *cam);
-	static void PlaceNew(float x0, float y0, float x1, float z1, bool flag);
+	static void InitialiseRender(RwCamera *cam);
 	static void AddToRenderList(WaterDrop *drop);
-	static void Clear(void);
-	static void FillScreen(int n);
-	static void Process(void);
 	static void Render(void);
 };
