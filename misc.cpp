@@ -108,9 +108,12 @@ reloadRamp(void)
 #define MAXSIZE 15
 #define MINSIZE 4
 
-float WaterDrops::xOff, WaterDrops::yOff;	// not quite sure what these are
-WaterDrop WaterDrops::drops[MAXDROPS];
-int WaterDrops::numDrops;
+float scaling;
+#define SC(x) ((int)((x)*scaling))
+
+float WaterDrops::ms_xOff, WaterDrops::ms_yOff;	// not quite sure what these are
+WaterDrop WaterDrops::ms_drops[MAXDROPS];
+int WaterDrops::ms_numDrops;
 WaterDropMoving WaterDrops::ms_dropsMoving[MAXDROPSMOVING];
 int WaterDrops::ms_numDropsMoving;
 
@@ -123,16 +126,16 @@ RwV3d WaterDrops::ms_lastAt;
 RwV3d WaterDrops::ms_lastPos;
 RwV3d WaterDrops::ms_posDelta;
 
-RwTexture *WaterDrops::maskTex;
-RwTexture *WaterDrops::tex;	// TODO
-RwRaster *WaterDrops::maskRaster;
-RwRaster *WaterDrops::raster;	// TODO
-int WaterDrops::fbWidth, WaterDrops::fbHeight;
-void *WaterDrops::vertexBuf;
-void *WaterDrops::indexBuf;
-VertexTex2 *WaterDrops::vertPtr;
-int WaterDrops::numBatchedDrops;
-int WaterDrops::initialised;
+RwTexture *WaterDrops::ms_maskTex;
+RwTexture *WaterDrops::ms_tex;	// TODO
+RwRaster *WaterDrops::ms_maskRaster;
+RwRaster *WaterDrops::ms_raster;	// TODO
+int WaterDrops::ms_fbWidth, WaterDrops::ms_fbHeight;
+void *WaterDrops::ms_vertexBuf;
+void *WaterDrops::ms_indexBuf;
+VertexTex2 *WaterDrops::ms_vertPtr;
+int WaterDrops::ms_numBatchedDrops;
+int WaterDrops::ms_initialised;
 
 #define DROPFVF (D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX2)
 
@@ -142,6 +145,12 @@ IDirect3DDevice8 *&RwD3DDevice = *AddressByVersion<IDirect3DDevice8**>(0x662EF0,
 RwCamera *&rwcam = *AddressByVersion<RwCamera**>(0x72676C, 0, 0, 0x8100BC, 0, 0);
 float &CTimer__ms_fTimeStep = *AddressByVersion<float*>(0x8E2CB4, 0, 0, 0x975424, 0, 0);
 float &CWeather__Rain = *AddressByVersion<float*>(0x8E2BFC, 0, 0, 0x975340, 0, 0);
+bool &CCutsceneMgr__ms_running = *AddressByVersion<bool*>(0x95CCF5, 0, 0, 0xA10AB2, 0, 0);
+
+static uint32_t CCullZones__CamNoRain_A = AddressByVersion<uint32_t>(0x525CE0, 0, 0, 0x57E0E0, 0, 0);
+WRAPPER bool CCullZones__CamNoRain(void) { VARJMP(CCullZones__CamNoRain_A); }
+static uint32_t CCullZones__PlayerNoRain_A = AddressByVersion<uint32_t>(0x525D00, 0, 0, 0x57E0C0, 0, 0);
+WRAPPER bool CCullZones__PlayerNoRain(void) { VARJMP(CCullZones__PlayerNoRain_A); }
 
 
 void
@@ -150,7 +159,7 @@ WaterDrop::Fade(void)
 	int delta = CTimer__ms_fTimeStep * 1000.0f / 50.0f;
 	this->time += delta;
 	if(this->time >= this->ttl){
-		WaterDrops::numDrops--;
+		WaterDrops::ms_numDrops--;
 		this->active = 0;
 	}else if(this->fades)
 		this->alpha = 255 - time/ttl * 255;
@@ -160,9 +169,8 @@ WaterDrop::Fade(void)
 void
 WaterDrops::Process(void)
 {
-	if(!initialised)
+	if(!ms_initialised)
 		InitialiseRender(rwcam);
-
 	WaterDrops::CalculateMovement();
 	WaterDrops::SprayDrops();
 	WaterDrops::ProcessMoving();
@@ -236,9 +244,9 @@ WaterDrops::MoveDrop(WaterDropMoving *moving)
 	if(ms_vecLen <= 0.5f /* || cam shit */){
 		float d = ms_vec.z*0.2f;
 		float dx, dy, sum;
-		dx = drop->x - fbWidth*0.5f + ms_vec.x;
+		dx = drop->x - ms_fbWidth*0.5f + ms_vec.x;
 		// TODO: 1.2 instead of 0.5 when camshit == 16
-		dy = drop->y - fbHeight*0.5f - ms_vec.y;
+		dy = drop->y - ms_fbHeight*0.5f - ms_vec.y;
 		sum = fabs(dx) + fabs(dy);
 		if(sum >= 0.001f){
 			dx *= (1.0/sum);
@@ -258,7 +266,7 @@ WaterDrops::MoveDrop(WaterDropMoving *moving)
 	}
 
 	if(drop->x < 0.0f || drop->y < 0.0f ||
-	   drop->x > fbWidth || drop->y > fbHeight){
+	   drop->x > ms_fbWidth || drop->y > ms_fbHeight){
 		moving->drop = NULL;
 		ms_numDropsMoving--;
 	}
@@ -279,7 +287,7 @@ void
 WaterDrops::Fade(void)
 {
 	WaterDrop *drop;
-	for(drop = &drops[0]; drop < &drops[MAXDROPS]; drop++)
+	for(drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++)
 		if(drop->active)
 			drop->Fade();
 }
@@ -291,18 +299,19 @@ WaterDrops::PlaceNew(float x, float y, float size, float ttl, bool fades)
 	WaterDrop *drop;
 	int i;
 
-	// TODO: don't place unconditionally
+	if(NoRain())
+		return NULL;
 
-	for(i = 0, drop = drops; i < MAXDROPS; i++, drop++)
-		if(drops[i].active == 0)
+	for(i = 0, drop = ms_drops; i < MAXDROPS; i++, drop++)
+		if(ms_drops[i].active == 0)
 			goto found;
 	return NULL;
 found:
-	numDrops++;
+	ms_numDrops++;
 	drop->x = x;
 	drop->y = y;
 	drop->size = size;
-	drop->uvsize = (MAXSIZE - size + 1.0f) / (MAXSIZE - MINSIZE + 1.0f);
+	drop->uvsize = (SC(MAXSIZE) - size + 1.0f) / (SC(MAXSIZE) - SC(MINSIZE) + 1.0f);
 	drop->fades = fades;
 	drop->active = 1;
 	drop->alpha = 0xFF;
@@ -314,9 +323,9 @@ found:
 void
 WaterDrops::NewTrace(WaterDropMoving *moving)
 {
-	if(numDrops < MAXDROPS){
+	if(ms_numDrops < MAXDROPS){
 		moving->dist = 0.0f;
-		PlaceNew(moving->drop->x, moving->drop->y, MINSIZE, 500.0f, 1);
+		PlaceNew(moving->drop->x, moving->drop->y, SC(MINSIZE), 500.0f, 1);
 	}
 }
 
@@ -340,15 +349,15 @@ WaterDrops::FillScreen(int n)
 	float x, y, time;
 	WaterDrop *drop;
 
-	if(!initialised)
+	if(!ms_initialised)
 		return;
-	numDrops = 0;
-	for(drop = &drops[0]; drop < &drops[MAXDROPS]; drop++){
+	ms_numDrops = 0;
+	for(drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++){
 		drop->active = 0;
-		if(drop < &drops[n]){
-			x = rand() % fbWidth;
-			y = rand() % fbHeight;
-			time = rand() % (MAXSIZE - MINSIZE) + MINSIZE;
+		if(drop < &ms_drops[n]){
+			x = rand() % ms_fbWidth;
+			y = rand() % ms_fbHeight;
+			time = rand() % (SC(MAXSIZE) - SC(MINSIZE)) + SC(MINSIZE);
 			PlaceNew(x, y, time, 2000.0f, 1);
 		}
 	}
@@ -362,10 +371,10 @@ WaterDrops::FillScreenMoving(float amount)
 	WaterDrop *drop;
 
 	while(n--)
-		if(numDrops < MAXDROPS && ms_numDropsMoving < MAXDROPSMOVING){
-			x = rand() % fbWidth;
-			y = rand() % fbHeight;
-			time = rand() % (MAXSIZE - MINSIZE) + MINSIZE;
+		if(ms_numDrops < MAXDROPS && ms_numDropsMoving < MAXDROPSMOVING){
+			x = rand() % ms_fbWidth;
+			y = rand() % ms_fbHeight;
+			time = rand() % (SC(MAXSIZE) - SC(MINSIZE)) + SC(MINSIZE);
 			drop = PlaceNew(x, y, time, 2000.0f, 1);
 			if(drop)
 				NewDropMoving(drop);
@@ -376,9 +385,15 @@ void
 WaterDrops::Clear(void)
 {
 	WaterDrop *drop;
-	for(drop = &drops[0]; drop < &drops[MAXDROPS]; drop++)
+	for(drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++)
 		drop->active = 0;
-	numDrops = 0;
+	ms_numDrops = 0;
+}
+
+bool
+WaterDrops::NoRain(void)
+{
+	return CCullZones__CamNoRain() || CCullZones__PlayerNoRain();
 }
 
 void
@@ -387,28 +402,30 @@ WaterDrops::InitialiseRender(RwCamera *cam)
 	char *path;
 
 	srand(time(NULL));
-	fbWidth = cam->frameBuffer->width;
-	fbHeight = cam->frameBuffer->height;
+	ms_fbWidth = cam->frameBuffer->width;
+	ms_fbHeight = cam->frameBuffer->height;
+
+	scaling = ms_fbHeight/480.0f;
 
 	path = getpath("neo\\dropmask.tga");
 	assert(path && "couldn't load 'neo\\dropmask.tga'");
 	RwImage *img = readTGA(path);
 	RwInt32 w, h, d, flags;
 	RwImageFindRasterFormat(img, 4, &w, &h, &d, &flags);
-	maskRaster = RwRasterCreate(w, h, d, flags);
-	maskRaster = RwRasterSetFromImage(maskRaster, img);
-	assert(maskRaster);
-	maskTex = RwTextureCreate(maskRaster);
-	maskTex->filterAddressing = 0x3302;
-	RwTextureAddRef(maskTex);
+	ms_maskRaster = RwRasterCreate(w, h, d, flags);
+	ms_maskRaster = RwRasterSetFromImage(ms_maskRaster, img);
+	assert(ms_maskRaster);
+	ms_maskTex = RwTextureCreate(ms_maskRaster);
+	ms_maskTex->filterAddressing = 0x3302;
+	RwTextureAddRef(ms_maskTex);
 	RwImageDestroy(img);
 
 	IDirect3DVertexBuffer8 *vbuf;
 	IDirect3DIndexBuffer8 *ibuf;
 	RwD3DDevice->CreateVertexBuffer(MAXDROPS*4*sizeof(VertexTex2), D3DUSAGE_WRITEONLY, DROPFVF, D3DPOOL_MANAGED, &vbuf);
-	vertexBuf = vbuf;
+	ms_vertexBuf = vbuf;
 	RwD3DDevice->CreateIndexBuffer(MAXDROPS*6*sizeof(short), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_MANAGED, &ibuf);
-	indexBuf = ibuf;
+	ms_indexBuf = ibuf;
 	RwUInt16 *idx;
 	ibuf->Lock(0, 0, (BYTE**)&idx, 0);
 	for(int i = 0; i < MAXDROPS; i++){
@@ -423,18 +440,19 @@ WaterDrops::InitialiseRender(RwCamera *cam)
 
 	for(w = 1; w < cam->frameBuffer->width; w <<= 1);
 	for(h = 1; h < cam->frameBuffer->height; h <<= 1);
-	raster = RwRasterCreate(w, h, 0, 5);
-	tex = RwTextureCreate(raster);
-	tex->filterAddressing = 0x3302;
-	RwTextureAddRef(tex);
+	ms_raster = RwRasterCreate(w, h, 0, 5);
+	ms_tex = RwTextureCreate(ms_raster);
+	ms_tex->filterAddressing = 0x3302;
+	RwTextureAddRef(ms_tex);
 
+	/* remove old effect in VC; not sure which it is though :/ */
 	if(gtaversion == VC_10){
 		MemoryVP::Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x56185B, 0, 0), 5);
 		MemoryVP::Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560D63, 0, 0), 5);
 		MemoryVP::Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560EE3, 0, 0), 5);
 	}
 
-	initialised = 1;
+	ms_initialised = 1;
 }
 
 void
@@ -456,48 +474,51 @@ WaterDrops::AddToRenderList(WaterDrop *drop)
 	float tmp;
 
 	tmp = drop->uvsize*(300.0f - 40.0f) + 40.0f;
-	u1_1 = drop->x + xOff - tmp;
-	v1_1 = drop->y + yOff - tmp;
-	u1_2 = drop->x + xOff + tmp;
-	v1_2 = drop->y + yOff + tmp;
-	u1_1 = (u1_1 <= 0.0f ? 0.0f : u1_1) / raster->width;
-	v1_1 = (v1_1 <= 0.0f ? 0.0f : v1_1) / raster->height;
-	u1_2 = (u1_2 >= fbWidth  ? fbWidth  : u1_2) / raster->width;
-	v1_2 = (v1_2 >= fbHeight ? fbHeight : v1_2) / raster->height;
+	u1_1 = drop->x + ms_xOff - tmp;
+	v1_1 = drop->y + ms_yOff - tmp;
+	u1_2 = drop->x + ms_xOff + tmp;
+	v1_2 = drop->y + ms_yOff + tmp;
+	u1_1 = (u1_1 <= 0.0f ? 0.0f : u1_1) / ms_raster->width;
+	v1_1 = (v1_1 <= 0.0f ? 0.0f : v1_1) / ms_raster->height;
+	u1_2 = (u1_2 >= ms_fbWidth  ? ms_fbWidth  : u1_2) / ms_raster->width;
+	v1_2 = (v1_2 >= ms_fbHeight ? ms_fbHeight : v1_2) / ms_raster->height;
 
 	scale = drop->size * 0.5f;
 
-	for(i = 0; i < 4; i++, vertPtr++){
-		vertPtr->x = drop->x + xy[i*2]*scale + xOff;
-		vertPtr->y = drop->y + xy[i*2+1]*scale + yOff;
-		vertPtr->z = 0.0f;
-		vertPtr->rhw = 1.0f;
-		vertPtr->emissiveColor = D3DCOLOR_ARGB(drop->alpha, 0xFF, 0xFF, 0xFF);	// TODO
-		vertPtr->u0 = uv[i*2];
-		vertPtr->v0 = uv[i*2+1];
-		vertPtr->u1 = i >= 2 ? u1_2 : u1_1;
-		vertPtr->v1 = i % 3 == 0 ? v1_2 : v1_1;
+	for(i = 0; i < 4; i++, ms_vertPtr++){
+		ms_vertPtr->x = drop->x + xy[i*2]*scale + ms_xOff;
+		ms_vertPtr->y = drop->y + xy[i*2+1]*scale + ms_yOff;
+		ms_vertPtr->z = 0.0f;
+		ms_vertPtr->rhw = 1.0f;
+		ms_vertPtr->emissiveColor = D3DCOLOR_ARGB(drop->alpha, 0xFF, 0xFF, 0xFF);	// TODO
+		ms_vertPtr->u0 = uv[i*2];
+		ms_vertPtr->v0 = uv[i*2+1];
+		ms_vertPtr->u1 = i >= 2 ? u1_2 : u1_1;
+		ms_vertPtr->v1 = i % 3 == 0 ? v1_2 : v1_1;
 	}
-	numBatchedDrops++;
+	ms_numBatchedDrops++;
 }
 
 void
 WaterDrops::Render(void)
 {
 	WaterDrop *drop;
-	IDirect3DVertexBuffer8 *vbuf = (IDirect3DVertexBuffer8*)vertexBuf;
-	vbuf->Lock(0, 0, (BYTE**)&vertPtr, 0);
-	numBatchedDrops = 0;
-	for(drop = &drops[0]; drop < &drops[MAXDROPS]; drop++)
+
+	// TODO: vehicle/cam...
+	if(!ms_enabled || ms_numDrops <= 0 || CCutsceneMgr__ms_running)
+		return;
+
+	IDirect3DVertexBuffer8 *vbuf = (IDirect3DVertexBuffer8*)ms_vertexBuf;
+	vbuf->Lock(0, 0, (BYTE**)&ms_vertPtr, 0);
+	ms_numBatchedDrops = 0;
+	for(drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++)
 		if(drop->active)
 			AddToRenderList(drop);
 	vbuf->Unlock();
 
-//	RwCameraEndUpdate(rwcam);
-	RwRasterPushContext(raster);
+	RwRasterPushContext(ms_raster);
 	RwRasterRenderFast(RwCameraGetRaster(rwcam), 0, 0);
 	RwRasterPopContext();
-//	RwCameraBeginUpdate(rwcam);
 
 	DefinedState();
 	RwRenderStateSet(rwRENDERSTATEFOGENABLE, 0);
@@ -505,8 +526,8 @@ WaterDrops::Render(void)
 	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, 0);
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)1);
 
-	RwD3D8SetTexture(maskTex, 0);
-	RwD3D8SetTexture(tex, 1);
+	RwD3D8SetTexture(ms_maskTex, 0);
+	RwD3D8SetTexture(ms_tex, 1);
 
 	RwD3D8SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
 	RwD3D8SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, 1);
@@ -526,8 +547,8 @@ WaterDrops::Render(void)
 
 	RwD3D8SetVertexShader(DROPFVF);
 	RwD3D8SetStreamSource(0, vbuf, sizeof(VertexTex2));
-	RwD3D8SetIndices(indexBuf, 0);
-	RwD3D8DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, numBatchedDrops*4, 0, numBatchedDrops*6);
+	RwD3D8SetIndices(ms_indexBuf, 0);
+	RwD3D8DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, ms_numBatchedDrops*4, 0, ms_numBatchedDrops*6);
 
 	RwD3D8SetTexture(NULL, 1);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);

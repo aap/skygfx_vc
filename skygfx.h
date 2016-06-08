@@ -173,9 +173,9 @@ public:
 
 	// Logic
 
-	static float xOff, yOff;	// not quite sure what these are
-	static WaterDrop drops[MAXDROPS];
-	static int numDrops;
+	static float ms_xOff, ms_yOff;	// not quite sure what these are
+	static WaterDrop ms_drops[MAXDROPS];
+	static int ms_numDrops;
 	static WaterDropMoving ms_dropsMoving[MAXDROPSMOVING];
 	static int ms_numDropsMoving;
 
@@ -203,18 +203,20 @@ public:
 	static void FillScreen(int n);
 	static void Clear(void);
 
+	static bool NoRain(void);
+
 	// Rendering
 
-	static RwTexture *maskTex;
-	static RwTexture *tex;	// TODO
-	static RwRaster *maskRaster;
-	static RwRaster *raster;	// TODO
-	static int fbWidth, fbHeight;
-	static void *vertexBuf;
-	static void *indexBuf;
-	static VertexTex2 *vertPtr;
-	static int numBatchedDrops;
-	static int initialised;
+	static RwTexture *ms_maskTex;
+	static RwTexture *ms_tex;	// TODO
+	static RwRaster *ms_maskRaster;
+	static RwRaster *ms_raster;	// TODO
+	static int ms_fbWidth, ms_fbHeight;
+	static void *ms_vertexBuf;
+	static void *ms_indexBuf;
+	static VertexTex2 *ms_vertPtr;
+	static int ms_numBatchedDrops;
+	static int ms_initialised;
 
 	static void InitialiseRender(RwCamera *cam);
 	static void AddToRenderList(WaterDrop *drop);
