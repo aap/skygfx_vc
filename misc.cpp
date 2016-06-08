@@ -114,6 +114,7 @@ int WaterDrops::numDrops;
 WaterDropMoving WaterDrops::ms_dropsMoving[MAXDROPSMOVING];
 int WaterDrops::ms_numDropsMoving;
 
+bool WaterDrops::ms_enabled = 1;
 bool WaterDrops::ms_movingEnabled = 1;
 
 float WaterDrops::ms_distMoved, WaterDrops::ms_vecLen, WaterDrops::ms_rainStrength;
@@ -140,6 +141,8 @@ IDirect3DDevice8 *&RwD3DDevice = *AddressByVersion<IDirect3DDevice8**>(0x662EF0,
 // ADDRESS
 RwCamera *&rwcam = *AddressByVersion<RwCamera**>(0x72676C, 0, 0, 0x8100BC, 0, 0);
 float &CTimer__ms_fTimeStep = *AddressByVersion<float*>(0x8E2CB4, 0, 0, 0x975424, 0, 0);
+float &CWeather__Rain = *AddressByVersion<float*>(0x8E2BFC, 0, 0, 0x975340, 0, 0);
+
 
 void
 WaterDrop::Fade(void)
@@ -208,6 +211,12 @@ WaterDrops::SprayDrops(void)
 		}else
 			keystate = false;
 	}
+
+	if(CWeather__Rain != 0.0f && ms_enabled){
+		int tmp = 180.0f - ms_rainStrength;
+		if(tmp < 40) tmp = 40;
+		FillScreenMoving((tmp - 40.0f) / 150.0f * CWeather__Rain * 0.5f);
+	}
 }
 
 void
@@ -247,11 +256,6 @@ WaterDrops::MoveDrop(WaterDropMoving *moving)
 		drop->x -= ms_vec.x;
 		drop->y += ms_vec.y;
 	}
-//	drop->y += 2.0f;
-//	moving->dist += 2.0f;
-//
-//	if(moving->dist > 20.0f)
-//		NewTrace(moving);
 
 	if(drop->x < 0.0f || drop->y < 0.0f ||
 	   drop->x > fbWidth || drop->y > fbHeight){
@@ -424,6 +428,12 @@ WaterDrops::InitialiseRender(RwCamera *cam)
 	tex->filterAddressing = 0x3302;
 	RwTextureAddRef(tex);
 
+	if(gtaversion == VC_10){
+		MemoryVP::Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x56185B, 0, 0), 5);
+		MemoryVP::Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560D63, 0, 0), 5);
+		MemoryVP::Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560EE3, 0, 0), 5);
+	}
+
 	initialised = 1;
 }
 
@@ -483,11 +493,11 @@ WaterDrops::Render(void)
 			AddToRenderList(drop);
 	vbuf->Unlock();
 
-	RwCameraEndUpdate(rwcam);
+//	RwCameraEndUpdate(rwcam);
 	RwRasterPushContext(raster);
 	RwRasterRenderFast(RwCameraGetRaster(rwcam), 0, 0);
 	RwRasterPopContext();
-	RwCameraBeginUpdate(rwcam);
+//	RwCameraBeginUpdate(rwcam);
 
 	DefinedState();
 	RwRenderStateSet(rwRENDERSTATEFOGENABLE, 0);

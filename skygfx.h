@@ -179,6 +179,7 @@ public:
 	static WaterDropMoving ms_dropsMoving[MAXDROPSMOVING];
 	static int ms_numDropsMoving;
 
+	static bool ms_enabled;
 	static bool ms_movingEnabled;
 
 	static float ms_distMoved, ms_vecLen, ms_rainStrength;
@@ -197,6 +198,7 @@ public:
 	static WaterDrop *PlaceNew(float x, float y, float size, float time, bool fades);
 	static void NewTrace(WaterDropMoving*);
 	static void NewDropMoving(WaterDrop*);
+	// this has one more argument in VC: ttl, but it's always 2000.0
 	static void FillScreenMoving(float amount);
 	static void FillScreen(int n);
 	static void Clear(void);
