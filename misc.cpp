@@ -105,6 +105,37 @@ reloadRamp(void)
 	RwImageDestroy(img);
 }
 
+
+
+/*
+ * Water Drops
+ */
+
+struct AudioHydrant	// or particle object thing?
+{
+	int entity;
+	union {
+		CPlaceable_III *particleObjectIII;	// CParticleObject actually
+		CPlaceable *particleObject;
+	};
+};
+
+IDirect3DDevice8 *&RwD3DDevice = *AddressByVersion<IDirect3DDevice8**>(0x662EF0, 0x662EF0, 0x67342C, 0x7897A8, 0x7897B0, 0x7887B0);
+
+// ADDRESS
+RwCamera *&rwcam = *AddressByVersion<RwCamera**>(0x72676C, 0, 0, 0x8100BC, 0, 0);
+float &CTimer__ms_fTimeStep = *AddressByVersion<float*>(0x8E2CB4, 0, 0, 0x975424, 0, 0);
+float &CWeather__Rain = *AddressByVersion<float*>(0x8E2BFC, 0, 0, 0x975340, 0, 0);
+bool &CCutsceneMgr__ms_running = *AddressByVersion<bool*>(0x95CCF5, 0, 0, 0xA10AB2, 0, 0);
+
+AudioHydrant *audioHydrants = AddressByVersion<AudioHydrant*>(0x62DAAC, 0, 0, 0x70799C, 0, 0);
+
+static uint32_t CCullZones__CamNoRain_A = AddressByVersion<uint32_t>(0x525CE0, 0, 0, 0x57E0E0, 0, 0);
+WRAPPER bool CCullZones__CamNoRain(void) { VARJMP(CCullZones__CamNoRain_A); }
+static uint32_t CCullZones__PlayerNoRain_A = AddressByVersion<uint32_t>(0x525D00, 0, 0, 0x57E0C0, 0, 0);
+WRAPPER bool CCullZones__PlayerNoRain(void) { VARJMP(CCullZones__PlayerNoRain_A); }
+
+
 #define MAXSIZE 15
 #define MINSIZE 4
 
@@ -138,20 +169,6 @@ int WaterDrops::ms_numBatchedDrops;
 int WaterDrops::ms_initialised;
 
 #define DROPFVF (D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX2)
-
-IDirect3DDevice8 *&RwD3DDevice = *AddressByVersion<IDirect3DDevice8**>(0x662EF0, 0x662EF0, 0x67342C, 0x7897A8, 0x7897B0, 0x7887B0);
-
-// ADDRESS
-RwCamera *&rwcam = *AddressByVersion<RwCamera**>(0x72676C, 0, 0, 0x8100BC, 0, 0);
-float &CTimer__ms_fTimeStep = *AddressByVersion<float*>(0x8E2CB4, 0, 0, 0x975424, 0, 0);
-float &CWeather__Rain = *AddressByVersion<float*>(0x8E2BFC, 0, 0, 0x975340, 0, 0);
-bool &CCutsceneMgr__ms_running = *AddressByVersion<bool*>(0x95CCF5, 0, 0, 0xA10AB2, 0, 0);
-
-static uint32_t CCullZones__CamNoRain_A = AddressByVersion<uint32_t>(0x525CE0, 0, 0, 0x57E0E0, 0, 0);
-WRAPPER bool CCullZones__CamNoRain(void) { VARJMP(CCullZones__CamNoRain_A); }
-static uint32_t CCullZones__PlayerNoRain_A = AddressByVersion<uint32_t>(0x525D00, 0, 0, 0x57E0C0, 0, 0);
-WRAPPER bool CCullZones__PlayerNoRain(void) { VARJMP(CCullZones__PlayerNoRain_A); }
-
 
 void
 WaterDrop::Fade(void)
@@ -209,6 +226,9 @@ WaterDrops::CalculateMovement(void)
 void
 WaterDrops::SprayDrops(void)
 {
+	AudioHydrant *hyd;
+	RwV3d dist;
+
 	{
 		static bool keystate = false;
 		if(GetAsyncKeyState(VK_TAB) & 0x8000){
@@ -225,6 +245,15 @@ WaterDrops::SprayDrops(void)
 		if(tmp < 40) tmp = 40;
 		FillScreenMoving((tmp - 40.0f) / 150.0f * CWeather__Rain * 0.5f);
 	}
+	for(hyd = audioHydrants; hyd < &audioHydrants[8]; hyd++)
+		if(hyd->particleObject){
+			if(isIII())
+				RwV3dSub(&dist, &hyd->particleObjectIII->matrix.matrix.pos, &ms_lastPos);
+			else
+				RwV3dSub(&dist, &hyd->particleObject->matrix.matrix.pos, &ms_lastPos);
+			if(RwV3dDotProduct(&dist, &dist) <= 40.0f)
+				FillScreenMoving(1.0f);
+		}
 }
 
 void

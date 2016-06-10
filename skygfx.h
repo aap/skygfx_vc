@@ -74,6 +74,24 @@ struct CClumpModelInfo : CBaseModelInfo
 	void SetFrameIds(int ids);
 };
 
+struct CMatrix
+{
+	RwMatrix matrix;
+	RwMatrix *pMatrix;
+	int haveRwMatrix;
+};
+
+struct CPlaceable_III
+{
+	void *vmt;
+	CMatrix matrix;
+};
+
+struct CPlaceable
+{
+	CMatrix matrix;
+};
+
 extern HMODULE dllModule;
 extern char asipath[MAX_PATH];
 
