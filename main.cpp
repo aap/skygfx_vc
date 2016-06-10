@@ -737,17 +737,6 @@ curvehook(void)
 	}
 }
 
-static uint32_t RenderEffects_A = AddressByVersion<uint32_t>(0x48E090, 0, 0, 0x4A6510, 0, 0);
-WRAPPER void RenderEffects(void) { VARJMP(RenderEffects_A); }
-
-void
-RenderEffects_hook(void)
-{
-	RenderEffects();
-	WaterDrops::Process();
-	WaterDrops::Render();
-}
-
 void
 patch(void)
 {
@@ -876,7 +865,7 @@ patch(void)
 		//MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
 
 	}
-	MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48E603, 0, 0, 0x4A604F, 0, 0), RenderEffects_hook);
+	hookWaterDrops();
 }
 
 BOOL WINAPI

@@ -111,6 +111,59 @@ reloadRamp(void)
  * Water Drops
  */
 
+static uint32_t RenderEffects_A = AddressByVersion<uint32_t>(0x48E090, 0, 0, 0x4A6510, 0, 0);
+WRAPPER void RenderEffects(void) { VARJMP(RenderEffects_A); }
+
+#define INJECTRESET(x) \
+	uint32_t reset_call_##x; \
+	void reset_hook_##x(void){ \
+		((voidfunc)reset_call_##x)(); \
+		WaterDrops::Reset(); \
+	}
+
+INJECTRESET(1)
+INJECTRESET(2)
+INJECTRESET(3)
+INJECTRESET(4)
+INJECTRESET(5)
+
+uint32_t splashbreak;
+void __declspec(naked)
+splashhook(void)
+{
+	_asm{
+		push	ebp
+		call	WaterDrops::RegisterSplash
+		pop	ebp
+		mov	eax, splashbreak
+		jmp	eax
+	}
+}
+
+void
+RenderEffects_hook(void)
+{
+	RenderEffects();
+	WaterDrops::Process();
+	WaterDrops::Render();
+}
+
+void
+hookWaterDrops(void)
+{
+	if(gtaversion == III_10 || gtaversion == VC_10){
+		// ADDRESSES
+		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48E603, 0, 0, 0x4A604F, 0, 0), RenderEffects_hook);
+		INTERCEPT(reset_call_1, reset_hook_1, AddressByVersion<uint32_t>(0x48C1AB, 0, 0, 0x4A4DD6, 0, 0));
+		INTERCEPT(reset_call_2, reset_hook_2, AddressByVersion<uint32_t>(0x48C530, 0, 0, 0x4A48EA, 0, 0));
+		INTERCEPT(reset_call_3, reset_hook_3, AddressByVersion<uint32_t>(0x42155D, 0, 0, 0x42BCD6, 0, 0));
+		INTERCEPT(reset_call_4, reset_hook_4, AddressByVersion<uint32_t>(0x42177A, 0, 0, 0x42C0BC, 0, 0));
+		INTERCEPT(reset_call_5, reset_hook_5, AddressByVersion<uint32_t>(0x421926, 0, 0, 0x42C318, 0, 0));
+
+		INTERCEPT(splashbreak, splashhook, AddressByVersion<uint32_t>(0x4BC7D0, 0, 0, 0x4E8721, 0, 0));
+	}
+}
+
 struct AudioHydrant	// or particle object thing?
 {
 	int entity;
@@ -150,6 +203,9 @@ int WaterDrops::ms_numDropsMoving;
 
 bool WaterDrops::ms_enabled = 1;
 bool WaterDrops::ms_movingEnabled = 1;
+
+int WaterDrops::ms_splashDuration;
+CPlaceable_III *WaterDrops::ms_splashObject;
 
 float WaterDrops::ms_distMoved, WaterDrops::ms_vecLen, WaterDrops::ms_rainStrength;
 RwV3d WaterDrops::ms_vec;
@@ -228,6 +284,10 @@ WaterDrops::SprayDrops(void)
 {
 	AudioHydrant *hyd;
 	RwV3d dist;
+	static int ndrops[] = {
+		125, 250, 500, 1000, 1000,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	};
 
 	{
 		static bool keystate = false;
@@ -254,6 +314,24 @@ WaterDrops::SprayDrops(void)
 			if(RwV3dDotProduct(&dist, &dist) <= 40.0f)
 				FillScreenMoving(1.0f);
 		}
+	if(ms_splashDuration >= 0){
+		if(ms_numDrops < MAXDROPS){
+			if(isIII()){
+				RwV3dSub(&dist, &ms_splashObject->matrix.matrix.pos, &ms_lastPos);
+				int n = ndrops[ms_splashDuration] * (1.0f - (RwV3dLength(&dist) - 5.0f) / 15.0f);
+				while(n--)
+					if(ms_numDrops < MAXDROPS){
+						float x = rand() % ms_fbWidth;
+						float y = rand() % ms_fbHeight;
+						float time = rand() % (SC(MAXSIZE) - SC(MINSIZE)) + SC(MINSIZE);
+						PlaceNew(x, y, time, 10000.0f, 0);
+					}
+			}else
+				// VC does STRANGE things here
+				FillScreenMoving(1.0f);
+		}
+		ms_splashDuration--;
+	}
 }
 
 void
@@ -417,6 +495,28 @@ WaterDrops::Clear(void)
 	for(drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++)
 		drop->active = 0;
 	ms_numDrops = 0;
+}
+
+void
+WaterDrops::Reset(void)
+{
+	Clear();
+	ms_splashDuration = -1;
+	ms_splashObject = NULL;
+}
+
+void
+WaterDrops::RegisterSplash(CPlaceable_III *plc)
+{
+	RwV3d dist;
+	if(isIII())
+		RwV3dSub(&dist, &((CPlaceable_III*)plc)->matrix.matrix.pos, &ms_lastPos);
+	else
+		RwV3dSub(&dist, &plc->matrix.matrix.pos, &ms_lastPos);
+	if(RwV3dLength(&dist) <= 20.0f){
+		ms_splashDuration = 14;
+		ms_splashObject = plc;
+	}
 }
 
 bool

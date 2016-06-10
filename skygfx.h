@@ -92,6 +92,15 @@ struct CPlaceable
 	CMatrix matrix;
 };
 
+typedef void (*voidfunc)(void);
+
+#define PTRFROMCALL(addr) (uint32_t)(*(uint32_t*)((uint32_t)addr+1) + (uint32_t)addr + 5)
+#define INTERCEPT(saved, func, a) \
+{ \
+	saved = PTRFROMCALL(a); \
+	MemoryVP::InjectHook(a, func); \
+}
+
 extern HMODULE dllModule;
 extern char asipath[MAX_PATH];
 
@@ -104,6 +113,7 @@ extern int xboxworldpipe, xboxworldpipekey;
 extern int envMapSize;
 
 char *getpath(char *path);
+void hookWaterDrops(void);
 void neoInit(void);
 void RenderEnvTex(void);
 void DefinedState(void);
@@ -206,6 +216,9 @@ public:
 	static RwV3d ms_lastPos;
 	static RwV3d ms_posDelta;
 
+	static int ms_splashDuration;
+	static CPlaceable_III *ms_splashObject;
+
 	static void Process(void);
 	static void CalculateMovement(void);
 	static void SprayDrops(void);
@@ -220,7 +233,9 @@ public:
 	static void FillScreenMoving(float amount);
 	static void FillScreen(int n);
 	static void Clear(void);
+	static void Reset(void);
 
+	static void RegisterSplash(CPlaceable_III *plc);
 	static bool NoRain(void);
 
 	// Rendering
