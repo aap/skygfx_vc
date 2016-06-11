@@ -17,6 +17,8 @@
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 
+#define RELEASE
+
 struct MatFXEnv
 {
 	RwFrame *envFrame;
@@ -113,6 +115,7 @@ extern int xboxworldpipe, xboxworldpipekey;
 extern int envMapSize;
 
 char *getpath(char *path);
+RwImage *readTGA(const char *afilename);
 void hookWaterDrops(void);
 void neoInit(void);
 void RenderEnvTex(void);

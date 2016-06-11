@@ -1051,7 +1051,7 @@ neoInit(void)
 		readWeatherTimeBlock(dat, readFloat, lmBlendTable);		// default 1.0
 		fclose(dat);
 
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x4F8830, 0x4F8910, 0x4F88A0, 0, 0, 0), &CClumpModelInfo::SetClump, PATCH_JUMP);
+//		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x4F8830, 0x4F8910, 0x4F88A0, 0, 0, 0), &CClumpModelInfo::SetClump, PATCH_JUMP);
 		MemoryVP::InjectHook(0x4768F1, &CSimpleModelInfo::SetAtomic_hook);
 		MemoryVP::InjectHook(0x476707, &CSimpleModelInfo::SetAtomic_hook);
 	}

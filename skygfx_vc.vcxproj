@@ -156,6 +156,7 @@
     <ClCompile Include="misc.cpp" />
     <ClCompile Include="xbox.cpp" />
     <ClCompile Include="rw.cpp" />
+    <ClCompile Include="xboxwaterdrops.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />

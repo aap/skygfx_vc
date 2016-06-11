@@ -837,8 +837,11 @@ patch(void)
 	else
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48D52F, 0x48D62F, 0x48D5BF, 0x4A5B6B, 0x4A5B8B, 0x4A5A3B), CGame__InitialiseRenderWare_hook);
 
+	if(GetPrivateProfileInt("SkyGfx", "xboxWaterDrops", FALSE, modulePath))
+		hookWaterDrops();
+
 	if(isIII()){
-		// WRONG! not enough!
+		// WRONG! not enough! use FLA
 		int n = GetPrivateProfileInt("SkyGfx", "txdLimit", 850, modulePath);
 		if(n != 850){
 			MemoryVP::Patch<int>(0x406979, n); //same address for all versions, lol
@@ -848,6 +851,7 @@ patch(void)
 		// fall back to generic.txd when reading from dff
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
 	}
+#ifndef RELEASE
 	if(gtaversion == III_10){
 		// ignore txd.img
 		MemoryVP::InjectHook(0x48C12E, 0x48C14C, PATCH_JUMP);
@@ -859,13 +863,16 @@ patch(void)
 		}
 		MemoryVP::InjectHook(0x405DB0, printf, PATCH_JUMP);
 	}
+#endif
+#ifndef RELEASE
 	if(gtaversion == VC_10){
 		MemoryVP::Nop(0x40C32B, 5);
 		MemoryVP::InjectHook(0x650ACB, RwTextureRead_VC);
 		//MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
 
 	}
-	hookWaterDrops();
+#endif
+
 }
 
 BOOL WINAPI
