@@ -16,8 +16,9 @@
 
 typedef unsigned char uchar;
 typedef unsigned short ushort;
+typedef unsigned int uint;
 
-#define RELEASE
+//#define RELEASE
 
 struct MatFXEnv
 {
@@ -135,6 +136,12 @@ void rxD3D8DefaultRenderCallback(RwResEntry*, void*, RwUInt8, RwUInt32);
 void rwD3D8AtomicMatFXRenderCallback(RwResEntry*, void*, RwUInt8, RwUInt32);
 RwBool rwD3D8RenderStateIsVertexAlphaEnable(void);
 void rwD3D8RenderStateVertexAlphaEnable(RwBool x);
+RwBool D3D8AtomicDefaultInstanceCallback(void*, RxD3D8InstanceData*, RwBool);
+RwBool D3D8AtomicDefaultInstanceCallback_fixed(void*, RxD3D8InstanceData*, RwBool);
+void rxD3D8DefaultRenderCallback_d3d9(RwResEntry*, void*, RwUInt8, RwUInt32);
+RwBool RwD3D8SetSurfaceProperties_d3d9(RwRGBA*, RwSurfaceProperties*, RwUInt32);
+void rxD3D8DefaultRenderCallback_xbox(RwResEntry*, void*, RwUInt8, RwUInt32);
+int rwD3D8RWGetRasterStage(int);
 
 enum {
 	LOC_world       = 0,

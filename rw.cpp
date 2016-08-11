@@ -1,5 +1,9 @@
 #include "skygfx.h"
 
+//
+ // ADDRESS
+//
+
 static uint32_t RwTextureRead_A = AddressByVersion<uint32_t>(0x5A7580, 0x5A7840, 0x5A8E00, 0x64E110, 0, 0);
 WRAPPER RwTexture *RwTextureRead(const RwChar*, const RwChar*) { VARJMP(RwTextureRead_A); }
 static uint32_t RwTexDictionaryGetCurrent_A = AddressByVersion<uint32_t>(0x5A7570, 0x5A7830, 0x5A8DA0, 0x64E100, 0, 0);
@@ -9,9 +13,17 @@ WRAPPER RwTexDictionary *RwTexDictionarySetCurrent(RwTexDictionary * dict) { VAR
 static uint32_t RwTexDictionaryForAllTextures_A = AddressByVersion<uint32_t>(0, 0, 0, 0x64DE20, 0, 0);
 WRAPPER const RwTexDictionary *RwTexDictionaryForAllTextures(const RwTexDictionary*, RwTextureCallBack, void*) { VARJMP(RwTexDictionaryForAllTextures_A); }
 
-// ADDRESS
 static uint32_t RwV3dLength_A = AddressByVersion<uint32_t>(0x5A36A0, 0, 0, 0x647030, 0, 0);
 WRAPPER RwReal RwV3dLength(const RwV3d*) { VARJMP(RwV3dLength_A); }
+
+static uint32_t D3D8AtomicDefaultInstanceCallback_A = AddressByVersion<uint32_t>(0x5DB450, 0x5DB710, 0x5EC520, 0x67BAE0, 0, 0);
+WRAPPER RwBool D3D8AtomicDefaultInstanceCallback(void*, RxD3D8InstanceData*, RwBool) { VARJMP(D3D8AtomicDefaultInstanceCallback_A); }
+static uint32_t rwD3D8RWGetRasterStage_A = AddressByVersion<uint32_t>(0x5B5390, 0x5B5650, 0x5BA2C0, 0x659840, 0x659890, 0x6587F0);
+WRAPPER int rwD3D8RWGetRasterStage(int) { VARJMP(rwD3D8RWGetRasterStage_A); }
+
+//
+ //
+//
 
 static uint32_t RwMatrixCreate_A = AddressByVersion<uint32_t>(0x5A3330, 0x5A35F0, 0x5A3FA0, 0x644620, 0x644670, 0x6435D0);
 WRAPPER RwMatrix *RwMatrixCreate(void) { VARJMP(RwMatrixCreate_A); }

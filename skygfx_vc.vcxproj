@@ -154,6 +154,7 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="misc.cpp" />
+    <ClCompile Include="rwfix.cpp" />
     <ClCompile Include="xbox.cpp" />
     <ClCompile Include="rw.cpp" />
     <ClCompile Include="xboxwaterdrops.cpp" />

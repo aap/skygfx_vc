@@ -56,10 +56,10 @@ hookWaterDrops(void)
 
 		INTERCEPT(splashbreak, splashhook, AddressByVersion<uint32_t>(0x4BC7D0, 0, 0, 0x4E8721, 0, 0));
 
-		/* remove old effect in VC; hope this is correct */
+		/* remove old effect in VC */
 		if(gtaversion == VC_10){
 			MemoryVP::Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560D63, 0, 0), 5);
-			MemoryVP::Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560EE3, 0, 0), 5);
+		//	MemoryVP::Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560EE3, 0, 0), 5);	// these are the blood drops, don't remove
 		}
 	}
 }

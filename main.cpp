@@ -737,6 +737,43 @@ curvehook(void)
 	}
 }
 
+
+//
+// real time reflection test; III 1.0
+//
+
+WRAPPER RpAtomic *CVehicleModelInfo__SetEnvironmentMapCB(RpAtomic*, RwTexture*) { EAXJMP(0x521820); }
+void RenderEffects(void);
+
+RwTexture *realtimeenvmap;
+
+RpAtomic*
+CVehicleModelInfo__SetEnvironmentMapCB_hook(RpAtomic *atomic, RwTexture *envmap)
+{
+	RwCamera *cam = *(RwCamera**)(0x6FACF8 + 0x7A0);
+	if(realtimeenvmap == NULL){
+		int w, h;
+		for(w = 1; w < cam->frameBuffer->width; w <<= 1);
+		for(h = 1; h < cam->frameBuffer->height; h <<= 1);
+		RwRaster *envraster = RwRasterCreate(w, h, 0, 5);
+		realtimeenvmap = RwTextureCreate(envraster);
+		realtimeenvmap->filterAddressing = 0x1102;
+	}
+	return CVehicleModelInfo__SetEnvironmentMapCB(atomic, realtimeenvmap);
+}
+
+void
+RenderEffectsHook(void)
+{
+	RenderEffects();
+	RwCamera *cam = *(RwCamera**)(0x6FACF8 + 0x7A0);
+	RwRasterPushContext(realtimeenvmap->raster);
+	RwRasterRenderFast(cam->frameBuffer, 0, 0);
+	RwRasterPopContext();
+}
+
+
+
 void
 patch(void)
 {
@@ -817,7 +854,8 @@ patch(void)
 		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4C9F5D, 0x4C9F7D, 0x4C9E1D), 1);	// in CRenderer::RenderEverythingBarRoads()
 		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4CA157, 0x4CA177, 0x4CA017), 1);	// in CRenderer::RenderFadingInEntities()
 		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4CA199, 0x4CA1B9, 0x4CA059), 1);	// in CRenderer::RenderRoads()
-		// 4E0146		// in CCutsceneObject::Render()
+		if(gtaversion == VC_10)
+			MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4E0146, 0, 0), 1);	// in CCutsceneObject::Render()
 	}
 
 	// fix blend mode
@@ -841,13 +879,6 @@ patch(void)
 		hookWaterDrops();
 
 	if(isIII()){
-		// WRONG! not enough! use FLA
-		int n = GetPrivateProfileInt("SkyGfx", "txdLimit", 850, modulePath);
-		if(n != 850){
-			MemoryVP::Patch<int>(0x406979, n); //same address for all versions, lol
-			MemoryVP::Patch<int>(AddressByVersion<uint32_t>(0x527458, 0x527698, 0x527628, 0, 0, 0), n);
-		}
-
 		// fall back to generic.txd when reading from dff
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
 	}
@@ -862,14 +893,38 @@ patch(void)
 			MemoryVP::InjectHook(0x48E44B, curvehook, PATCH_JUMP);
 		}
 		MemoryVP::InjectHook(0x405DB0, printf, PATCH_JUMP);
+
+		// patch loadscreens
+		MemoryVP::Patch<uint>(0x48D774, 0x6024448b);  // 8B 44 24 60 - mov eax,[esp+60h]
+		MemoryVP::Patch<uchar>(0x48D778, 0x50);	      // push eax
+		MemoryVP::InjectHook(0x48D779, 0x48D79B, PATCH_JUMP);
+
+		//MemoryVP::InjectHook(0x48E603, RenderEffectsHook);
+		//MemoryVP::InjectHook(0x5219B3, CVehicleModelInfo__SetEnvironmentMapCB_hook);
+		//MemoryVP::Patch<void*>(0x521986+1, CVehicleModelInfo__SetEnvironmentMapCB_hook);
+
+		// clear framebuffer
+		MemoryVP::Patch<uchar>(0x48CFC1+1, 3);
+		MemoryVP::Patch<uchar>(0x48D0AD+1, 3);
+		MemoryVP::Patch<uchar>(0x48E6A7+1, 3);
+		MemoryVP::Patch<uchar>(0x48E78C+1, 3);
+
 	}
 #endif
 #ifndef RELEASE
 	if(gtaversion == VC_10){
+		// remove "%s has not been pre-instanced", we don't really care
 		MemoryVP::Nop(0x40C32B, 5);
-		MemoryVP::InjectHook(0x650ACB, RwTextureRead_VC);
-		//MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
+		//MemoryVP::InjectHook(0x650ACB, RwTextureRead_VC);
+		MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
 
+		// enable loadscreens
+		//MemoryVP::Nop(0x4A69D4, 1);
+		//// ff 74 24 78             push   DWORD PTR [esp+0x78]
+		//MemoryVP::Patch(0x4A69D4+1, 0x782474ff);
+
+		MemoryVP::Patch(0x67BAB7 +2, D3D8AtomicDefaultInstanceCallback_fixed);
+		MemoryVP::Patch(0x67BACB +3, rxD3D8DefaultRenderCallback_xbox);
 	}
 #endif
 

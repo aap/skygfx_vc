@@ -14,8 +14,6 @@ WRAPPER void CRenderer__RenderFadingInEntities(void) { VARJMP(CRenderer__RenderF
 static uint32_t CTimeCycle__Update_A = AddressByVersion<uint32_t>(0x4ABF40, 0x4AC030, 0x4ABFC0, 0x4CEA40, 0x4CEA60, 0x4CE900);
 WRAPPER void CTimeCycle__Update(void) { VARJMP(CTimeCycle__Update_A); }
 
-static uint32_t rwD3D8RWGetRasterStage_A = AddressByVersion<uint32_t>(0x5B5390, 0x5B5650, 0x5BA2C0, 0x659840, 0x659890, 0x6587F0);
-WRAPPER int rwD3D8RWGetRasterStage(int) { VARJMP(rwD3D8RWGetRasterStage_A); }
 static uint32_t rpSkinD3D8CreatePlainPipe_A = AddressByVersion<uint32_t>(0x5E0660, 0x5E0920, 0x5D6ED0, 0x6796D0, 0x679720, 0x678680);
 WRAPPER void rpSkinD3D8CreatePlainPipe(void) { VARJMP(rpSkinD3D8CreatePlainPipe_A); }
 
@@ -437,9 +435,6 @@ worldRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 		}
 	}
 }
-
-static uint32_t D3D8AtomicDefaultInstanceCallback_A = AddressByVersion<uint32_t>(0x5DB450, 0x5DB710, 0x5EC520, 0, 0, 0);
-WRAPPER RwBool D3D8AtomicDefaultInstanceCallback(void*, RxD3D8InstanceData*, RwBool) { VARJMP(D3D8AtomicDefaultInstanceCallback_A); }
 
 RwBool
 worldInstanceCB(void *object, RxD3D8InstanceData *instancedData, RwBool reinstance)
