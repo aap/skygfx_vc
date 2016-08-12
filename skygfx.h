@@ -117,10 +117,11 @@ extern int envMapSize;
 
 char *getpath(char *path);
 RwImage *readTGA(const char *afilename);
-void hookWaterDrops(void);
-void neoInit(void);
+
 void RenderEnvTex(void);
 void DefinedState(void);
+
+#include "neo.h"
 
 extern void **&RwEngineInst;
 extern RpLight *&pAmbient;
@@ -137,10 +138,20 @@ void rwD3D8AtomicMatFXRenderCallback(RwResEntry*, void*, RwUInt8, RwUInt32);
 RwBool rwD3D8RenderStateIsVertexAlphaEnable(void);
 void rwD3D8RenderStateVertexAlphaEnable(RwBool x);
 RwBool D3D8AtomicDefaultInstanceCallback(void*, RxD3D8InstanceData*, RwBool);
+
 RwBool D3D8AtomicDefaultInstanceCallback_fixed(void*, RxD3D8InstanceData*, RwBool);
+
 void rxD3D8DefaultRenderCallback_d3d9(RwResEntry*, void*, RwUInt8, RwUInt32);
 RwBool RwD3D8SetSurfaceProperties_d3d9(RwRGBA*, RwSurfaceProperties*, RwUInt32);
+
+void rxD3D8SetAmbientLight(void);
+void rxD3D8DefaultRenderFFPObjectSetUp(RwUInt32 flags);
+void rxD3D8DefaultRenderFFPMeshSetUp(RxD3D8InstanceData *inst);
+void rxD3D8DefaultRenderFFPMeshCombinerSetUp(RxD3D8InstanceData *inst, RwUInt32 flags);
+void rxD3D8DefaultRenderFFPMeshCombinerTearDown(void);
+void rxD3D8DefaultRenderFFPMesh(RxD3D8InstanceData *inst, RwUInt32 flags);
 void rxD3D8DefaultRenderCallback_xbox(RwResEntry*, void*, RwUInt8, RwUInt32);
+
 int rwD3D8RWGetRasterStage(int);
 
 enum {
@@ -164,104 +175,3 @@ enum {
 
 extern RwTexture *rampTex;
 void reloadRamp(void);
-
-/*
- * Xbox water drops
- */
-
-struct VertexTex2
-{
-	RwReal      x;
-	RwReal      y;
-	RwReal      z;
-	RwReal      rhw;
-	RwUInt32    emissiveColor;
-	RwReal      u0;
-	RwReal      v0;
-	RwReal      u1;
-	RwReal      v1;
-};
-
-class WaterDrop
-{
-public:
-	float x, y, time;		// shorts on xbox (short float?)
-	float size, uvsize, ttl;	// "
-	uchar alpha;
-	bool active;
-	bool fades;
-
-	void Fade(void);
-};
-
-class WaterDropMoving
-{
-public:
-	WaterDrop *drop;
-	float dist;
-};
-
-class WaterDrops
-{
-public:
-	enum {
-		MAXDROPS = 2000,
-		MAXDROPSMOVING = 700
-	};
-
-	// Logic
-
-	static float ms_xOff, ms_yOff;	// not quite sure what these are
-	static WaterDrop ms_drops[MAXDROPS];
-	static int ms_numDrops;
-	static WaterDropMoving ms_dropsMoving[MAXDROPSMOVING];
-	static int ms_numDropsMoving;
-
-	static bool ms_enabled;
-	static bool ms_movingEnabled;
-
-	static float ms_distMoved, ms_vecLen, ms_rainStrength;
-	static RwV3d ms_vec;
-	static RwV3d ms_lastAt;
-	static RwV3d ms_lastPos;
-	static RwV3d ms_posDelta;
-
-	static int ms_splashDuration;
-	static CPlaceable_III *ms_splashObject;
-
-	static void Process(void);
-	static void CalculateMovement(void);
-	static void SprayDrops(void);
-	static void MoveDrop(WaterDropMoving *moving);
-	static void ProcessMoving(void);
-	static void Fade(void);
-
-	static WaterDrop *PlaceNew(float x, float y, float size, float time, bool fades);
-	static void NewTrace(WaterDropMoving*);
-	static void NewDropMoving(WaterDrop*);
-	// this has one more argument in VC: ttl, but it's always 2000.0
-	static void FillScreenMoving(float amount);
-	static void FillScreen(int n);
-	static void Clear(void);
-	static void Reset(void);
-
-	static void RegisterSplash(CPlaceable_III *plc);
-	static bool NoRain(void);
-
-	// Rendering
-
-	static RwTexture *ms_maskTex;
-	static RwTexture *ms_tex;	// TODO
-	static RwRaster *ms_maskRaster;
-	static RwRaster *ms_raster;	// TODO
-	static int ms_fbWidth, ms_fbHeight;
-	static void *ms_vertexBuf;
-	static void *ms_indexBuf;
-	static VertexTex2 *ms_vertPtr;
-	static int ms_numBatchedDrops;
-	static int ms_initialised;
-
-	static void InitialiseRender(RwCamera *cam);
-	static void AddToRenderList(WaterDrop *drop);
-	static void Render(void);
-};

@@ -154,12 +154,15 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="misc.cpp" />
+    <ClCompile Include="neo.cpp" />
+    <ClCompile Include="neoWorldpipe.cpp" />
     <ClCompile Include="rwfix.cpp" />
     <ClCompile Include="xbox.cpp" />
     <ClCompile Include="rw.cpp" />
     <ClCompile Include="xboxwaterdrops.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="neo.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="skygfx.h" />
   </ItemGroup>

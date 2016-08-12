@@ -188,6 +188,10 @@ static uint32_t RxPipelineFindNodeByName_A = AddressByVersion<uint32_t>(0x5D2B10
 WRAPPER RxPipelineNode *RxPipelineFindNodeByName(RxPipeline*, const RwChar*, RxPipelineNode*, RwInt32*) { VARJMP(RxPipelineFindNodeByName_A); }
 static uint32_t RxD3D8AllInOneSetRenderCallBack_A = AddressByVersion<uint32_t>(0x5DFC60, 0x5DFF20, 0x5EE330, 0x678E30, 0x678E80, 0x677DE0);
 WRAPPER void RxD3D8AllInOneSetRenderCallBack(RxPipelineNode*, RxD3D8AllInOneRenderCallBack) { VARJMP(RxD3D8AllInOneSetRenderCallBack_A); }
+RxD3D8AllInOneRenderCallBack RxD3D8AllInOneGetRenderCallBack(RxPipelineNode *node)
+{
+	return *(RxD3D8AllInOneRenderCallBack*)((uchar*)node->privateData + 12);
+}
 
 static uint32_t rxD3D8DefaultRenderCallback_A = AddressByVersion<uint32_t>(0x5DF960, 0x5DFC20, 0x5EE350, 0x678B30, 0x678B80, 0x677AE0);
 WRAPPER void rxD3D8DefaultRenderCallback(RwResEntry*, void*, RwUInt8, RwUInt32) { VARJMP(rxD3D8DefaultRenderCallback_A); }

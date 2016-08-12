@@ -909,6 +909,8 @@ patch(void)
 		MemoryVP::Patch<uchar>(0x48E6A7+1, 3);
 		MemoryVP::Patch<uchar>(0x48E78C+1, 3);
 
+		MemoryVP::Patch(0x5DB427 +2, D3D8AtomicDefaultInstanceCallback_fixed);
+		MemoryVP::Patch(0x5DB43B +3, rxD3D8DefaultRenderCallback_xbox);
 	}
 #endif
 #ifndef RELEASE

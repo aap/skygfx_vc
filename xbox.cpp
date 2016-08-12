@@ -23,7 +23,8 @@ int &skyBotBlue = *AddressByVersion<int*>(0x8F625C, 0x8F6414, 0x906554, 0x9B6DF4
 
 byte &clockHour = *AddressByVersion<byte*>(0x95CDA6, 0x95CF5F, 0x96D09F, 0xA10B6B, 0xA10B74, 0xA0FB75);
 byte &clockMinute = *AddressByVersion<byte*>(0x95CDC8, 0x95CF80, 0x96D0C0, 0xA10B92, 0xA10B9B, 0xA0FB9C);
-byte &clockSecond = *AddressByVersion<byte*>(0, 0, 0, 0xA10A3C, 0xA10A44, 0xA0FA44);;	// no seconds in III
+// ADDRESS
+byte &clockSecond = *AddressByVersion<byte*>(0x95CC7C, 0, 0, 0xA10A3C, 0xA10A44, 0xA0FA44);
 short &oldWeather = *AddressByVersion<short*>(0x95CCEC, 0x95CEA4, 0x96CFE4, 0xA10AAA, 0xA10AB2, 0xA0FAB2);
 short &newWeather = *AddressByVersion<short*>(0x95CC70, 0x95CE28, 0x96CF68, 0xA10A2E, 0xA10A36, 0xA0FA36);
 float &weatherInterp = *AddressByVersion<float*>(0x8F2520, 0x8F25D4, 0x902714, 0x9787D8, 0x9787E0, 0x9777E0);
@@ -41,9 +42,6 @@ static RwRGBAReal rampEndTable[24][MAXWEATHER], currentRampEnd;
 static float offsetTable[24][MAXWEATHER], currentOffset;
 static float scaleTable[24][MAXWEATHER], currentScale;
 static float scalingTable[24][MAXWEATHER], currentScaling;
-
-// world tweak
-static float lmBlendTable[24][MAXWEATHER], currentLmBlend;
 
 static void *pass1VS, *pass2VS;
 static void *rimVS;
@@ -316,138 +314,6 @@ carRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 }
 
 //
-// World
-//
-
-void
-worldRenderCB(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
-{
-	{
-		static bool keystate = false;
-		if(GetAsyncKeyState(xboxworldpipekey) & 0x8000){
-			if(!keystate){
-				keystate = true;
-				xboxworldpipe = (xboxworldpipe+1)%2;
-			}
-		}else
-			keystate = false;
-	}
-	MatFX *matfx;
-	RpAtomic *atomic = (RpAtomic*)object;
-	RwTexture *lightmap = NULL;
-	int lighting, dither, shademode;
-	int foo = 0;
-
-	RwD3D8GetRenderState(D3DRS_LIGHTING, &lighting);
-	if(lighting){
-		if(flags & rpGEOMETRYPRELIT){
-			RwD3D8SetRenderState(D3DRS_COLORVERTEX, 1);
-			RwD3D8SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, 1);
-		}else{
-			RwD3D8SetRenderState(D3DRS_COLORVERTEX, 0);
-			RwD3D8SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, 0);
-		}
-	}else{
-		if(!(flags & rpGEOMETRYPRELIT)){
-			foo = 1;
-			RwD3D8GetRenderState(D3DRS_DITHERENABLE, &dither);
-			RwD3D8GetRenderState(D3DRS_SHADEMODE, &shademode);
-			RwD3D8SetRenderState(D3DRS_TEXTUREFACTOR, 0xFF000000u);
-			RwD3D8SetRenderState(D3DRS_DITHERENABLE, 0);
-			RwD3D8SetRenderState(D3DRS_SHADEMODE, 1);
-		}
-	}
-	
-	int clip;
-	if(type != 1)
-		clip = !RwD3D8CameraIsBBoxFullyInsideFrustum((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera,
-		                                             (char*)object + 104);
-	else
-		clip = !RwD3D8CameraIsBBoxFullyInsideFrustum((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera,
-		                                             RpAtomicGetWorldBoundingSphere(atomic));
-	RwD3D8SetRenderState(D3DRS_CLIPPING, clip);
-	if(!(flags & (rpGEOMETRYTEXTURED|rpGEOMETRYTEXTURED2))){
-		RwD3D8SetTexture(0, 0);
-		if(foo){
-			RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
-			RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-			RwD3D8SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-		}
-	}
-
-	float a = xboxworldpipe ? currentLmBlend : 0.0f;
-	float lm[4] = { a, a, a, 1.0f };
-
-	int alpha = rwD3D8RenderStateIsVertexAlphaEnable();
-	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
-	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
-	RwD3D8SetVertexShader(inst->vertexShader);
-
-	for(int i = 0; i < header->numMeshes; i++){
-		matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);
-		lightmap = matfx ? ((MatFXDual*)matfx->fx)[0].tex : NULL;
-
-		RwD3D9SetPixelShader(lightmap ? worldPS : NULL);
-		lm[3] = inst->material->color.alpha/255.0f;
-		RwD3D9SetPixelShaderConstant(0, lm, 1);
-		RwD3D8SetTexture(lightmap, 1);
-		if(flags & (rpGEOMETRYTEXTURED|rpGEOMETRYTEXTURED2)){
-			RwD3D8SetTexture(inst->material->texture, 0);
-			if(foo){
-				RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
-				RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-			}
-		}
-		if(inst->vertexAlpha || inst->material->color.alpha != 0xFFu){
-			if(!alpha){
-				alpha = 1;
-				rwD3D8RenderStateVertexAlphaEnable(1);
-			}
-		}else{
-			if(alpha){
-				alpha = 0;
-				rwD3D8RenderStateVertexAlphaEnable(0);
-			}
-		}
-		if(lighting){
-			RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha != 0);
-			RwRGBA col = { 255, 255, 255, 255 };
-			col.alpha = inst->material->color.alpha;
-			//col = inst->material->color;
-			RwD3D8SetSurfaceProperties(&col, &inst->material->surfaceProps, flags & 0x40);
-		}
-		RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
-		drawDualPass(inst);
-		inst++;
-	}
-	
-	RwD3D8SetTexture(NULL, 1);
-	if(foo){
-		RwD3D8SetRenderState(D3DRS_DITHERENABLE, dither);
-		RwD3D8SetRenderState(D3DRS_SHADEMODE, shademode);
-		if(rwD3D8RWGetRasterStage(0)){
-			RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-			RwD3D8SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-			RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-		}else{
-			RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
-			RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-		}
-	}
-}
-
-RwBool
-worldInstanceCB(void *object, RxD3D8InstanceData *instancedData, RwBool reinstance)
-{
-	static RwRGBA white = { 255, 255, 255, 255 };
-	RwRGBA col = instancedData->material->color;
-	instancedData->material->color = white;
-	RwBool ret = D3D8AtomicDefaultInstanceCallback(object, instancedData, reinstance);
-	instancedData->material->color = col;
-	return ret;
-}
-
-//
 // Rim
 //
 
@@ -710,7 +576,6 @@ updateTweakValues(void)
 	currentOffset = interploateFloat(offsetTable[clockHour], offsetTable[nextHour]);
 	currentScale = interploateFloat(scaleTable[clockHour], scaleTable[nextHour]);
 	currentScaling = interploateFloat(scalingTable[clockHour], scalingTable[nextHour]);
-	currentLmBlend = interploateFloat(lmBlendTable[clockHour], lmBlendTable[nextHour]);
 	interploateRGBA(&currentDiffuse, diffuseTable[clockHour], diffuseTable[nextHour]);
 	interploateRGBA(&currentSpecular, specularTable[clockHour], specularTable[nextHour]);
 	interploateRGBA(&currentRampStart, rampStartTable[clockHour], rampStartTable[nextHour]);
@@ -831,28 +696,9 @@ WRAPPER void __fastcall CBaseModelInfo__AddTexDictionaryRef(CClumpModelInfo*) { 
 static RpAtomicCallBack CClumpModelInfo__SetAtomicRendererCB_A = AddressByVersion<RpAtomicCallBack>(0x4F8940, 0x4F8A20, 0x4F89B0, 0, 0, 0);
 static void *CVisibilityPlugins__RenderPlayerCB_A = AddressByVersion<void*>(0x528B30, 0x528D70, 0x528D00, 0, 0, 0);
 
-void
-CClumpModelInfo::SetClump(RpClump *clump)
-{
-	this->clump = clump;
-	CVisibilityPlugins__SetClumpModelInfo(clump, this);
-	CBaseModelInfo__AddTexDictionaryRef(this);
-	RpClumpForAllAtomics(clump, CClumpModelInfo__SetAtomicRendererCB_A, 0);
-	if(this->type == 1 || this->type == 3 || this->type == 4)
-		RpClumpForAllAtomics(clump, setAtomicPipelineCB, worldpipe);
-	if(strcmp(this->name, "playerh") == 0)
-		RpClumpForAllAtomics(clump, CClumpModelInfo__SetAtomicRendererCB_A, CVisibilityPlugins__RenderPlayerCB_A);
-}
-
-static uint32_t CSimpleModelInfo__SetAtomic_A = AddressByVersion<uint32_t>(0x517950, 0x517B60, 0x517AF0, 0, 0, 0);
+// ADDRESS
+static uint32_t CSimpleModelInfo__SetAtomic_A = AddressByVersion<uint32_t>(0x517950, 0x517B60, 0x517AF0, 0x56F790, 0, 0);
 WRAPPER void CSimpleModelInfo::SetAtomic(int, RpAtomic*) { VARJMP(CSimpleModelInfo__SetAtomic_A); }
-
-void
-CSimpleModelInfo::SetAtomic_hook(int n, RpAtomic *atomic)
-{
-	this->SetAtomic(n, atomic);
-	setAtomicPipelineCB(atomic, worldpipe);
-}
 
 static uint32_t RenderScene_A = AddressByVersion<uint32_t>(0x48E030, 0x48E0F0, 0x48E080, 0x4A6570, 0x4A6590, 0x4A6440);
 WRAPPER void RenderScene(void) { VARJMP(RenderScene_A); }
@@ -862,18 +708,6 @@ WRAPPER void RenderScene(void) { VARJMP(RenderScene_A); }
 void
 RenderScene_hook(void)
 {
-//	{
-//		static bool keystate = false;
-//		if(GetAsyncKeyState(VK_F5) & 0x8000){
-//			if(!keystate){
-//				keystate = true;
-//				if(CTimeCycle__Initialise_A)
-//					CTimeCycle__Initialise();
-//			}
-//		}else
-//			keystate = false;
-//	}
-
 	RenderScene();
 	if(xboxcarpipe)
 		RenderEnvTex();
@@ -1026,28 +860,6 @@ neoInit(void)
 		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48C9A2, 0x48CAA2, 0x48CA32, 0x4A45F5, 0x4A4615, 0x4A446F), updateTweakValues);
 	}
 
-	// world pipeline
-	if(xboxworldpipe >= 0 && isIII()){
-		worldpipe = createPipe();
-		RxNodeDefinition *nodedef = RxNodeDefinitionGetD3D8AtomicAllInOne();
-		node = RxPipelineFindNodeByName(worldpipe, nodedef->name, NULL, NULL);
-		RxD3D8AllInOneSetRenderCallBack(node, worldRenderCB);
-		RxD3D8AllInOneSetInstanceCallBack(node, worldInstanceCB);
-
-		resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_WORLDPS), RT_RCDATA);
-		shader = (RwUInt32*)LoadResource(dllModule, resource);
-		RwD3D9CreatePixelShader(shader, &worldPS);
-		assert(worldPS);
-		FreeResource(shader);
-
-		path = getpath("neo\\worldTweakingTable.dat");
-		assert(path && "couldn't load 'neo\\worldTweakingTable.dat'");
-		dat = fopen(path, "r");
-		readWeatherTimeBlock(dat, readFloat, lmBlendTable);		// default 1.0
-		fclose(dat);
-
-//		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x4F8830, 0x4F8910, 0x4F88A0, 0, 0, 0), &CClumpModelInfo::SetClump, PATCH_JUMP);
-		MemoryVP::InjectHook(0x4768F1, &CSimpleModelInfo::SetAtomic_hook);
-		MemoryVP::InjectHook(0x476707, &CSimpleModelInfo::SetAtomic_hook);
-	}
+	if(xboxworldpipe >= 0 && isIII())
+		neoWorldPipeInit();
 }

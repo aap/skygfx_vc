@@ -16,12 +16,12 @@ D3D8AtomicDefaultInstanceCallback_fixed(void *object, RxD3D8InstanceData *instan
 	return ret;
 }
 
-// ADDRESS
 D3DMATERIAL8 d3dmaterial = { { 0.0f, 0.0f, 0.0f, 1.0f },
                              { 0.0f, 0.0f, 0.0f, 1.0f },
                              { 0.0f, 0.0f, 0.0f, 1.0f },
                              { 0.0f, 0.0f, 0.0f, 1.0f },
                              0.0f };
+// ADDRESS
 D3DMATERIAL8 &lastmaterial = *AddressByVersion<D3DMATERIAL8*>(0x662EA8, 0, 0, 0x789760, 0, 0);
 D3DCOLORVALUE &AmbientSaturated = *AddressByVersion<D3DCOLORVALUE*>(0x619458, 0, 0, 0x6DDE08, 0, 0);
 
@@ -361,6 +361,12 @@ void
 rxD3D8DefaultRenderFFPMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 {
 	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
+	/* Better mark this mesh not textured if there is no texture.
+	 * NULL textures can cause problems for the combiner...
+	 * for me the next stage (modulation by tfactor) was ignored. */
+	if(inst->material->texture == NULL)
+		flags &= ~(rpGEOMETRYTEXTURED|rpGEOMETRYTEXTURED2);
+
 	if(flags & (rpGEOMETRYTEXTURED|rpGEOMETRYTEXTURED2))
 		RwD3D8SetTexture(inst->material->texture, 0);
 	else
@@ -376,12 +382,18 @@ rxD3D8DefaultRenderFFPMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 }
 
 void
-rxD3D8DefaultRenderCallback_xbox(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
+rxD3D8SetAmbientLight(void)
 {
 	int r = AmbientSaturated.r*255;
 	int g = AmbientSaturated.g*255;
 	int b = AmbientSaturated.b*255;
 	RwD3D8SetRenderState(D3DRS_AMBIENT, D3DCOLOR_ARGB(0xFF, r, g, b));
+}
+
+void
+rxD3D8DefaultRenderCallback_xbox(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
+{
+	rxD3D8SetAmbientLight();
 
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
