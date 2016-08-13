@@ -19,6 +19,7 @@ float &CWeather__InterpolationValue = *AddressByVersion<float*>(0x8F2520, 0x8F25
 		float c2 = (1.0f-timeInterp)*CWeather__InterpolationValue;					  \
 		float c3 = timeInterp*CWeather__InterpolationValue;
 #define INTERP(v) v[h1][w1]*c0 + v[h2][w1]*c1 + v[h1][w2]*c2 + v[h2][w2]*c3;
+#define INTERPF(v,f) v[h1][w1].f*c0 + v[h2][w1].f*c1 + v[h1][w2].f*c2 + v[h2][w2].f*c3;
 
 
 InterpolatedFloat::InterpolatedFloat(float init)
@@ -43,6 +44,43 @@ InterpolatedFloat::Get(void)
 		curVal = INTERP(data);
 	}
 	return curVal;
+}
+
+InterpolatedColor::InterpolatedColor(const Color &init)
+{
+	curInterpolator = 61;	// compared against second
+	for(int h = 0; h < 24; h++)
+		for(int w = 0; w < NUMWEATHERS; w++)
+			data[h][w] = init;
+}
+
+void
+InterpolatedColor::Read(char *s, int line, int field)
+{
+	int r, g, b, a;
+	sscanf(s, "%i, %i, %i, %i", &r, &g, &b, &a);
+	data[line][field] = Color(r/255.0f, g/255.0f, b/255.0f, a/255.0f);
+}
+
+Color
+InterpolatedColor::Get(void)
+{
+	if(curInterpolator != CClock__ms_nGameClockSeconds){
+		INTERP_SETUP
+		curVal.r = INTERPF(data, r);
+		curVal.g = INTERPF(data, g);
+		curVal.b = INTERPF(data, b);
+		curVal.a = INTERPF(data, a);
+	}
+	return curVal;
+}
+
+void
+InterpolatedLight::Read(char *s, int line, int field)
+{
+	int r, g, b, a;
+	sscanf(s, "%i, %i, %i, %i", &r, &g, &b, &a);
+	data[line][field] = Color(r/255.0f, g/255.0f, b/255.0f, a/100.0f);
 }
 
 void
@@ -136,4 +174,49 @@ CustomPipe::Attach(RpAtomic *atomic)
 	 * Since we're not using 3.5 we have to fix this manually:
 	 */
 	*RWPLUGINOFFSET(int, atomic, MatFXAtomicDataOffset) = 0;
+}
+
+RpAtomic*
+CustomPipe::setatomicCB(RpAtomic *atomic, void *data)
+{
+	((CustomPipe*)data)->Attach(atomic);
+	return atomic;
+}
+
+/* Shader helpers */
+
+void
+UploadZero(int loc)
+{
+	static float z[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	RwD3D9SetVertexShaderConstant(loc, (void*)z, 1);
+}
+
+void
+UploadLightColor(RpLight *light, int loc)
+{
+	float c[4];
+	if(RpLightGetFlags(light) & rpLIGHTLIGHTATOMICS){
+		c[0] = light->color.red;
+		c[1] = light->color.green;
+		c[2] = light->color.blue;
+		c[3] = 1.0f;
+		RwD3D9SetVertexShaderConstant(loc, (void*)c, 1);
+	}else
+		UploadZero(loc);
+}
+
+void
+UploadLightDirection(RpLight *light, int loc)
+{
+	float c[4];
+	if(RpLightGetFlags(light) & rpLIGHTLIGHTATOMICS){
+		RwV3d *at = RwMatrixGetAt(RwFrameGetLTM(RpLightGetFrame(light)));
+		c[0] = at->x;
+		c[1] = at->y;
+		c[2] = at->z;
+		c[3] = 1.0f;
+		RwD3D9SetVertexShaderConstant(loc, (void*)c, 1);
+	}else
+		UploadZero(loc);
 }

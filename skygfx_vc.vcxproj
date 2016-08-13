@@ -155,6 +155,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="misc.cpp" />
     <ClCompile Include="neo.cpp" />
+    <ClCompile Include="neoRimpipe.cpp" />
     <ClCompile Include="neoWorldpipe.cpp" />
     <ClCompile Include="rwfix.cpp" />
     <ClCompile Include="xbox.cpp" />

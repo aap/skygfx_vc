@@ -5,9 +5,9 @@
 HMODULE dllModule;
 char asipath[MAX_PATH];
 int gtaversion = -1;
-static uint32_t rwD3D8RasterIsCubeRaster_A = AddressByVersion<uint32_t>(0, 0, 0, 0x63EE40, 0x63EE90, 0x63DDF0); // VC only
+static addr rwD3D8RasterIsCubeRaster_A = AddressByVersion<addr>(0, 0, 0, 0x63EE40, 0x63EE90, 0x63DDF0); // VC only
 WRAPPER int rwD3D8RasterIsCubeRaster(RwRaster*) { VARJMP(rwD3D8RasterIsCubeRaster_A); }
-static uint32_t rpMatFXD3D8AtomicMatFXEnvRender_A = AddressByVersion<uint32_t>(0x5CF6C0, 0x5CF980, 0x5D8F7C, 0x674EE0, 0x674F30, 0x673E90);
+static addr rpMatFXD3D8AtomicMatFXEnvRender_A = AddressByVersion<addr>(0x5CF6C0, 0x5CF980, 0x5D8F7C, 0x674EE0, 0x674F30, 0x673E90);
 WRAPPER int rpMatFXD3D8AtomicMatFXEnvRender(RxD3D8InstanceData* a1, int a2, int a3, RwTexture* a4, RwTexture* a5)
 {
 	if (gtaversion != III_STEAM)
@@ -24,7 +24,7 @@ WRAPPER int rpMatFXD3D8AtomicMatFXEnvRender(RxD3D8InstanceData* a1, int a2, int 
 		jmp rpMatFXD3D8AtomicMatFXEnvRender_A
 	}
 }
-//static uint32_t rpMatFXD3D8AtomicMatFXDefaultRender_A = AddressByVersion<uint32_t>(0x5CEB80, 0x5CEE40, 0x5DB760, 0x674380, 0x6743D0, 0x673330);
+//static addr rpMatFXD3D8AtomicMatFXDefaultRender_A = AddressByVersion<addr>(0x5CEB80, 0x5CEE40, 0x5DB760, 0x674380, 0x6743D0, 0x673330);
 //WRAPPER int rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData*, int, RwTexture*) { VARJMP(rpMatFXD3D8AtomicMatFXDefaultRender_A); }
 int &MatFXMaterialDataOffset = *AddressByVersion<int*>(0x66188C, 0x66188C, 0x671944, 0x7876CC, 0x7876D4, 0x7866D4);
 int &MatFXAtomicDataOffset = *AddressByVersion<int*>(0x66189C, 0x66189C, 0x671930, 0x7876DC, 0x7876E4, 0x7866E4);
@@ -84,7 +84,7 @@ d3dtorwmat(RwMatrix *rw, D3DMATRIX *d3d)
 	rw->pos.z	= d3d->m[3][2];
 }
 
-static uint32_t ApplyEnvMapTextureMatrix_A = AddressByVersion<uint32_t>(0x5CFD40, 0x5D0000, 0x5D89E0, 0x6755D0, 0x675620, 0x674580);
+static addr ApplyEnvMapTextureMatrix_A = AddressByVersion<addr>(0x5CFD40, 0x5D0000, 0x5D89E0, 0x6755D0, 0x675620, 0x674580);
 WRAPPER void ApplyEnvMapTextureMatrix(RwTexture* a1, int a2, RwFrame* a3)
 {
 	if (gtaversion != III_STEAM){
@@ -281,7 +281,7 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 
 	static float mult = isIII() ? 2.0f : 4.0f;
 	float factor = env->envCoeff*mult*255.0f;
-	RwUInt8 intens = factor;
+	RwUInt8 intens = (RwUInt8)factor;
 
 	if(factor == 0.0f || !envMap){
 		if(sel == 0)
@@ -422,7 +422,7 @@ drawDualPass(RxD3D8InstanceData *inst)
 	}
 }
 
-static uint32_t dualPassHook_R = AddressByVersion<uint32_t>(0x5DFBD8, 0x5DFE98, 0, 0x678DA8, 0x678DF8, 0x677D58); 
+static addr dualPassHook_R = AddressByVersion<addr>(0x5DFBD8, 0x5DFE98, 0, 0x678DA8, 0x678DF8, 0x677D58); 
 void __declspec(naked)
 dualPassHook(void)
 {
@@ -449,7 +449,7 @@ dualPassHook_IIISteam(void)
 
 RwD3D8Vertex *blurVertices = AddressByVersion<RwD3D8Vertex*>(0x62F780, 0x62F780, 0x63F780, 0x7097A8, 0x7097A8, 0x7087A8);
 RwImVertexIndex *blurIndices = AddressByVersion<RwImVertexIndex*>(0x5FDD90, 0x5FDB78, 0x60AB70, 0x697D48, 0x697D48, 0x696D50);
-static uint32_t DefinedState_A = AddressByVersion<uint32_t>(0x526330, 0x526570, 0x526500, 0x57F9C0, 0x57F9E0, 0x57F7F0);
+static addr DefinedState_A = AddressByVersion<addr>(0x526330, 0x526570, 0x526500, 0x57F9C0, 0x57F9E0, 0x57F7F0);
 WRAPPER void DefinedState(void) { VARJMP(DefinedState_A); }
 
 void
@@ -476,8 +476,8 @@ renderSniperTrails(RwRaster *raster)
 	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, blurVertices, 4, blurIndices, 6);
 }
 
-static uint32_t &sniperTrailsHook_unk_addr = *AddressByVersion<uint32_t*>(0, 0, 0, 0x97F888, 0x97F890, 0x97E890);
-static uint32_t sniperTrailsHook_R = AddressByVersion<uint32_t>(0, 0, 0, 0x55EB90, 0x55EBB0, 0x55EA80); 
+static addr &sniperTrailsHook_unk_addr = *AddressByVersion<addr*>(0, 0, 0, 0x97F888, 0x97F890, 0x97E890);
+static addr sniperTrailsHook_R = AddressByVersion<addr>(0, 0, 0, 0x55EB90, 0x55EBB0, 0x55EA80); 
 
 void __declspec(naked)
 sniperTrailsHook(void)
@@ -514,7 +514,7 @@ CreateTextureFilterFlags(RwRaster *raster)
 	return tex;
 }
 
-static uint32_t CGame__InitialiseRenderWare_A = AddressByVersion<uint32_t>(0x48BBA0, 0x48BC90, 0x48BC20, 0x4A51A0, 0x4A51C0, 0x4A5070);
+static addr CGame__InitialiseRenderWare_A = AddressByVersion<addr>(0x48BBA0, 0x48BC90, 0x48BC20, 0x4A51A0, 0x4A51C0, 0x4A5070);
 WRAPPER bool CGame__InitialiseRenderWare(void) { VARJMP(CGame__InitialiseRenderWare_A); }
 
 bool
@@ -576,16 +576,16 @@ struct TxdStore {
 	//static char *GetTxdName(int handle);
 };
 
-static uint32_t TxdStore_PushCurrentTxd_A = AddressByVersion<uint32_t>(0x527900, 0x527B40, 0x527AD0, 0, 0, 0);
+static addr TxdStore_PushCurrentTxd_A = AddressByVersion<addr>(0x527900, 0x527B40, 0x527AD0, 0, 0, 0);
 WRAPPER void TxdStore::PushCurrentTxd(void) { VARJMP(TxdStore_PushCurrentTxd_A); }
-static uint32_t TxdStore_PopCurrentTxd_A = AddressByVersion<uint32_t>(0x527910, 0x527B50, 0x527AE0, 0, 0, 0);
+static addr TxdStore_PopCurrentTxd_A = AddressByVersion<addr>(0x527910, 0x527B50, 0x527AE0, 0, 0, 0);
 WRAPPER int TxdStore::PopCurrentTxd(void) { VARJMP(TxdStore_PopCurrentTxd_A); }
-static uint32_t TxdStore_FindTxdSlot_A = AddressByVersion<uint32_t>(0x5275D0, 0x527810, 0x5277A0, 0x580D70, 0, 0);
+static addr TxdStore_FindTxdSlot_A = AddressByVersion<addr>(0x5275D0, 0x527810, 0x5277A0, 0x580D70, 0, 0);
 WRAPPER int TxdStore::FindTxdSlot(char*) { VARJMP(TxdStore_FindTxdSlot_A); }
-static uint32_t TxdStore_SetCurrentTxd_A = AddressByVersion<uint32_t>(0x5278C0, 0x527B00, 0x527A90, 0, 0, 0);
+static addr TxdStore_SetCurrentTxd_A = AddressByVersion<addr>(0x5278C0, 0x527B00, 0x527A90, 0, 0, 0);
 WRAPPER void TxdStore::SetCurrentTxd(int) { VARJMP(TxdStore_SetCurrentTxd_A); }
 
-//static uint32_t TxdStore_GetTxdName_A = AddressByVersion<uint32_t>(0, 0, 0, 0x580E50, 0, 0);
+//static addr TxdStore_GetTxdName_A = AddressByVersion<addr>(0, 0, 0, 0x580E50, 0, 0);
 //WRAPPER void TxdStore::GetTxdName(int) { VARJMP(TxdStore_SetCurrentTxd_A); }
 
 static int &gameTxdSlot = *AddressByVersion<int*>(0x628D88, 0x628D88, 0x638D88, 0, 0, 0); // TODO
@@ -741,7 +741,7 @@ curvehook(void)
 //
 // real time reflection test; III 1.0
 //
-
+/*
 WRAPPER RpAtomic *CVehicleModelInfo__SetEnvironmentMapCB(RpAtomic*, RwTexture*) { EAXJMP(0x521820); }
 void RenderEffects(void);
 
@@ -771,8 +771,18 @@ RenderEffectsHook(void)
 	RwRasterRenderFast(cam->frameBuffer, 0, 0);
 	RwRasterPopContext();
 }
+*/
 
-
+void (*InitialiseGame)(void);
+void
+InitialiseGame_hook(void)
+{
+	if(isIII())
+		// fall back to generic.txd when reading from dff
+		InjectHook(AddressByVersion<addr>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
+	neoInit();
+	InitialiseGame();
+}
 
 void
 patch(void)
@@ -789,6 +799,10 @@ patch(void)
 	modulePath[nLen-2] = L'n';
 	modulePath[nLen-3] = L'i';
 
+	// hook for all things that are initialized once when a game is started
+	// ADDRESS
+	InterceptCall(&InitialiseGame, InitialiseGame_hook, AddressByVersion<addr>(0x582E6C, 0, 0, 0x600411, 0, 0));
+
 	GetPrivateProfileString("SkyGfx", "texblendSwitchKey", "0x76", tmp, sizeof(tmp), modulePath);
 	blendkey = readhex(tmp);
 	GetPrivateProfileString("SkyGfx", "texgenSwitchKey", "0x77", tmp, sizeof(tmp), modulePath);
@@ -800,36 +814,34 @@ patch(void)
 	GetPrivateProfileString("SkyGfx", "xboxWorldPipeKey", "0x73", tmp, sizeof(tmp), modulePath);
 	xboxworldpipekey = readhex(tmp);
 	blendstyle = GetPrivateProfileInt("SkyGfx", "texblendSwitch", 0, modulePath);
-	if(blendstyle >= 0)
-	{
+	if(blendstyle >= 0){
 		if (gtaversion != III_STEAM)
-			MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5D0CE8, 0x5D0FA8, 0, 0x6765C8, 0x676618, 0x675578), rpMatFXD3D8AtomicMatFXEnvRender_dual);
+			InjectHook(AddressByVersion<addr>(0x5D0CE8, 0x5D0FA8, 0, 0x6765C8, 0x676618, 0x675578), rpMatFXD3D8AtomicMatFXEnvRender_dual);
 		else
-			MemoryVP::InjectHook(0x5D8D37, rpMatFXD3D8AtomicMatFXEnvRender_dual_IIISteam);
+			InjectHook(0x5D8D37, rpMatFXD3D8AtomicMatFXEnvRender_dual_IIISteam);
 	}
 	blendstyle %= 2;
 	texgenstyle = GetPrivateProfileInt("SkyGfx", "texgenSwitch", 0, modulePath);
-	if(texgenstyle >= 0)
-	{
+	if(texgenstyle >= 0){
 		if (gtaversion != III_STEAM)
-			MemoryVP::InjectHook(ApplyEnvMapTextureMatrix_A, ApplyEnvMapTextureMatrix_hook, PATCH_JUMP);
+			InjectHook(ApplyEnvMapTextureMatrix_A, ApplyEnvMapTextureMatrix_hook, PATCH_JUMP);
 		else
-			MemoryVP::InjectHook(ApplyEnvMapTextureMatrix_A, ApplyEnvMapTextureMatrix_hook_IIISteam, PATCH_JUMP);
+			InjectHook(ApplyEnvMapTextureMatrix_A, ApplyEnvMapTextureMatrix_hook_IIISteam, PATCH_JUMP);
 	}
 	texgenstyle %= 2;
 	if(isVC() && GetPrivateProfileInt("SkyGfx", "IIIReflections", FALSE, modulePath)){
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0, 0, 0, 0x57A8BA, 0x57A8DA, 0x57A7AA), createIIIEnvFrame);
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0, 0, 0, 0x57A8C7, 0x57A8E7, 0x57A7B7),
-							 AddressByVersion<uint32_t>(0, 0, 0, 0x57A8F4, 0x57A914, 0x57A7E4), PATCH_JUMP);
+		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x57A8BA, 0x57A8DA, 0x57A7AA), createIIIEnvFrame);
+		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x57A8C7, 0x57A8E7, 0x57A7B7),
+		           AddressByVersion<addr>(0, 0, 0, 0x57A8F4, 0x57A914, 0x57A7E4), PATCH_JUMP);
 	}
 	if(isIII() && GetPrivateProfileInt("SkyGfx", "VCReflections", FALSE, modulePath)){
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5218A2, 0x521AE2, 0x521A72, 0, 0, 0), createVCEnvFrame);
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5218AC, 0x521AEC, 0x521A7C, 0, 0, 0),
-		                     AddressByVersion<uint32_t>(0x52195E, 0x521B9E, 0x521B2E, 0, 0, 0), PATCH_JUMP);
+		InjectHook(AddressByVersion<addr>(0x5218A2, 0x521AE2, 0x521A72, 0, 0, 0), createVCEnvFrame);
+		InjectHook(AddressByVersion<addr>(0x5218AC, 0x521AEC, 0x521A7C, 0, 0, 0),
+		           AddressByVersion<addr>(0x52195E, 0x521B9E, 0x521B2E, 0, 0, 0), PATCH_JUMP);
 	}
 
 	if(isIII())
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x59BABF, 0x59BD7F, 0x598E6F, 0, 0, 0), CreateTextureFilterFlags);
+		InjectHook(AddressByVersion<addr>(0x59BABF, 0x59BD7F, 0x598E6F, 0, 0, 0), CreateTextureFilterFlags);
 
 	xboxcarpipe = GetPrivateProfileInt("SkyGfx", "xboxCarPipe", 0, modulePath);
 	envMapSize = GetPrivateProfileInt("SkyGfx", "envMapSize", 128, modulePath);
@@ -841,92 +853,83 @@ patch(void)
 
 	if(dualpass = GetPrivateProfileInt("SkyGfx", "dualPass", TRUE, modulePath)){
 		if (gtaversion != III_STEAM)
-			MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5DFB99, 0x5DFE59, 0, 0x678D69, 0x678DB9, 0x677D19), dualPassHook, PATCH_JUMP);
+			InjectHook(AddressByVersion<addr>(0x5DFB99, 0x5DFE59, 0, 0x678D69, 0x678DB9, 0x677D19), dualPassHook, PATCH_JUMP);
 		else
-			MemoryVP::InjectHook(0x5EE675, dualPassHook_IIISteam, PATCH_JUMP);
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5CEB80, 0x5CEE40, 0x5DB760, 0x674380, 0x6743D0, 0x673330), rpMatFXD3D8AtomicMatFXDefaultRender, PATCH_JUMP);
+			InjectHook(0x5EE675, dualPassHook_IIISteam, PATCH_JUMP);
+		InjectHook(AddressByVersion<addr>(0x5CEB80, 0x5CEE40, 0x5DB760, 0x674380, 0x6743D0, 0x673330), rpMatFXD3D8AtomicMatFXDefaultRender, PATCH_JUMP);
 	}
 
 	if(isVC() && GetPrivateProfileInt("SkyGfx", "disableBackfaceCulling", FALSE, modulePath)){
 		// hope I didn't miss anything
-		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4C9E5F, 0x4C9E7F, 0x4C9D1F), 1);	// in CRenderer::RenderOneNonRoad()
-		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4C9F08, 0x4C9F28, 0x4C9DC8), 1);	// in CRenderer::RenderBoats()
-		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4C9F5D, 0x4C9F7D, 0x4C9E1D), 1);	// in CRenderer::RenderEverythingBarRoads()
-		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4CA157, 0x4CA177, 0x4CA017), 1);	// in CRenderer::RenderFadingInEntities()
-		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4CA199, 0x4CA1B9, 0x4CA059), 1);	// in CRenderer::RenderRoads()
+		Patch<uchar>(AddressByVersion<addr>(0, 0, 0, 0x4C9E5F, 0x4C9E7F, 0x4C9D1F), 1);	// in CRenderer::RenderOneNonRoad()
+		Patch<uchar>(AddressByVersion<addr>(0, 0, 0, 0x4C9F08, 0x4C9F28, 0x4C9DC8), 1);	// in CRenderer::RenderBoats()
+		Patch<uchar>(AddressByVersion<addr>(0, 0, 0, 0x4C9F5D, 0x4C9F7D, 0x4C9E1D), 1);	// in CRenderer::RenderEverythingBarRoads()
+		Patch<uchar>(AddressByVersion<addr>(0, 0, 0, 0x4CA157, 0x4CA177, 0x4CA017), 1);	// in CRenderer::RenderFadingInEntities()
+		Patch<uchar>(AddressByVersion<addr>(0, 0, 0, 0x4CA199, 0x4CA1B9, 0x4CA059), 1);	// in CRenderer::RenderRoads()
+		// ADDRESS
 		if(gtaversion == VC_10)
-			MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x4E0146, 0, 0), 1);	// in CCutsceneObject::Render()
+			Patch<uchar>(AddressByVersion<addr>(0, 0, 0, 0x4E0146, 0, 0), 1);	// in CCutsceneObject::Render()
 	}
 
 	// fix blend mode
 	if(isVC()){
 		// auto aim
-		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x5D4EEE, 0x5D4F0E, 0x5D4CBE), rwBLENDINVSRCALPHA);
+		Patch<uchar>(AddressByVersion<addr>(0, 0, 0, 0x5D4EEE, 0x5D4F0E, 0x5D4CBE), rwBLENDINVSRCALPHA);
 		// sniper dot
-		MemoryVP::Patch<BYTE>(AddressByVersion<uint32_t>(0, 0, 0, 0x558024, 0x558044, 0x557F14), rwBLENDINVSRCALPHA);
+		Patch<uchar>(AddressByVersion<addr>(0, 0, 0, 0x558024, 0x558044, 0x557F14), rwBLENDINVSRCALPHA);
 	}
 
 	if(isVC())
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0, 0, 0, 0x55EA39, 0x55EA59, 0x55E929), sniperTrailsHook, PATCH_JUMP);
-
-	// when loaded late, init here; otherwise init with RW
-	if(pRwCamera)
-		neoInit();
-	else
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48D52F, 0x48D62F, 0x48D5BF, 0x4A5B6B, 0x4A5B8B, 0x4A5A3B), CGame__InitialiseRenderWare_hook);
+		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x55EA39, 0x55EA59, 0x55E929), sniperTrailsHook, PATCH_JUMP);
 
 	if(GetPrivateProfileInt("SkyGfx", "xboxWaterDrops", FALSE, modulePath))
 		hookWaterDrops();
 
-	if(isIII()){
-		// fall back to generic.txd when reading from dff
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
-	}
 #ifndef RELEASE
 	if(gtaversion == III_10){
 		// ignore txd.img
-		MemoryVP::InjectHook(0x48C12E, 0x48C14C, PATCH_JUMP);
+		InjectHook(0x48C12E, 0x48C14C, PATCH_JUMP);
 
 		int i = GetPrivateProfileInt("SkyGfx", "curve", -1, modulePath);
 		if(i >= 0){
 			curveIdx = i % 256;
-			MemoryVP::InjectHook(0x48E44B, curvehook, PATCH_JUMP);
+			InjectHook(0x48E44B, curvehook, PATCH_JUMP);
 		}
-		MemoryVP::InjectHook(0x405DB0, printf, PATCH_JUMP);
+		InjectHook(0x405DB0, printf, PATCH_JUMP);
 
 		// patch loadscreens
-		MemoryVP::Patch<uint>(0x48D774, 0x6024448b);  // 8B 44 24 60 - mov eax,[esp+60h]
-		MemoryVP::Patch<uchar>(0x48D778, 0x50);	      // push eax
-		MemoryVP::InjectHook(0x48D779, 0x48D79B, PATCH_JUMP);
+		Patch<uint>(0x48D774, 0x6024448b);  // 8B 44 24 60 - mov eax,[esp+60h]
+		Patch<uchar>(0x48D778, 0x50);	      // push eax
+		InjectHook(0x48D779, 0x48D79B, PATCH_JUMP);
 
 		//MemoryVP::InjectHook(0x48E603, RenderEffectsHook);
 		//MemoryVP::InjectHook(0x5219B3, CVehicleModelInfo__SetEnvironmentMapCB_hook);
 		//MemoryVP::Patch<void*>(0x521986+1, CVehicleModelInfo__SetEnvironmentMapCB_hook);
 
 		// clear framebuffer
-		MemoryVP::Patch<uchar>(0x48CFC1+1, 3);
-		MemoryVP::Patch<uchar>(0x48D0AD+1, 3);
-		MemoryVP::Patch<uchar>(0x48E6A7+1, 3);
-		MemoryVP::Patch<uchar>(0x48E78C+1, 3);
+		Patch<uchar>(0x48CFC1+1, 3);
+		Patch<uchar>(0x48D0AD+1, 3);
+		Patch<uchar>(0x48E6A7+1, 3);
+		Patch<uchar>(0x48E78C+1, 3);
 
-		MemoryVP::Patch(0x5DB427 +2, D3D8AtomicDefaultInstanceCallback_fixed);
-		MemoryVP::Patch(0x5DB43B +3, rxD3D8DefaultRenderCallback_xbox);
+		Patch(0x5DB427 +2, D3D8AtomicDefaultInstanceCallback_fixed);
+		Patch(0x5DB43B +3, rxD3D8DefaultRenderCallback_xbox);
 	}
 #endif
 #ifndef RELEASE
 	if(gtaversion == VC_10){
 		// remove "%s has not been pre-instanced", we don't really care
-		MemoryVP::Nop(0x40C32B, 5);
+		Nop(0x40C32B, 5);
 		//MemoryVP::InjectHook(0x650ACB, RwTextureRead_VC);
-		MemoryVP::InjectHook(0x401000, printf, PATCH_JUMP);
+		InjectHook(0x401000, printf, PATCH_JUMP);
 
-		// enable loadscreens
+		// enable loadscreens. BREAKS FOR SOME REASON (OLA?)
 		//MemoryVP::Nop(0x4A69D4, 1);
 		//// ff 74 24 78             push   DWORD PTR [esp+0x78]
 		//MemoryVP::Patch(0x4A69D4+1, 0x782474ff);
 
-		MemoryVP::Patch(0x67BAB7 +2, D3D8AtomicDefaultInstanceCallback_fixed);
-		MemoryVP::Patch(0x67BACB +3, rxD3D8DefaultRenderCallback_xbox);
+		Patch(0x67BAB7 +2, D3D8AtomicDefaultInstanceCallback_fixed);
+		Patch(0x67BACB +3, rxD3D8DefaultRenderCallback_xbox);
 	}
 #endif
 
@@ -945,8 +948,8 @@ DllMain(HINSTANCE hInst, DWORD reason, LPVOID)
 			freopen("CONOUT$", "w", stdout);
 			freopen("CONOUT$", "w", stderr);
 		}
-		AddressByVersion<uint32_t>(0, 0, 0, 0, 0, 0);
-		if (gtaversion != -1)
+		AddressByVersion<addr>(0, 0, 0, 0, 0, 0);
+		if(gtaversion != -1)
 			patch();
 	}
 

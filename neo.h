@@ -1,5 +1,12 @@
 #define NUMWEATHERS 7	// 4 for III
 
+struct Color
+{
+	float r, g, b, a;
+	Color(void) {}
+	Color(float r, float g, float b, float a) : r(r), g(g), b(b), a(a) {}
+};
+
 class InterpolatedValue
 {
 public:
@@ -18,6 +25,25 @@ public:
 	float Get(void);
 };
 
+class InterpolatedColor : public InterpolatedValue
+{
+public:
+	Color data[24][NUMWEATHERS];
+	float curInterpolator;
+	Color curVal;
+
+	InterpolatedColor(const Color &init);
+	void Read(char *s, int line, int field);
+	Color Get(void);
+};
+
+class InterpolatedLight : public InterpolatedColor
+{
+public:
+	void Read(char *s, int line, int field);
+};
+
+
 void neoReadWeatherTimeBlock(FILE *file, InterpolatedValue *interp);
 
 class CustomPipe
@@ -28,9 +54,15 @@ public:
 	void CreateRwPipeline(void);
 	void SetRenderCallback(RxD3D8AllInOneRenderCallBack);
 	void Attach(RpAtomic *atomic);
+	static RpAtomic *setatomicCB(RpAtomic *atomic, void *data);
 };
 
+void UploadZero(int loc);
+void UploadLightColor(RpLight *light, int loc);
+void UploadLightDirection(RpLight *light, int loc);
+
 void neoWorldPipeInit(void);
+void neoRimPipeInit(void);
 
 void hookWaterDrops(void);
 void neoInit(void);

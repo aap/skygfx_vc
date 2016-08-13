@@ -29,40 +29,16 @@ enum
 
 extern int gtaversion;
 
-//template<typename T>
-//inline T AddressByVersion(uint32_t addressIII10, uint32_t addressIII11, uint32_t addressvc10)
-//{
-//	if(gtaversion == -1){
-//		     if(*(uint32_t*)0x5C1E75 == 0xB85548EC) gtaversion = III_10;
-//		else if(*(uint32_t*)0x5C2135 == 0xB85548EC) gtaversion = III_11;
-//		else if(*(uint32_t*)0x5C6FD5 == 0xB85548EC) gtaversion = III_STEAM;
-//		else if(*(uint32_t*)0x667BF5 == 0xB85548EC) gtaversion = VC_10;
-//		else if(*(uint32_t*)0x667C45 == 0xB85548EC) gtaversion = VC_11;
-//		else if(*(uint32_t*)0x666BA5 == 0xB85548EC) gtaversion = VC_STEAM;
-//		else gtaversion = 0;
-//	}
-//	switch(gtaversion){
-//	case III_10:
-//		return (T)addressIII10;
-//	case III_11:
-//		return (T)addressIII11;
-//	case VC_10:
-//		return (T)addressvc10;
-//	default:
-//		return (T)0;
-//	}
-//}
-
 template<typename T>
-inline T AddressByVersion(uint32_t addressIII10, uint32_t addressIII11, uint32_t addressIIISteam, uint32_t addressvc10, uint32_t addressvc11, uint32_t addressvcSteam)
+inline T AddressByVersion(addr addressIII10, addr addressIII11, addr addressIIISteam, addr addressvc10, addr addressvc11, addr addressvcSteam)
 {
 	if(gtaversion == -1){
-		     if(*(uint32_t*)0x5C1E75 == 0xB85548EC) gtaversion = III_10;
-		else if(*(uint32_t*)0x5C2135 == 0xB85548EC) gtaversion = III_11;
-		else if(*(uint32_t*)0x5C6FD5 == 0xB85548EC) gtaversion = III_STEAM;
-		else if(*(uint32_t*)0x667BF5 == 0xB85548EC) gtaversion = VC_10;
-		else if(*(uint32_t*)0x667C45 == 0xB85548EC) gtaversion = VC_11;
-		else if(*(uint32_t*)0x666BA5 == 0xB85548EC) gtaversion = VC_STEAM;
+		     if(*(addr*)0x5C1E75 == 0xB85548EC) gtaversion = III_10;
+		else if(*(addr*)0x5C2135 == 0xB85548EC) gtaversion = III_11;
+		else if(*(addr*)0x5C6FD5 == 0xB85548EC) gtaversion = III_STEAM;
+		else if(*(addr*)0x667BF5 == 0xB85548EC) gtaversion = VC_10;
+		else if(*(addr*)0x667C45 == 0xB85548EC) gtaversion = VC_11;
+		else if(*(addr*)0x666BA5 == 0xB85548EC) gtaversion = VC_STEAM;
 		else gtaversion = 0;
 	}
 	switch(gtaversion){
@@ -95,12 +71,14 @@ isVC(void)
 	return gtaversion >= VC_10 && gtaversion <= VC_STEAM;
 }
 
-template<typename AT>
-inline AT DynBaseAddress(AT address)
-{
-	return (AT)GetModuleHandle(nullptr) - 0x400000 + address;
+#define PTRFROMCALL(addr) (uint32_t)(*(uint32_t*)((uint32_t)addr+1) + (uint32_t)addr + 5)
+#define INTERCEPT(saved, func, a) \
+{ \
+	saved = PTRFROMCALL(a); \
+	InjectHook(a, func); \
 }
 
+/*
 namespace Memory
 {
 	template<typename T, typename AT>
@@ -135,9 +113,10 @@ namespace Memory
 		*(ptrdiff_t*)((DWORD)address + 1) = dwHook - (DWORD)address - 5;
 	}
 };
+*/
 
-namespace MemoryVP
-{
+//namespace MemoryVP
+//{
 	template<typename T, typename AT>
 	inline void		Patch(AT address, T value)
 	{
@@ -187,27 +166,16 @@ namespace MemoryVP
 		else
 			VirtualProtect((void*)address, 5, dwProtect[0], &dwProtect[1]);
 	}
+//};
 
-	namespace DynBase
-	{
-		template<typename T, typename AT>
-		inline void		Patch(AT address, T value)
-		{
-			MemoryVP::Patch(DynBaseAddress(address), value);
-		}
-
-		template<typename AT>
-		inline void		Nop(AT address, unsigned int nCount)
-		{
-			MemoryVP::Nop(DynBaseAddress(address), nCount);
-		}
-
-		template<typename AT, typename HT>
-		inline void		InjectHook(AT address, HT hook, unsigned int nType=PATCH_NOTHING)
-		{
-			MemoryVP::InjectHook(DynBaseAddress(address), hook, nType);
-		}
-	};
-};
+inline void ExtractCall(void *dst, addr a)
+{
+	*(addr*)dst = (addr)(*(addr*)(a+1) + a + 5);
+}
+inline void InterceptCall(void *dst, void *func, addr a)
+{
+	ExtractCall(dst, a);
+	InjectHook(a, func);
+}
 
 #endif

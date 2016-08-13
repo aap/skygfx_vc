@@ -12,11 +12,13 @@
 #include <stdint.h>
 #include <assert.h>
 #include "resource.h"
-#include "MemoryMgr.h"
 
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
+typedef uintptr_t addr;
+
+#include "MemoryMgr.h"
 
 //#define RELEASE
 
@@ -97,13 +99,6 @@ struct CPlaceable
 
 typedef void (*voidfunc)(void);
 
-#define PTRFROMCALL(addr) (uint32_t)(*(uint32_t*)((uint32_t)addr+1) + (uint32_t)addr + 5)
-#define INTERCEPT(saved, func, a) \
-{ \
-	saved = PTRFROMCALL(a); \
-	MemoryVP::InjectHook(a, func); \
-}
-
 extern HMODULE dllModule;
 extern char asipath[MAX_PATH];
 
@@ -162,7 +157,8 @@ enum {
 	LOC_eye         = 16,
 	LOC_ambient     = 17,
 	LOC_directDir   = 18,
-	LOC_directDiff  = 19,
+	LOC_directDiff  = 19,	// remove
+	LOC_directCol   = 19,
 	LOC_directSpec  = 20,
 	LOC_lights      = 21,
 	LOC_rampStart   = 31,

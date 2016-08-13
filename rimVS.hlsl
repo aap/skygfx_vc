@@ -54,7 +54,8 @@ main(in VS_INPUT In)
 	Out.position = mul(proj, mul(view, mul(world, In.Position)));
 	Out.texcoord0 = In.TexCoord;
 	Out.color = float4(0.0, 0.0, 0.0, 1.0);
-	Out.color.xyz += ambient*surfProps.x;
+//	Out.color.xyz += ambient*surfProps.x;
+	Out.color.xyz += ambient;
 
 	float3 V = normalize(eye - mul(world, In.Position).xyz);
 //	float3 V = -mul(view, float4(0.0, 0.0, -1.0, 0.0));
@@ -64,10 +65,13 @@ main(in VS_INPUT In)
 	float4 r = lerp(rampStart, rampEnd, f)*rim.z;
 	r = saturate(r);
 
-	Out.color.xyz += directDiff*surfProps.z*diffuseTerm(N, -directDir.xyz);
+//	Out.color.xyz += directDiff*surfProps.z*diffuseTerm(N, -directDir.xyz);
+	Out.color.xyz += directDiff*diffuseTerm(N, -directDir.xyz);
 	for(int i = 0; i < 4; i++)
-		Out.color.xyz += lights[i].diff*surfProps.z*diffuseTerm(N, -lights[i].dir);
-	Out.color.xyz += surfProps.y*r.xyz;
+//		Out.color.xyz += lights[i].diff*surfProps.z*diffuseTerm(N, -lights[i].dir);
+		Out.color.xyz += lights[i].diff*diffuseTerm(N, -lights[i].dir);
+//	Out.color.xyz += surfProps.y*r.xyz;
+	Out.color.xyz += r.xyz;
 	Out.color = saturate(Out.color);
 	Out.color *= matCol;
 

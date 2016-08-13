@@ -60,13 +60,24 @@ neoWorldPipeInit(void)
 {
 	WorldPipe::Get()->Init();
 	if(gtaversion == III_10){
-		MemoryVP::InjectHook(0x4768F1, &CSimpleModelInfo::SetAtomic_hook);
-		MemoryVP::InjectHook(0x476707, &CSimpleModelInfo::SetAtomic_hook);
+		InjectHook(0x4768F1, &CSimpleModelInfo::SetAtomic_hook);
+		InjectHook(0x476707, &CSimpleModelInfo::SetAtomic_hook);
 	}else if(gtaversion == VC_10){
 		// virtual in VC because of added CWeaponModelInfo
-		MemoryVP::Patch(0x697FF8, &CSimpleModelInfo::SetAtomic_hook);
-		MemoryVP::Patch(0x698028, &CSimpleModelInfo::SetAtomic_hook);
+		Patch(0x697FF8, &CSimpleModelInfo::SetAtomic_hook);
+		Patch(0x698028, &CSimpleModelInfo::SetAtomic_hook);
 	}
+}
+
+extern "C" {
+__declspec(dllexport) void
+AttachWorldPipeToRwObject(RwObject *obj)
+{
+	if(RwObjectGetType(obj) == rpATOMIC)
+		WorldPipe::Get()->Attach((RpAtomic*)obj);
+	else if(RwObjectGetType(obj) == rpCLUMP)
+		RpClumpForAllAtomics((RpClump*)obj, CustomPipe::setatomicCB, WorldPipe::Get());
+}
 }
 
 WorldPipe*
@@ -76,13 +87,6 @@ WorldPipe::Get(void)
 	return &worldpipe;
 }
 
-void
-WorldPipe::Attach(RpAtomic *atomic)
-{
-	if(isActive && *RWPLUGINOFFSET(int, atomic, MatFXAtomicDataOffset))
-		CustomPipe::Attach(atomic);
-}
-
 WorldPipe::WorldPipe(void)
  : lightmapBlend(1.0f)
 {
@@ -90,6 +94,13 @@ WorldPipe::WorldPipe(void)
 	modulate2x = false;
 	isActive = true;
 	usePixelShader = true;
+}
+
+void
+WorldPipe::Attach(RpAtomic *atomic)
+{
+	if(isActive && *RWPLUGINOFFSET(int, atomic, MatFXAtomicDataOffset))
+		CustomPipe::Attach(atomic);
 }
 
 static void rendercbwrapper(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
@@ -132,6 +143,10 @@ WorldPipe::LoadTweakingTable(void)
 	neoReadWeatherTimeBlock(dat, &lightmapBlend);
 	fclose(dat);
 }
+
+//
+// Rendering
+//
 
 void
 WorldPipe::RenderObjectSetup(RwUInt32 flags)

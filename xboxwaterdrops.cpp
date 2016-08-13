@@ -47,7 +47,7 @@ hookWaterDrops(void)
 {
 	if(gtaversion == III_10 || gtaversion == VC_10){
 		// ADDRESSES
-		MemoryVP::InjectHook(AddressByVersion<uint32_t>(0x48E603, 0, 0, 0x4A604F, 0, 0), RenderEffects_hook);
+		InjectHook(AddressByVersion<uint32_t>(0x48E603, 0, 0, 0x4A604F, 0, 0), RenderEffects_hook);
 		INTERCEPT(reset_call_1, reset_hook_1, AddressByVersion<uint32_t>(0x48C1AB, 0, 0, 0x4A4DD6, 0, 0));
 		INTERCEPT(reset_call_2, reset_hook_2, AddressByVersion<uint32_t>(0x48C530, 0, 0, 0x4A48EA, 0, 0));
 		INTERCEPT(reset_call_3, reset_hook_3, AddressByVersion<uint32_t>(0x42155D, 0, 0, 0x42BCD6, 0, 0));
@@ -58,8 +58,8 @@ hookWaterDrops(void)
 
 		/* remove old effect in VC */
 		if(gtaversion == VC_10){
-			MemoryVP::Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560D63, 0, 0), 5);
-		//	MemoryVP::Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560EE3, 0, 0), 5);	// these are the blood drops, don't remove
+			Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560D63, 0, 0), 5);
+		//	Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560EE3, 0, 0), 5);	// these are the blood drops, don't remove
 		}
 	}
 }
