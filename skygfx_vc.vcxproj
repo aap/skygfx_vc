@@ -163,6 +163,8 @@
     <ClCompile Include="neoWaterdrops.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ini_parser.hpp" />
+    <ClInclude Include="MemoryMgr.h" />
     <ClInclude Include="neo.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="skygfx.h" />

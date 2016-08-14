@@ -1,5 +1,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _USE_MATH_DEFINES
+#pragma warning(disable: 4244)	// int to float
+#pragma warning(disable: 4800)	// int to bool
+#pragma warning(disable: 4838)  // narrowing conversion
 
 #include <windows.h>
 #include <rwcore.h>
@@ -108,12 +111,12 @@ extern int texgenstyle, texgenkey;
 extern int xboxcarpipe, xboxcarpipekey;
 extern int rimlight, rimlightkey;
 extern int xboxworldpipe, xboxworldpipekey;
+extern int xboxwaterdrops;
 extern int envMapSize;
 
 char *getpath(char *path);
 RwImage *readTGA(const char *afilename);
 
-void RenderEnvTex(void);
 void DefinedState(void);
 
 #include "neo.h"
@@ -158,7 +161,6 @@ enum {
 	LOC_eye         = 16,
 	LOC_ambient     = 17,
 	LOC_directDir   = 18,
-	LOC_directDiff  = 19,	// remove
 	LOC_directCol   = 19,
 	LOC_directSpec  = 20,
 	LOC_lights      = 21,

@@ -1,4 +1,5 @@
 #include "skygfx.h"
+#include "ini_parser.hpp"
 #include "d3d8.h"
 #include "d3d8types.h"
 
@@ -68,6 +69,7 @@ int texgenstyle, texgenkey;
 int xboxcarpipe, xboxcarpipekey;
 int rimlight, rimlightkey;
 int xboxworldpipe, xboxworldpipekey;
+int xboxwaterdrops;
 int envMapSize;
 
 int dualpass;
@@ -214,54 +216,6 @@ ApplyEnvMapTextureMatrix_hook(RwTexture *tex, int n, RwFrame *frame)
 	}
 	RwD3D8SetTransform(D3DTS_TEXTURE0+n, &defmat);
 }
-
-
-//int
-//rpMatFXD3D8AtomicMatFXEnvRender_hook(RxD3D8InstanceData *inst, int flags, int sel, RwTexture *texture, RwTexture *envMap)
-//{
-//	MatFX *matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);
-//	MatFXEnv *env = &matfx->fx[sel];
-//	float factor = env->envCoeff*255.0f;
-//	RwUInt8 intens = factor;
-//	if(factor == 0.0f || !envMap){
-//		if(sel == 0)
-//			return rpMatFXD3D8AtomicMatFXDefaultRender(inst, flags, texture);
-//		return 0;
-//	}
-//	if(inst->vertexAlpha || inst->material->color.alpha != 0xFFu){
-//		if(!rwD3D8RenderStateIsVertexAlphaEnable())
-//			rwD3D8RenderStateVertexAlphaEnable(1);
-//	}else{
-//		if(rwD3D8RenderStateIsVertexAlphaEnable())
-//			rwD3D8RenderStateVertexAlphaEnable(0);
-//	}
-//	if(flags & 0x84 && texture)
-//		RwD3D8SetTexture(texture, 0);
-//	else
-//		RwD3D8SetTexture(NULL, 0);
-//	RwD3D8SetTexture(NULL, 1);
-//
-//	ApplyEnvMapTextureMatrix(envMap, 0, env->envFrame);
-//	RwUInt32 texfactor = ((intens | ((intens | (intens << 8)) << 8)) << 8) | intens;
-//	RwD3D8SetRenderState(D3DRS_TEXTUREFACTOR, texfactor);
-//	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MULTIPLYADD);
-//	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_CURRENT);
-//	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-//	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-//
-//	RwD3D8SetVertexShader(inst->vertexShader);
-//	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
-//	RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
-//	if(inst->indexBuffer)
-//		RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
-//	else
-//		RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
-//	RwD3D8SetTexture(NULL, 1);
-//	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-//	RwD3D8SetTextureStageState(1, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
-//	RwD3D8SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, 1);
-//	return 0;
-//}
 
 int rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData *inst, int flags, RwTexture *texture)
 {
@@ -551,15 +505,6 @@ CGame__InitialiseRenderWare_hook(void)
 	return ret;
 }
 
-int
-readhex(char *str)
-{
-	int n = 0;
-	if(strlen(str) > 2)
-		sscanf(str+2, "%X", &n);
-	return n;
-}
-
 RwCamera *&pRwCamera = *AddressByVersion<RwCamera**>(0x72676C, 0x72676C, 0x7368AC, 0x8100BC, 0x8100C4, 0x80F0C4);
 
 WRAPPER void rpMatFXD3D8AtomicMatFXEnvRender_dual_IIISteam()
@@ -810,10 +755,31 @@ InitialiseGame_hook(void)
 	InitialiseGame();
 }
 
+int
+readhex(const char *str)
+{
+	int n = 0;
+	if(strlen(str) > 2)
+		sscanf(str+2, "%X", &n);
+	return n;
+}
+
+int
+readint(const std::string &s, int default = 0)
+{
+	try{
+		return std::stoi(s);
+	}catch(...){
+		return default;
+	}
+}
+
 void
 patch(void)
 {
-	char tmp[32];
+	using namespace std;
+//	char tmp[32];
+	string tmp;
 	char modulePath[MAX_PATH];
 
 	GetModuleFileName(dllModule, modulePath, MAX_PATH);
@@ -825,42 +791,46 @@ patch(void)
 	modulePath[nLen-2] = L'n';
 	modulePath[nLen-3] = L'i';
 
+	linb::ini cfg;
+	cfg.load_file(modulePath);
+
 	// hook for all things that are initialized once when a game is started
 	// ADDRESS
 	InterceptCall(&InitialiseGame, InitialiseGame_hook, AddressByVersion<addr>(0x582E6C, 0, 0, 0x600411, 0, 0));
 
-	GetPrivateProfileString("SkyGfx", "texblendSwitchKey", "0x76", tmp, sizeof(tmp), modulePath);
-	blendkey = readhex(tmp);
-	GetPrivateProfileString("SkyGfx", "texgenSwitchKey", "0x77", tmp, sizeof(tmp), modulePath);
-	texgenkey = readhex(tmp);
-	GetPrivateProfileString("SkyGfx", "xboxCarPipeKey", "0x75", tmp, sizeof(tmp), modulePath);
-	xboxcarpipekey = readhex(tmp);
-	GetPrivateProfileString("SkyGfx", "rimLightKey", "0x74", tmp, sizeof(tmp), modulePath);
-	rimlightkey = readhex(tmp);
-	GetPrivateProfileString("SkyGfx", "xboxWorldPipeKey", "0x73", tmp, sizeof(tmp), modulePath);
-	xboxworldpipekey = readhex(tmp);
-	blendstyle = GetPrivateProfileInt("SkyGfx", "texblendSwitch", 0, modulePath);
-	if(blendstyle >= 0){
+	blendkey = readhex(cfg.get("SkyGfx", "texblendSwitchKey", "0x76").c_str());
+	texgenkey = readhex(cfg.get("SkyGfx", "texgenSwitchKey", "0x77").c_str());
+	xboxcarpipekey = readhex(cfg.get("SkyGfx", "neoCarPipeKey", "0x75").c_str());
+	rimlightkey = readhex(cfg.get("SkyGfx", "neoRimLightKey", "0x74").c_str());
+	xboxworldpipekey = readhex(cfg.get("SkyGfx", "neoWorldPipeKey", "0x73").c_str());
+
+	tmp = cfg.get("SkyGfx", "texblendSwitch", "");
+	if(tmp != ""){
+		blendstyle = readint(tmp);
 		if (gtaversion != III_STEAM)
 			InjectHook(AddressByVersion<addr>(0x5D0CE8, 0x5D0FA8, 0, 0x6765C8, 0x676618, 0x675578), rpMatFXD3D8AtomicMatFXEnvRender_dual);
 		else
 			InjectHook(0x5D8D37, rpMatFXD3D8AtomicMatFXEnvRender_dual_IIISteam);
 	}
 	blendstyle %= 2;
-	texgenstyle = GetPrivateProfileInt("SkyGfx", "texgenSwitch", 0, modulePath);
-	if(texgenstyle >= 0){
+	tmp = cfg.get("SkyGfx", "texgenSwitch", "");
+	if(tmp != ""){
+		texgenstyle = readint(tmp);
 		if (gtaversion != III_STEAM)
 			InjectHook(ApplyEnvMapTextureMatrix_A, ApplyEnvMapTextureMatrix_hook, PATCH_JUMP);
 		else
 			InjectHook(ApplyEnvMapTextureMatrix_A, ApplyEnvMapTextureMatrix_hook_IIISteam, PATCH_JUMP);
 	}
 	texgenstyle %= 2;
-	if(isVC() && GetPrivateProfileInt("SkyGfx", "IIIReflections", FALSE, modulePath)){
+
+	tmp = cfg.get("SkyGfx", "IIIEnvFrame", "");
+	if(isVC() && tmp != "" && readint(tmp)){
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x57A8BA, 0x57A8DA, 0x57A7AA), createIIIEnvFrame);
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x57A8C7, 0x57A8E7, 0x57A7B7),
 		           AddressByVersion<addr>(0, 0, 0, 0x57A8F4, 0x57A914, 0x57A7E4), PATCH_JUMP);
 	}
-	if(isIII() && GetPrivateProfileInt("SkyGfx", "VCReflections", FALSE, modulePath)){
+	tmp = cfg.get("SkyGfx", "VCEnvFrame", "");
+	if(isIII() && tmp != "" && readint(tmp)){
 		InjectHook(AddressByVersion<addr>(0x5218A2, 0x521AE2, 0x521A72, 0, 0, 0), createVCEnvFrame);
 		InjectHook(AddressByVersion<addr>(0x5218AC, 0x521AEC, 0x521A7C, 0, 0, 0),
 		           AddressByVersion<addr>(0x52195E, 0x521B9E, 0x521B2E, 0, 0, 0), PATCH_JUMP);
@@ -869,15 +839,17 @@ patch(void)
 	if(isIII())
 		InjectHook(AddressByVersion<addr>(0x59BABF, 0x59BD7F, 0x598E6F, 0, 0, 0), CreateTextureFilterFlags);
 
-	xboxcarpipe = GetPrivateProfileInt("SkyGfx", "xboxCarPipe", 0, modulePath);
-	envMapSize = GetPrivateProfileInt("SkyGfx", "envMapSize", 128, modulePath);
-	rimlight = GetPrivateProfileInt("SkyGfx", "rimLight", 0, modulePath);
+	xboxcarpipe = readint(cfg.get("SkyGfx", "neoCarPipe", ""), -1);
+	envMapSize = readint(cfg.get("SkyGfx", "envMapSize", ""), 128);
+	rimlight = readint(cfg.get("SkyGfx", "neoRimLightPipe", ""), -1);
 	int n = 1;
 	while(n < envMapSize) n *= 2;
 	envMapSize = n;
-	xboxworldpipe = GetPrivateProfileInt("SkyGfx", "xboxWorldPipe", -1, modulePath);
+	xboxworldpipe = readint(cfg.get("SkyGfx", "neoWorldPipe", ""), -1);
 
-	if(dualpass = GetPrivateProfileInt("SkyGfx", "dualPass", TRUE, modulePath)){
+	tmp = cfg.get("SkyGfx", "dualPass", "");
+	if(tmp != ""){
+		dualpass = readint(tmp);
 		if (gtaversion != III_STEAM)
 			InjectHook(AddressByVersion<addr>(0x5DFB99, 0x5DFE59, 0, 0x678D69, 0x678DB9, 0x677D19), dualPassHook, PATCH_JUMP);
 		else
@@ -885,7 +857,7 @@ patch(void)
 		InjectHook(AddressByVersion<addr>(0x5CEB80, 0x5CEE40, 0x5DB760, 0x674380, 0x6743D0, 0x673330), rpMatFXD3D8AtomicMatFXDefaultRender, PATCH_JUMP);
 	}
 
-	if(isVC() && GetPrivateProfileInt("SkyGfx", "disableBackfaceCulling", FALSE, modulePath)){
+	if(isVC() && readint(cfg.get("SkyGfx", "disableBackfaceCulling", ""), 0)){
 		// hope I didn't miss anything
 		Patch<uchar>(AddressByVersion<addr>(0, 0, 0, 0x4C9E5F, 0x4C9E7F, 0x4C9D1F), 1);	// in CRenderer::RenderOneNonRoad()
 		Patch<uchar>(AddressByVersion<addr>(0, 0, 0, 0x4C9F08, 0x4C9F28, 0x4C9DC8), 1);	// in CRenderer::RenderBoats()
@@ -908,7 +880,9 @@ patch(void)
 	if(isVC())
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x55EA39, 0x55EA59, 0x55E929), sniperTrailsHook, PATCH_JUMP);
 
-	if(GetPrivateProfileInt("SkyGfx", "xboxWaterDrops", FALSE, modulePath))
+	tmp = cfg.get("SkyGfx", "xboxWaterDrops", "");
+	xboxwaterdrops = readint(tmp);
+	if(tmp != "" && xboxwaterdrops)
 		hookWaterDrops();
 
 #ifndef RELEASE
@@ -916,7 +890,7 @@ patch(void)
 		// ignore txd.img
 		InjectHook(0x48C12E, 0x48C14C, PATCH_JUMP);
 
-		int i = GetPrivateProfileInt("SkyGfx", "curve", -1, modulePath);
+		int i = readint(cfg.get("SkyGfx", "curve", ""), -1);
 		if(i >= 0){
 			curveIdx = i % 256;
 			InjectHook(0x48E44B, curvehook, PATCH_JUMP);

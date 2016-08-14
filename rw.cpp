@@ -168,7 +168,7 @@ static uint32_t RwStreamSkip_A = AddressByVersion<uint32_t>(0x5A3DF0, 0, 0, 0x64
 WRAPPER RwStream *RwStreamSkip(RwStream*, RwUInt32) { VARJMP(RwStreamSkip_A); }
 static uint32_t RwStreamFindChunk_A = AddressByVersion<uint32_t>(0x5AA540, 0, 0, 0x64FAC0, 0, 0);
 WRAPPER RwBool RwStreamFindChunk(RwStream*, RwUInt32, RwUInt32*, RwUInt32*) { VARJMP(RwStreamFindChunk_A); }
-static uint32_t RwTexDictionaryStreamRead_A = AddressByVersion<uint32_t>(0x4765ED, 0, 0, 0x61E710, 0, 0);
+static uint32_t RwTexDictionaryStreamRead_A = AddressByVersion<uint32_t>(0x5924A0, 0, 0, 0x61E710, 0, 0);
 WRAPPER RwTexDictionary *RwTexDictionaryStreamRead(RwStream*) { VARJMP(RwTexDictionaryStreamRead_A); }
 
 static uint32_t RwIm2DGetNearScreenZ_A = AddressByVersion<uint32_t>(0x5A43A0, 0x5A4660, 0x5A5340, 0x649B80, 0x649BD0, 0x648B30);

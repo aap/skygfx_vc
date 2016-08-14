@@ -157,9 +157,9 @@ public:
 	// Rendering
 
 	static RwTexture *ms_maskTex;
-	static RwTexture *ms_tex;	// TODO
-	static RwRaster *ms_maskRaster;
-	static RwRaster *ms_raster;	// TODO
+	static RwTexture *ms_tex;
+//	static RwRaster *ms_maskRaster;
+	static RwRaster *ms_raster;
 	static int ms_fbWidth, ms_fbHeight;
 	static void *ms_vertexBuf;
 	static void *ms_indexBuf;

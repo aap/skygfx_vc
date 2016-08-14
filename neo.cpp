@@ -17,10 +17,7 @@ neoInit(void)
 	if(xboxworldpipe >= 0)
 		neoWorldPipeInit();
 
-	if(!RwD3D9Supported())
-		return;
-
-	if(xboxcarpipe >= 0){
+	if(xboxcarpipe >= 0 || xboxwaterdrops){
 		char *path = getpath("neo\\neo.txd");
 		if(path == NULL){
 			MessageBox(NULL, "Couldn't load 'neo\\neo.txd'", "Error", MB_ICONERROR | MB_OK);
@@ -38,6 +35,11 @@ neoInit(void)
 		// which sets up "generic" as the current TXD
 		RwTexDictionarySetCurrent(neoTxd);
 	}
+
+	WaterDrops::ms_maskTex = RwTextureRead("dropmask", NULL);
+
+	if(!RwD3D9Supported())
+		return;
 
 	if(xboxcarpipe >= 0)
 		neoCarPipeInit();

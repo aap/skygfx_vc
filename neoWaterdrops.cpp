@@ -5,11 +5,11 @@
 
 
 // ADDRESS
-static uint32_t RenderEffects_A = AddressByVersion<uint32_t>(0x48E090, 0, 0, 0x4A6510, 0, 0);
+static addr RenderEffects_A;
 WRAPPER void RenderEffects(void) { VARJMP(RenderEffects_A); }
 
 #define INJECTRESET(x) \
-	uint32_t reset_call_##x; \
+	addr reset_call_##x; \
 	void reset_hook_##x(void){ \
 		((voidfunc)reset_call_##x)(); \
 		WaterDrops::Reset(); \
@@ -21,7 +21,7 @@ INJECTRESET(3)
 INJECTRESET(4)
 INJECTRESET(5)
 
-uint32_t splashbreak;
+addr splashbreak;
 void __declspec(naked)
 splashhook(void)
 {
@@ -47,19 +47,19 @@ hookWaterDrops(void)
 {
 	if(gtaversion == III_10 || gtaversion == VC_10){
 		// ADDRESSES
-		InjectHook(AddressByVersion<uint32_t>(0x48E603, 0, 0, 0x4A604F, 0, 0), RenderEffects_hook);
-		INTERCEPT(reset_call_1, reset_hook_1, AddressByVersion<uint32_t>(0x48C1AB, 0, 0, 0x4A4DD6, 0, 0));
-		INTERCEPT(reset_call_2, reset_hook_2, AddressByVersion<uint32_t>(0x48C530, 0, 0, 0x4A48EA, 0, 0));
-		INTERCEPT(reset_call_3, reset_hook_3, AddressByVersion<uint32_t>(0x42155D, 0, 0, 0x42BCD6, 0, 0));
-		INTERCEPT(reset_call_4, reset_hook_4, AddressByVersion<uint32_t>(0x42177A, 0, 0, 0x42C0BC, 0, 0));
-		INTERCEPT(reset_call_5, reset_hook_5, AddressByVersion<uint32_t>(0x421926, 0, 0, 0x42C318, 0, 0));
+		InterceptCall(&RenderEffects_A, RenderEffects_hook, AddressByVersion<addr>(0x48E603, 0, 0, 0x4A604F, 0, 0));
+		INTERCEPT(reset_call_1, reset_hook_1, AddressByVersion<addr>(0x48C1AB, 0, 0, 0x4A4DD6, 0, 0));
+		INTERCEPT(reset_call_2, reset_hook_2, AddressByVersion<addr>(0x48C530, 0, 0, 0x4A48EA, 0, 0));
+		INTERCEPT(reset_call_3, reset_hook_3, AddressByVersion<addr>(0x42155D, 0, 0, 0x42BCD6, 0, 0));
+		INTERCEPT(reset_call_4, reset_hook_4, AddressByVersion<addr>(0x42177A, 0, 0, 0x42C0BC, 0, 0));
+		INTERCEPT(reset_call_5, reset_hook_5, AddressByVersion<addr>(0x421926, 0, 0, 0x42C318, 0, 0));
 
-		INTERCEPT(splashbreak, splashhook, AddressByVersion<uint32_t>(0x4BC7D0, 0, 0, 0x4E8721, 0, 0));
+		INTERCEPT(splashbreak, splashhook, AddressByVersion<addr>(0x4BC7D0, 0, 0, 0x4E8721, 0, 0));
 
 		/* remove old effect in VC */
 		if(gtaversion == VC_10){
-			Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560D63, 0, 0), 5);
-		//	Nop(AddressByVersion<uint32_t>(0, 0, 0, 0x560EE3, 0, 0), 5);	// these are the blood drops, don't remove
+			Nop(AddressByVersion<addr>(0, 0, 0, 0x560D63, 0, 0), 5);
+		//	Nop(AddressByVersion<addr>(0, 0, 0, 0x560EE3, 0, 0), 5);	// these are the blood drops, don't remove
 		}
 	}
 }
@@ -206,7 +206,7 @@ RwV3d WaterDrops::ms_posDelta;
 
 RwTexture *WaterDrops::ms_maskTex;
 RwTexture *WaterDrops::ms_tex;	// TODO
-RwRaster *WaterDrops::ms_maskRaster;
+//RwRaster *WaterDrops::ms_maskRaster;
 RwRaster *WaterDrops::ms_raster;	// TODO
 int WaterDrops::ms_fbWidth, WaterDrops::ms_fbHeight;
 void *WaterDrops::ms_vertexBuf;
@@ -532,6 +532,7 @@ WaterDrops::InitialiseRender(RwCamera *cam)
 
 	scaling = ms_fbHeight/480.0f;
 
+/*
 	path = getpath("neo\\dropmask.tga");
 	assert(path && "couldn't load 'neo\\dropmask.tga'");
 	RwImage *img = readTGA(path);
@@ -544,6 +545,7 @@ WaterDrops::InitialiseRender(RwCamera *cam)
 	ms_maskTex->filterAddressing = 0x3302;
 	RwTextureAddRef(ms_maskTex);
 	RwImageDestroy(img);
+*/
 
 	IDirect3DVertexBuffer8 *vbuf;
 	IDirect3DIndexBuffer8 *ibuf;
@@ -563,6 +565,7 @@ WaterDrops::InitialiseRender(RwCamera *cam)
 	}
 	ibuf->Unlock();
 
+	int w, h;
 	for(w = 1; w < cam->frameBuffer->width; w <<= 1);
 	for(h = 1; h < cam->frameBuffer->height; h <<= 1);
 	ms_raster = RwRasterCreate(w, h, 0, 5);
