@@ -192,16 +192,16 @@ RimPipe::ObjectSetup(void)
 void
 RimPipe::RenderMesh(RxD3D8InstanceData *inst)
 {
-						//	{
-						//		static bool keystate = false;
-						//		if(GetAsyncKeyState(VK_F4) & 0x8000){
-						//			if(!keystate){
-						//				keystate = true;
-						//				textured = (textured+1)%2;
-						//			}
-						//		}else
-						//			keystate = false;
-						//	}
+						//{
+						//	static bool keystate = false;
+						//	if(GetAsyncKeyState(VK_F4) & 0x8000){
+						//		if(!keystate){
+						//			keystate = true;
+						//			textured = (textured+1)%2;
+						//		}
+						//	}else
+						//		keystate = false;
+						//}
 
 	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
 	RwD3D9SetFVF(inst->vertexShader);				       // 9!
@@ -247,8 +247,10 @@ RimPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt
 		RenderMesh(inst);
 		inst++;
 	}
+	RwD3D8SetTexture(NULL, 1);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
 	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+	RwD3D8SetTexture(NULL, 2);
 	RwD3D8SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
 	RwD3D8SetTextureStageState(2, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
 }

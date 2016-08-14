@@ -119,6 +119,7 @@ void DefinedState(void);
 #include "neo.h"
 
 extern void **&RwEngineInst;
+extern RpWorld *&pRpWorld;
 extern RpLight *&pAmbient;
 extern RpLight *&pDirect;
 extern RpLight **pExtraDirectionals;
@@ -164,6 +165,7 @@ enum {
 	LOC_rampStart   = 31,
 	LOC_rampEnd     = 32,
 	LOC_rim         = 33,
+	LOC_reflProps   = 34,
 
 	LOC_matCol      = 29,
 	LOC_surfProps   = 30,

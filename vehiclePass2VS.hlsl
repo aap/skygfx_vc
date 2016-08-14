@@ -27,8 +27,7 @@ float4      directDiff : register(c19);
 float4      directSpec : register(c20);
 Directional lights[4]  : register(c21);
 // per mesh
-float4	    matCol     : register(c29);
-float4	    surfProps  : register(c30);
+float4	    reflProps  : register(c34);
 
 float
 specTerm(float3 N, float3 L, float3 V, float power)
@@ -52,9 +51,9 @@ mainVS(in VS_INPUT In)
 	float3 N = mul((float3x3)worldIT, In.Normal).xyz;
 
 	Out.color = float4(0.0, 0.0, 0.0, 1.0);
-	Out.color.xyz += directSpec*specTerm(N, -directDir, V, surfProps.y);
+	Out.color.xyz += directSpec*specTerm(N, -directDir, V, reflProps.w);
 	for(int i = 0; i < 4; i++)
-		Out.color.xyz += lights[i].diff.xyz*specTerm(N, -lights[i].dir, V, surfProps.y*2);
+		Out.color.xyz += lights[i].diff.xyz*specTerm(N, -lights[i].dir, V, reflProps.w*2);
 	Out.color = saturate(Out.color);
 
 	return Out;

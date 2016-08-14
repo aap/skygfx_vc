@@ -1,3 +1,5 @@
+extern RwTexDictionary *neoTxd;
+
 #define NUMWEATHERS 7	// 4 for III
 
 struct Color
@@ -40,9 +42,9 @@ public:
 class InterpolatedLight : public InterpolatedColor
 {
 public:
+	InterpolatedLight(const Color &init) : InterpolatedColor(init) {}
 	void Read(char *s, int line, int field);
 };
-
 
 void neoReadWeatherTimeBlock(FILE *file, InterpolatedValue *interp);
 
@@ -63,6 +65,7 @@ void UploadLightDirection(RpLight *light, int loc);
 
 void neoWorldPipeInit(void);
 void neoRimPipeInit(void);
+void neoCarPipeInit(void);
 
 void hookWaterDrops(void);
 void neoInit(void);

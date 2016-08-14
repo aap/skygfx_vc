@@ -6,6 +6,9 @@ extern IDirect3DDevice8 *&RwD3DDevice;
 extern D3DMATERIAL8 &lastmaterial;
 
 // ADDRESS
+static uint32_t CSimpleModelInfo__SetAtomic_A; // for reference: AddressByVersion<uint32_t>(0x517950, 0x517B60, 0x517AF0, 0x56F790, 0, 0);
+WRAPPER void CSimpleModelInfo::SetAtomic(int, RpAtomic*) { VARJMP(CSimpleModelInfo__SetAtomic_A); }
+
 bool &CWeather__LightningFlash = *(bool*)AddressByVersion<uint32_t>(0x95CDA3, 0, 0, 0xA10B67, 0, 0);
 
 /*
@@ -59,12 +62,13 @@ void
 neoWorldPipeInit(void)
 {
 	WorldPipe::Get()->Init();
+	WorldPipe::Get()->modulate2x = true;
 	if(gtaversion == III_10){
-		InjectHook(0x4768F1, &CSimpleModelInfo::SetAtomic_hook);
+		InterceptCall(&CSimpleModelInfo__SetAtomic_A, &CSimpleModelInfo::SetAtomic_hook, 0x4768F1);
 		InjectHook(0x476707, &CSimpleModelInfo::SetAtomic_hook);
 	}else if(gtaversion == VC_10){
 		// virtual in VC because of added CWeaponModelInfo
-		Patch(0x697FF8, &CSimpleModelInfo::SetAtomic_hook);
+		InterceptVmethod(&CSimpleModelInfo__SetAtomic_A, &CSimpleModelInfo::SetAtomic_hook, 0x697FF8);
 		Patch(0x698028, &CSimpleModelInfo::SetAtomic_hook);
 	}
 }
@@ -93,7 +97,7 @@ WorldPipe::WorldPipe(void)
 	CreateRwPipeline();
 	modulate2x = false;
 	isActive = true;
-	usePixelShader = true;
+	usePixelShader = RwD3D9Supported();
 }
 
 void
@@ -119,13 +123,15 @@ WorldPipe::Init(void)
 void
 WorldPipe::CreateShaders(void)
 {
-	HRSRC resource;
-	RwUInt32 *shader;
-	resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_WORLDPS), RT_RCDATA);
-	shader = (RwUInt32*)LoadResource(dllModule, resource);
-	RwD3D9CreatePixelShader(shader, &pixelShader);
-	assert(WorldPipe::pixelShader);
-	FreeResource(shader);
+	if(RwD3D9Supported()){
+		HRSRC resource;
+		RwUInt32 *shader;
+		resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_WORLDPS), RT_RCDATA);
+		shader = (RwUInt32*)LoadResource(dllModule, resource);
+		RwD3D9CreatePixelShader(shader, &pixelShader);
+		assert(WorldPipe::pixelShader);
+		FreeResource(shader);
+	}
 }
 
 void
@@ -278,6 +284,17 @@ WorldPipe::RenderMeshCombinerTearDown(void)
 void
 WorldPipe::RenderMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 {
+							{
+								static bool keystate = false;
+								if(GetAsyncKeyState(xboxworldpipekey) & 0x8000){
+									if(!keystate){
+										keystate = true;
+										xboxworldpipe = (xboxworldpipe+1)%2;
+									}
+								}else
+									keystate = false;
+							}
+
 	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
 	if(flags & (rpGEOMETRYTEXTURED|rpGEOMETRYTEXTURED2))
 		RwD3D8SetTexture(inst->material->texture, 0);
@@ -294,6 +311,8 @@ WorldPipe::RenderMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 		float f = 1.0f;
 		if(!CWeather__LightningFlash)
 			f = lightmapBlend.Get();
+		if(!xboxworldpipe)
+			f = 0.0f;
 		lm[0] = lm[1] = lm[2] = f;
 		lm[3] = inst->material->color.alpha/255.0f;
 		RwD3D9SetPixelShader(pixelShader);              // 9!

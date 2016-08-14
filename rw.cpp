@@ -8,7 +8,7 @@ static uint32_t RwTextureRead_A = AddressByVersion<uint32_t>(0x5A7580, 0x5A7840,
 WRAPPER RwTexture *RwTextureRead(const RwChar*, const RwChar*) { VARJMP(RwTextureRead_A); }
 static uint32_t RwTexDictionaryGetCurrent_A = AddressByVersion<uint32_t>(0x5A7570, 0x5A7830, 0x5A8DA0, 0x64E100, 0, 0);
 WRAPPER RwTexDictionary *RwTexDictionaryGetCurrent(void) { VARJMP(RwTexDictionaryGetCurrent_A); }
-static uint32_t RwTexDictionarySetCurrent_A = AddressByVersion<uint32_t>(0x5A7550, 0x5A7810, 0x5A8D80, 0, 0, 0);
+static uint32_t RwTexDictionarySetCurrent_A = AddressByVersion<uint32_t>(0x5A7550, 0x5A7810, 0x5A8D80, 0x64E0E0, 0, 0);
 WRAPPER RwTexDictionary *RwTexDictionarySetCurrent(RwTexDictionary * dict) { VARJMP(RwTexDictionarySetCurrent_A); }
 static uint32_t RwTexDictionaryForAllTextures_A = AddressByVersion<uint32_t>(0, 0, 0, 0x64DE20, 0, 0);
 WRAPPER const RwTexDictionary *RwTexDictionaryForAllTextures(const RwTexDictionary*, RwTextureCallBack, void*) { VARJMP(RwTexDictionaryForAllTextures_A); }
@@ -20,6 +20,9 @@ static uint32_t D3D8AtomicDefaultInstanceCallback_A = AddressByVersion<uint32_t>
 WRAPPER RwBool D3D8AtomicDefaultInstanceCallback(void*, RxD3D8InstanceData*, RwBool) { VARJMP(D3D8AtomicDefaultInstanceCallback_A); }
 static uint32_t rwD3D8RWGetRasterStage_A = AddressByVersion<uint32_t>(0x5B5390, 0x5B5650, 0x5BA2C0, 0x659840, 0x659890, 0x6587F0);
 WRAPPER int rwD3D8RWGetRasterStage(int) { VARJMP(rwD3D8RWGetRasterStage_A); }
+
+static uint32_t RpWorldAddCamera_A = AddressByVersion<uint32_t>(0x5AFB80, 0, 0, 0x654460, 0, 0);
+WRAPPER RpWorld *RpWorldAddCamera(RpWorld*, RwCamera*) { VARJMP(RpWorldAddCamera_A); }
 
 //
  //
@@ -163,6 +166,10 @@ static uint32_t RwStreamRead_A = AddressByVersion<uint32_t>(0x5A3AD0, 0, 0, 0x64
 WRAPPER RwUInt32 RwStreamRead(RwStream*, void*, RwUInt32) { VARJMP(RwStreamRead_A); }
 static uint32_t RwStreamSkip_A = AddressByVersion<uint32_t>(0x5A3DF0, 0, 0, 0x6457D0, 0, 0);
 WRAPPER RwStream *RwStreamSkip(RwStream*, RwUInt32) { VARJMP(RwStreamSkip_A); }
+static uint32_t RwStreamFindChunk_A = AddressByVersion<uint32_t>(0x5AA540, 0, 0, 0x64FAC0, 0, 0);
+WRAPPER RwBool RwStreamFindChunk(RwStream*, RwUInt32, RwUInt32*, RwUInt32*) { VARJMP(RwStreamFindChunk_A); }
+static uint32_t RwTexDictionaryStreamRead_A = AddressByVersion<uint32_t>(0x4765ED, 0, 0, 0x61E710, 0, 0);
+WRAPPER RwTexDictionary *RwTexDictionaryStreamRead(RwStream*) { VARJMP(RwTexDictionaryStreamRead_A); }
 
 static uint32_t RwIm2DGetNearScreenZ_A = AddressByVersion<uint32_t>(0x5A43A0, 0x5A4660, 0x5A5340, 0x649B80, 0x649BD0, 0x648B30);
 WRAPPER RwReal RwIm2DGetNearScreenZ(void) { VARJMP(RwIm2DGetNearScreenZ_A); }
@@ -191,6 +198,10 @@ WRAPPER void RxD3D8AllInOneSetRenderCallBack(RxPipelineNode*, RxD3D8AllInOneRend
 RxD3D8AllInOneRenderCallBack RxD3D8AllInOneGetRenderCallBack(RxPipelineNode *node)
 {
 	return *(RxD3D8AllInOneRenderCallBack*)((uchar*)node->privateData + 12);
+}
+void RxD3D8AllInOneSetInstanceCallBack(RxPipelineNode *node, RxD3D8AllInOneInstanceCallBack callback)
+{
+	*(RxD3D8AllInOneInstanceCallBack*)node->privateData = callback;
 }
 
 static uint32_t rxD3D8DefaultRenderCallback_A = AddressByVersion<uint32_t>(0x5DF960, 0x5DFC20, 0x5EE350, 0x678B30, 0x678B80, 0x677AE0);

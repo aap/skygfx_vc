@@ -5,6 +5,30 @@
 HMODULE dllModule;
 char asipath[MAX_PATH];
 int gtaversion = -1;
+
+char*
+getpath(char *path)
+{
+	static char tmppath[MAX_PATH];
+	FILE *f;
+
+	f = fopen(path, "r");
+	if(f){
+		fclose(f);
+		return path;
+	}
+	strncpy(tmppath, asipath, MAX_PATH);
+	strcat(tmppath, path);
+	f = fopen(tmppath, "r");
+	if(f){
+		fclose(f);
+		return tmppath;
+	}
+	return NULL;
+}
+
+
+
 static addr rwD3D8RasterIsCubeRaster_A = AddressByVersion<addr>(0, 0, 0, 0x63EE40, 0x63EE90, 0x63DDF0); // VC only
 WRAPPER int rwD3D8RasterIsCubeRaster(RwRaster*) { VARJMP(rwD3D8RasterIsCubeRaster_A); }
 static addr rpMatFXD3D8AtomicMatFXEnvRender_A = AddressByVersion<addr>(0x5CF6C0, 0x5CF980, 0x5D8F7C, 0x674EE0, 0x674F30, 0x673E90);
@@ -32,6 +56,8 @@ int &MatFXAtomicDataOffset = *AddressByVersion<int*>(0x66189C, 0x66189C, 0x67193
 RwMatrix &defmat = *AddressByVersion<RwMatrix*>(0x5E6738, 0x5E6738, 0x62C170, 0x67FB18, 0x67FB18, 0x67EB18);
 
 void **&RwEngineInst = *AddressByVersion<void***>(0x661228, 0x661228, 0x671248, 0x7870C0, 0x7870C8, 0x7860C8);
+// ADDRESS
+RpWorld *&pRpWorld = *AddressByVersion<RpWorld**>(0x726768, 0, 0, 0x8100B8, 0, 0);
 RpLight *&pAmbient = *AddressByVersion<RpLight**>(0x885B6C, 0x885B1C, 0x895C5C, 0x974B44, 0x974B4C, 0x973B4C);
 RpLight *&pDirect = *AddressByVersion<RpLight**>(0x880F7C, 0x880F2C, 0x89106C, 0x94DD40, 0x94DD48, 0x94CD48);
 RpLight **pExtraDirectionals = AddressByVersion<RpLight**>(0x60009C, 0x5FFE84, 0x60CE7C, 0x69A140, 0x69A140, 0x699140);

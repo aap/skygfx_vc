@@ -8,6 +8,45 @@ short &CWeather__OldWeatherType = *AddressByVersion<short*>(0x95CCEC, 0x95CEA4, 
 short &CWeather__NewWeatherType = *AddressByVersion<short*>(0x95CC70, 0x95CE28, 0x96CF68, 0xA10A2E, 0xA10A36, 0xA0FA36);
 float &CWeather__InterpolationValue = *AddressByVersion<float*>(0x8F2520, 0x8F25D4, 0x902714, 0x9787D8, 0x9787E0, 0x9777E0);
 
+RwTexDictionary *neoTxd;
+
+void
+neoInit(void)
+{
+	// World pipe has a non-shader fallback so works without d3d9
+	if(xboxworldpipe >= 0)
+		neoWorldPipeInit();
+
+	if(!RwD3D9Supported())
+		return;
+
+	if(xboxcarpipe >= 0){
+		char *path = getpath("neo\\neo.txd");
+		if(path == NULL){
+			MessageBox(NULL, "Couldn't load 'neo\\neo.txd'", "Error", MB_ICONERROR | MB_OK);
+			exit(0);
+		}
+		RwStream *stream = RwStreamOpen(rwSTREAMFILENAME, rwSTREAMREAD, path);
+		if(RwStreamFindChunk(stream, rwID_TEXDICTIONARY, NULL, NULL))
+			neoTxd = RwTexDictionaryStreamRead(stream);
+		RwStreamClose(stream, NULL);
+		if(neoTxd == NULL){
+			MessageBox(NULL, "Couldn't find Tex Dictionary inside 'neo\\neo.txd'", "Error", MB_ICONERROR | MB_OK);
+			exit(0);
+		}
+		// we can just set this to current because we're executing before CGame::Initialise
+		// which sets up "generic" as the current TXD
+		RwTexDictionarySetCurrent(neoTxd);
+	}
+
+	if(xboxcarpipe >= 0)
+		neoCarPipeInit();
+
+	if(rimlight >= 0)
+		neoRimPipeInit();
+
+}
+
 #define INTERP_SETUP \
 		int h1 = CClock__ms_nGameClockHours;								  \
 		int h2 = (h1+1)%24;										  \

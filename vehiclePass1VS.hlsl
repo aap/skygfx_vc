@@ -32,6 +32,7 @@ Directional lights[4]  : register(c21);
 // per mesh
 float4	    matCol     : register(c29);
 float4	    surfProps  : register(c30);
+float4	    reflProps  : register(c34);
 
 float
 specTerm(float3 N, float3 L, float3 V, float power)
@@ -71,9 +72,10 @@ mainVS(in VS_INPUT In)
 	a = b*b;
 	a = a*a;
 	b = b*a;
-	b = b*(1.0-surfProps.z) + surfProps.z;
-	Out.reflcolor = b*surfProps.x;
-//	Out.reflcolor *= float4(141, 144, 141, 255)/255.0;
+//	b = b*(1.0-surfProps.z) + surfProps.z;
+//	Out.reflcolor = b*surfProps.x;
+	b = b*(1.0-reflProps.y) + reflProps.y;
+	Out.reflcolor = b*reflProps.x;
 
 	return Out;
 }
