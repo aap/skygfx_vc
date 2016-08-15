@@ -16,6 +16,11 @@
 #include <assert.h>
 #include "resource.h"
 
+// want to use RwEngineInst instead of RwEngineInstance
+#undef RWSRCGLOBAL
+#define RWSRCGLOBAL(variable) \
+   (((RwGlobals *)RwEngineInst)->variable)
+
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
@@ -153,25 +158,30 @@ void rxD3D8DefaultRenderCallback_xbox(RwResEntry*, void*, RwUInt8, RwUInt32);
 
 int rwD3D8RWGetRasterStage(int);
 
-enum {
-	LOC_world       = 0,
-	LOC_worldIT     = 4,
-	LOC_view        = 8,
-	LOC_proj        = 12,
-	LOC_eye         = 16,
-	LOC_ambient     = 17,
-	LOC_directDir   = 18,
-	LOC_directCol   = 19,
-	LOC_directSpec  = 20,
-	LOC_lights      = 21,
-	LOC_rampStart   = 31,
-	LOC_rampEnd     = 32,
-	LOC_rim         = 33,
-	LOC_reflProps   = 34,
-
-	LOC_matCol      = 29,
-	LOC_surfProps   = 30,
-};
-
 extern RwTexture *rampTex;
 void reloadRamp(void);
+
+#define MATRIXPRINT(_matrix)                               \
+MACRO_START                                                \
+{                                                          \
+    if (NULL != (_matrix))                                 \
+    {                                                      \
+        const RwV3d * const _x = &(_matrix)->right;        \
+        const RwV3d * const _y = &(_matrix)->up;           \
+        const RwV3d * const _z = &(_matrix)->at;           \
+        const RwV3d * const _w = &(_matrix)->pos;          \
+                                                           \
+        printf("[ [ %8.4f, %8.4f, %8.4f, %8.4f ]\n"        \
+               "  [ %8.4f, %8.4f, %8.4f, %8.4f ]\n"        \
+               "  [ %8.4f, %8.4f, %8.4f, %8.4f ]\n"        \
+               "  [ %8.4f, %8.4f, %8.4f, %8.4f ] ]\n"      \
+               "  %08x == flags\n",                        \
+               _x->x, _x->y, _x->z, (RwReal) 0,            \
+               _y->x, _y->y, _y->z, (RwReal) 0,            \
+               _z->x, _z->y, _z->z, (RwReal) 0,            \
+               _w->x, _w->y, _w->z, (RwReal) 1,            \
+               (_matrix)->flags);                          \
+     }							   \
+}							   \
+MACRO_STOP
+

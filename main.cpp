@@ -28,8 +28,6 @@ getpath(char *path)
 	return NULL;
 }
 
-
-
 static addr rwD3D8RasterIsCubeRaster_A = AddressByVersion<addr>(0, 0, 0, 0x63EE40, 0x63EE90, 0x63DDF0); // VC only
 WRAPPER int rwD3D8RasterIsCubeRaster(RwRaster*) { VARJMP(rwD3D8RasterIsCubeRaster_A); }
 static addr rpMatFXD3D8AtomicMatFXEnvRender_A = AddressByVersion<addr>(0x5CF6C0, 0x5CF980, 0x5D8F7C, 0x674EE0, 0x674F30, 0x673E90);
@@ -880,7 +878,7 @@ patch(void)
 	if(isVC())
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x55EA39, 0x55EA59, 0x55E929), sniperTrailsHook, PATCH_JUMP);
 
-	tmp = cfg.get("SkyGfx", "xboxWaterDrops", "");
+	tmp = cfg.get("SkyGfx", "neoWaterDrops", "");
 	xboxwaterdrops = readint(tmp);
 	if(tmp != "" && xboxwaterdrops)
 		hookWaterDrops();

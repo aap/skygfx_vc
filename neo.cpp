@@ -1,4 +1,6 @@
 #include "skygfx.h"
+#include "d3d8.h"
+#include "d3d8types.h"
 
 byte &CClock__ms_nGameClockHours = *AddressByVersion<byte*>(0x95CDA6, 0x95CF5F, 0x96D09F, 0xA10B6B, 0xA10B74, 0xA0FB75);
 byte &CClock__ms_nGameClockMinutes = *AddressByVersion<byte*>(0x95CDC8, 0x95CF80, 0x96D0C0, 0xA10B92, 0xA10B9B, 0xA0FB9C);
@@ -9,6 +11,50 @@ short &CWeather__NewWeatherType = *AddressByVersion<short*>(0x95CC70, 0x95CE28, 
 float &CWeather__InterpolationValue = *AddressByVersion<float*>(0x8F2520, 0x8F25D4, 0x902714, 0x9787D8, 0x9787E0, 0x9777E0);
 
 RwTexDictionary *neoTxd;
+
+void
+RwToD3DMatrix(void *d3d, RwMatrix *rw)
+{
+	D3DMATRIX *m = (D3DMATRIX*)d3d;
+	m->m[0][0] = rw->right.x;
+	m->m[0][1] = rw->up.x;
+	m->m[0][2] = rw->at.x;
+	m->m[0][3] = rw->pos.x;
+	m->m[1][0] = rw->right.y;
+	m->m[1][1] = rw->up.y;
+	m->m[1][2] = rw->at.y;
+	m->m[1][3] = rw->pos.y;
+	m->m[2][0] = rw->right.z;
+	m->m[2][1] = rw->up.z;
+	m->m[2][2] = rw->at.z;
+	m->m[2][3] = rw->pos.z;
+	m->m[3][0] = 0.0f;
+	m->m[3][1] = 0.0f;
+	m->m[3][2] = 0.0f;
+	m->m[3][3] = 1.0f;
+}
+
+void
+MakeProjectionMatrix(void *d3d, RwCamera *cam)
+{
+	D3DMATRIX *m = (D3DMATRIX*)d3d;
+	m->m[0][0] = cam->recipViewWindow.x;
+	m->m[0][1] = 0.0f;
+	m->m[0][2] = 0.0f;
+	m->m[0][3] = 0.0f;
+	m->m[1][0] = 0.0f;
+	m->m[1][1] = cam->recipViewWindow.y;
+	m->m[1][2] = 0.0f;
+	m->m[1][3] = 0.0f;
+	m->m[2][0] = 0.0f;
+	m->m[2][1] = 0.0f;
+	m->m[2][2] = cam->farPlane / (cam->farPlane - cam->nearPlane);
+	m->m[2][3] = -cam->nearPlane*m->m[2][2];
+	m->m[3][0] = 0.0f;
+	m->m[3][1] = 0.0f;
+	m->m[3][2] = 1.0f;
+	m->m[3][3] = 0.0f;
+}
 
 void
 neoInit(void)

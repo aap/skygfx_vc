@@ -14,68 +14,42 @@ struct VS_OUTPUT
 	float4 reflcolor	: COLOR1;
 };
 
-struct Directional {
-	float3 dir;
-	float4 diff;
-};
+float4x4    combined    : register(c0);
+float4x4    world       : register(c4);
+float4x4    tex         : register(c8);
+float3      eye         : register(c12);
+float3      directDir   : register(c13);
+float3      ambient     : register(c15);
+float4	    matCol      : register(c16);
+float3      directCol   : register(c17);
+float3      lightDir[4] : register(c18);
+float3      lightCol[4] : register(c22);
 
-float4x4    world      : register(c0);
-float4x4    worldIT    : register(c4);
-float4x4    view       : register(c8);
-float4x4    proj       : register(c12);
-float3      eye        : register(c16);
-float4      ambient    : register(c17);
-float3      directDir  : register(c18);
-float4      directDiff : register(c19);
-float4      directSpec : register(c20);
-Directional lights[4]  : register(c21);
-// per mesh
-float4	    matCol     : register(c29);
-float4	    surfProps  : register(c30);
-float4	    reflProps  : register(c34);
-
-float
-specTerm(float3 N, float3 L, float3 V, float power)
-{
-	return pow(saturate(dot(N, normalize(V + L))), power);
-}
-
-float
-diffuseTerm(float3 N, float3 L)
-{
-	return saturate(dot(N, L));
-}
+float4	    directSpec  : register(c26);
+float4	    reflProps   : register(c27);
 
 VS_OUTPUT
 mainVS(in VS_INPUT In)
 {
 	VS_OUTPUT Out;
 
-	Out.position = mul(proj, mul(view, mul(world, In.Position)));
+	Out.position = mul(In.Position, combined);
 	Out.texcoord0 = In.TexCoord;
-	float3 N = mul((float3x3)worldIT, In.Normal).xyz;
+	float3 N = normalize(mul(In.Normal, (float3x3)world).xyz);	// NORMAL MAT
+	float3 V = normalize(eye - mul(In.Position, world).xyz);
 
-	Out.color = float4(0.0, 0.0, 0.0, 1.0);
-	Out.color.xyz += ambient.xyz;
-	Out.color.xyz += diffuseTerm(N, -directDir);
+	float3 c = saturate(dot(N, -directDir));
+	c += ambient;
 	for(int i = 0; i < 4; i++)
-		Out.color.xyz += lights[i].diff.xyz*diffuseTerm(N, -lights[i].dir);
-	Out.color *= matCol;
-	Out.color = saturate(Out.color);
+		c += lightCol[i]*saturate(dot(N, -lightDir[i]));
+	Out.color = float4(saturate(c), 1.0f)*matCol;
 
-	float3 V = normalize(eye - mul(world, In.Position).xyz);
 	float a = dot(V, N)*2.0;
-	float3 U = N*a - V;
-//	U = mul(view, U);
-	Out.texcoord1.xy = U.xy*0.5 + 0.5;
+	float3 uv2 = N*a - V;
+	uv2 = mul(tex, uv2);
+	Out.texcoord1.xy = uv2.xy*0.5 + 0.5;
 	float b = 1.0 - saturate(dot(V, N));
-	a = b*b;
-	a = a*a;
-	b = b*a;
-//	b = b*(1.0-surfProps.z) + surfProps.z;
-//	Out.reflcolor = b*surfProps.x;
-	b = b*(1.0-reflProps.y) + reflProps.y;
-	Out.reflcolor = b*reflProps.x;
+	Out.reflcolor = lerp(b*b*b*b*b, 1.0f, reflProps.y)*reflProps.x;
 
 	return Out;
 }

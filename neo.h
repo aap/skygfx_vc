@@ -1,5 +1,28 @@
 extern RwTexDictionary *neoTxd;
 
+void RwToD3DMatrix(void *d3d, RwMatrix *rw);
+void MakeProjectionMatrix(void *d3d, RwCamera *cam);
+enum {
+	LOC_combined    = 0,
+	LOC_world       = 4,
+	LOC_tex         = 8,
+	LOC_eye         = 12,
+	LOC_directDir   = 13,
+	LOC_ambient     = 15,
+	LOC_matCol      = 16,
+	LOC_directCol   = 17,
+	LOC_lightDir    = 18,
+	LOC_lightCol    = 22,
+
+	LOC_directSpec  = 26,	// for carpipe
+	LOC_reflProps   = 27,
+
+	LOC_rampStart   = 36,	// for rim pipe
+	LOC_rampEnd     = 37,
+	LOC_rim         = 38,
+	LOC_viewVec     = 41,
+};
+
 #define NUMWEATHERS 7	// 4 for III
 
 struct Color

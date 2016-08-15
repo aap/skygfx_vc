@@ -275,6 +275,7 @@ WorldPipe::RenderMeshCombinerSetUp(RxD3D8InstanceData *inst, RwUInt32 flags)
 void
 WorldPipe::RenderMeshCombinerTearDown(void)
 {
+	RwD3D8SetPixelShader(NULL);                     // 8!
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
 	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
 	RwD3D8SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);

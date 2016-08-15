@@ -1,6 +1,7 @@
 #include "skygfx.h"
 #include "d3d8.h"
 #include "d3d8types.h"
+#include <DirectXMath.h>
 
 /*
  * The following code is fairly close to the Xbox code.
@@ -25,7 +26,7 @@ public:
 	static RimPipe *Get(void);
 	void Init(void);
 	static void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
-	static void ShaderSetup(void);
+	static void ShaderSetup(RwMatrix *world);
 	static void ObjectSetup(void);
 	static void RenderMesh(RxD3D8InstanceData *inst);
 };
@@ -116,20 +117,26 @@ RimPipe::LoadTweakingTable(void)
 //
 
 void
-RimPipe::ShaderSetup(void)
+RimPipe::ShaderSetup(RwMatrix *world)
 {
-	D3DMATRIX worldMat, viewMat, projMat;
+	DirectX::XMMATRIX worldMat, viewMat, projMat;
+	RwCamera *cam = (RwCamera*)RWSRCGLOBAL(curCamera);
 
-	RwD3D8GetTransform(D3DTS_WORLD, &worldMat);
-	RwD3D8GetTransform(D3DTS_VIEW, &viewMat);
-	RwD3D8GetTransform(D3DTS_PROJECTION, &projMat);
+	RwMatrix view;
+	RwMatrixInvert(&view, RwFrameGetLTM(RwCameraGetFrame(cam)));
+
+	RwToD3DMatrix(&worldMat, world);
+	RwToD3DMatrix(&viewMat, &view);
+	viewMat.r[0] = DirectX::XMVectorNegate(viewMat.r[0]);
+	MakeProjectionMatrix(&projMat, cam);
+
+	DirectX::XMMATRIX combined = DirectX::XMMatrixMultiply(projMat, DirectX::XMMatrixMultiply(viewMat, worldMat));
+	RwD3D9SetVertexShaderConstant(LOC_combined, (void*)&combined, 4);
 	RwD3D9SetVertexShaderConstant(LOC_world, (void*)&worldMat, 4);
-	RwD3D9SetVertexShaderConstant(LOC_worldIT, (void*)&worldMat, 4);
-	RwD3D9SetVertexShaderConstant(LOC_view, (void*)&viewMat, 4);
-	RwD3D9SetVertexShaderConstant(LOC_proj, (void*)&projMat, 4);
 
-	RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera));
-	RwD3D9SetVertexShaderConstant(LOC_eye, (void*)RwMatrixGetPos(camfrm), 1);
+	DirectX::XMVECTOR v = DirectX::XMVectorSet(0.0f, 0.0f, -1.0f, 0.0f);
+	v = DirectX::XMVector4Transform(v, viewMat);
+	RwD3D9SetVertexShaderConstant(LOC_viewVec, &v, 1);
 
 	if(pAmbient)
 		UploadLightColor(pAmbient, LOC_ambient);
@@ -144,11 +151,11 @@ RimPipe::ShaderSetup(void)
 	}
 	for(int i = 0 ; i < 4; i++)
 		if(pExtraDirectionals[i]){
-			UploadLightDirection(pExtraDirectionals[i], LOC_lights+i*2);
-			UploadLightColor(pExtraDirectionals[i], LOC_lights+1+i*2);
+			UploadLightDirection(pExtraDirectionals[i], LOC_lightDir+i);
+			UploadLightColor(pExtraDirectionals[i], LOC_lightCol+i);
 		}else{
-			UploadZero(LOC_lights+i*2);
-			UploadZero(LOC_lights+1+i*2);
+			UploadZero(LOC_lightDir+i);
+			UploadZero(LOC_lightCol+i);
 		}
 
 						{
@@ -187,14 +194,14 @@ RimPipe::ObjectSetup(void)
 	RwD3D8SetPixelShader(NULL);                                            // 8!
 }
 
-//int textured = 1;
+int textured = 1;
 
 void
 RimPipe::RenderMesh(RxD3D8InstanceData *inst)
 {
 						//{
 						//	static bool keystate = false;
-						//	if(GetAsyncKeyState(VK_F4) & 0x8000){
+						//	if(GetAsyncKeyState(VK_F12) & 0x8000){
 						//		if(!keystate){
 						//			keystate = true;
 						//			textured = (textured+1)%2;
@@ -237,7 +244,7 @@ RimPipe::RenderMesh(RxD3D8InstanceData *inst)
 void
 RimPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
-	ShaderSetup();
+	ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)));
 
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];

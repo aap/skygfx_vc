@@ -1,6 +1,7 @@
 #include "skygfx.h"
 #include "d3d8.h"
 #include "d3d8types.h"
+#include <DirectXMath.h>
 
 //#define DEBUGTEX
 
@@ -41,7 +42,7 @@ public:
 	static void RenderEnvTex(void);
 	static void SetupEnvMap(void);
 	static void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
-	static void ShaderSetup(void);
+	static void ShaderSetup(RwMatrix *world);
 	static void DiffusePass(RxD3D8ResEntryHeader *header);
 	static void SpecularPass(RxD3D8ResEntryHeader *header);
 };
@@ -317,19 +318,26 @@ UploadLightColorWithSpecular(RpLight *light, int loc)
 }
 
 void
-CarPipe::ShaderSetup(void)
+CarPipe::ShaderSetup(RwMatrix *world)
 {
-	D3DMATRIX worldMat, viewMat, projMat;
+	DirectX::XMMATRIX worldMat, viewMat, projMat, texMat;
+	RwCamera *cam = (RwCamera*)RWSRCGLOBAL(curCamera);
 
-	RwD3D8GetTransform(D3DTS_WORLD, &worldMat);
-	RwD3D8GetTransform(D3DTS_VIEW, &viewMat);
-	RwD3D8GetTransform(D3DTS_PROJECTION, &projMat);
+	RwMatrix view;
+	RwMatrixInvert(&view, RwFrameGetLTM(RwCameraGetFrame(cam)));
+
+	RwToD3DMatrix(&worldMat, world);
+	RwToD3DMatrix(&viewMat, &view);
+	viewMat.r[0] = DirectX::XMVectorNegate(viewMat.r[0]);
+	MakeProjectionMatrix(&projMat, cam);
+
+	DirectX::XMMATRIX combined = DirectX::XMMatrixMultiply(projMat, DirectX::XMMatrixMultiply(viewMat, worldMat));
+	RwD3D9SetVertexShaderConstant(LOC_combined, (void*)&combined, 4);
 	RwD3D9SetVertexShaderConstant(LOC_world, (void*)&worldMat, 4);
-	RwD3D9SetVertexShaderConstant(LOC_worldIT, (void*)&worldMat, 4);
-	RwD3D9SetVertexShaderConstant(LOC_view, (void*)&viewMat, 4);
-	RwD3D9SetVertexShaderConstant(LOC_proj, (void*)&projMat, 4);
+	texMat = DirectX::XMMatrixIdentity();
+	RwD3D9SetVertexShaderConstant(LOC_tex, (void*)&texMat, 4);
 
-	RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera));
+	RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame(cam));
 	RwD3D9SetVertexShaderConstant(LOC_eye, (void*)RwMatrixGetPos(camfrm), 1);
 
 	if(pAmbient)
@@ -345,11 +353,11 @@ CarPipe::ShaderSetup(void)
 	}
 	for(int i = 0 ; i < 4; i++)
 		if(pExtraDirectionals[i]){
-			UploadLightDirection(pExtraDirectionals[i], LOC_lights+i*2);
-			UploadLightColorWithSpecular(pExtraDirectionals[i], LOC_lights+1+i*2);
+			UploadLightDirection(pExtraDirectionals[i], LOC_lightDir+i);
+			UploadLightColorWithSpecular(pExtraDirectionals[i], LOC_lightCol+i);
 		}else{
-			UploadZero(LOC_lights+i*2);
-			UploadZero(LOC_lights+1+i*2);
+			UploadZero(LOC_lightDir+i);
+			UploadZero(LOC_lightCol+i);
 		}
 	Color spec = specColor.Get();
 	spec.r *= spec.a;
@@ -372,7 +380,9 @@ CarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
 	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
 
 	RwD3D8SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
+	RwD3D8SetTextureStageState(2, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
 	RwD3D8SetTextureStageState(3, D3DTSS_COLOROP, D3DTOP_DISABLE);
+	RwD3D8SetTextureStageState(3, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
 
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)1);
 	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
@@ -405,7 +415,7 @@ CarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
 		float reflProps[4];
 		reflProps[0] = inst->material->surfaceProps.specular;
 		reflProps[1] = fresnel.Get();
-		reflProps[2] = 0.6f;
+		reflProps[2] = 0.6f;	// unused
 		reflProps[3] = power.Get();
 		RwD3D9SetVertexShaderConstant(LOC_reflProps, (void*)reflProps, 1);
 
@@ -433,6 +443,7 @@ CarPipe::SpecularPass(RxD3D8ResEntryHeader *header)
 	RwD3D8SetTexture(NULL, 1);
 	RwD3D8SetTexture(NULL, 2);
 	RwD3D8SetTexture(NULL, 3);
+	RwD3D8SetPixelShader(NULL);                                                    // 8!
 	RwD3D9SetVertexShader(vertexShaderPass2);                                      // 9!
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)1);
 	for(int i = 0; i < header->numMeshes; i++){
@@ -473,7 +484,7 @@ CarPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt
 	}
 
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
-	ShaderSetup();
+	ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)));
 	DiffusePass(header);
 	SpecularPass(header);
 	RwD3D8SetTexture(NULL, 1);

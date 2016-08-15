@@ -371,7 +371,6 @@ rxD3D8DefaultRenderFFPMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 		RwD3D8SetTexture(inst->material->texture, 0);
 	else
 		RwD3D8SetTexture(NULL, 0);
-	RwD3D8SetPixelShader(NULL);
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE,
 	                 (void*)(inst->vertexAlpha || inst->material->color.alpha != 0xFF));
 	RwD3D8SetVertexShader(inst->vertexShader);

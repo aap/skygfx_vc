@@ -524,28 +524,11 @@ WaterDrops::NoRain(void)
 void
 WaterDrops::InitialiseRender(RwCamera *cam)
 {
-	char *path;
-
 	srand(time(NULL));
 	ms_fbWidth = cam->frameBuffer->width;
 	ms_fbHeight = cam->frameBuffer->height;
 
 	scaling = ms_fbHeight/480.0f;
-
-/*
-	path = getpath("neo\\dropmask.tga");
-	assert(path && "couldn't load 'neo\\dropmask.tga'");
-	RwImage *img = readTGA(path);
-	RwInt32 w, h, d, flags;
-	RwImageFindRasterFormat(img, 4, &w, &h, &d, &flags);
-	ms_maskRaster = RwRasterCreate(w, h, d, flags);
-	ms_maskRaster = RwRasterSetFromImage(ms_maskRaster, img);
-	assert(ms_maskRaster);
-	ms_maskTex = RwTextureCreate(ms_maskRaster);
-	ms_maskTex->filterAddressing = 0x3302;
-	RwTextureAddRef(ms_maskTex);
-	RwImageDestroy(img);
-*/
 
 	IDirect3DVertexBuffer8 *vbuf;
 	IDirect3DIndexBuffer8 *ibuf;

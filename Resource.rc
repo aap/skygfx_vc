@@ -1,8 +1,8 @@
 #include "resource.h"
 #include <windows.h>
 
-IDR_RIMVS RCDATA "Release\\rimVS.cso"
-IDR_VEHICLEONEVS RCDATA "Release\\vehiclePass1VS.cso"
-IDR_VEHICLETWOVS RCDATA "Release\\vehiclePass2VS.cso"
+IDR_RIMVS RCDATA "Debug - III\\rimVS.cso"
+IDR_VEHICLEONEVS RCDATA "Debug - III\\vehiclePass1VS.cso"
+IDR_VEHICLETWOVS RCDATA "Debug - III\\vehiclePass2VS.cso"
 IDR_WORLDPS RCDATA "Debug - III\\worldPS.cso"
 IDR_CURVEPS RCDATA "Debug - III\\curvePS.cso"
