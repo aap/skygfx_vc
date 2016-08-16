@@ -162,6 +162,7 @@
     <ClCompile Include="rwfix.cpp" />
     <ClCompile Include="rw.cpp" />
     <ClCompile Include="neoWaterdrops.cpp" />
+    <ClCompile Include="rwplugin.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ini_parser.hpp" />

@@ -5,10 +5,10 @@
 extern IDirect3DDevice8 *&RwD3DDevice;
 extern D3DMATERIAL8 &lastmaterial;
 
-// ADDRESS
 static uint32_t CSimpleModelInfo__SetAtomic_A; // for reference: AddressByVersion<uint32_t>(0x517950, 0x517B60, 0x517AF0, 0x56F790, 0, 0);
 WRAPPER void CSimpleModelInfo::SetAtomic(int, RpAtomic*) { VARJMP(CSimpleModelInfo__SetAtomic_A); }
 
+// ADDRESS
 bool &CWeather__LightningFlash = *(bool*)AddressByVersion<uint32_t>(0x95CDA3, 0, 0, 0xA10B67, 0, 0);
 
 /*

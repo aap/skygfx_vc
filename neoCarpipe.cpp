@@ -120,8 +120,9 @@ neoCarPipeInit(void)
 	InterceptVmethod(&CVehicleModelInfo::SetClump_A, &CVehicleModelInfo::SetClump_hook,
 	                 AddressByVersion<addr>(0x5FDFF0, 0x5FDDD8, 0x60ADD0, 0x698088, 0x698088, 0x697090));
 	// ADDRESS
-	InterceptCall(&CVisibilityPlugins::SetAtomicRenderCallback_A, &CVisibilityPlugins::SetAtomicRenderCallback_hook,
-	              AddressByVersion<addr>(0x5207C6, 0, 0, 0x579DFB, 0, 0));
+	if(is10())
+		InterceptCall(&CVisibilityPlugins::SetAtomicRenderCallback_A, &CVisibilityPlugins::SetAtomicRenderCallback_hook,
+		              AddressByVersion<addr>(0x5207C6, 0, 0, 0x579DFB, 0, 0));
 	InterceptCall(&RenderScene_A, RenderScene_hook, AddressByVersion<addr>(0x48E5F9, 0x48E6B9, 0x48E649, 0x4A604A, 0x4A606A, 0x4A5F1A));
 }
 

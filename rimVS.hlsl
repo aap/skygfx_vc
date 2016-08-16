@@ -34,7 +34,7 @@ main(in VS_INPUT In)
 	VS_OUTPUT Out;
 
 	Out.position = mul(In.Position, combined);
-	float3 N = mul(In.Normal, world).xyz;
+	float3 N = mul(In.Normal, (float3x3)world).xyz;
 	Out.texcoord0 = In.TexCoord;
 
 	// calculate rim light

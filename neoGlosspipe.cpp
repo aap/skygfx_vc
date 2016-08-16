@@ -77,12 +77,25 @@ GlossPipe::CreateShaders(void)
 //
 
 RwTexture*
-GlossPipe::GetGlossTex(RwTexture *tex)
+GlossPipe::GetGlossTex(RpMaterial *mat)
 {
 	static char name[32];
-	strcpy(name, tex->name);
+	RwTexture *tex;
+	GlossMatExt *glossext = NULL;
+	// if we have the plugin, try to get the texture from that
+	if(GlossOffset != 0){
+		glossext = GETGLOSSEXT(mat);
+		if(glossext->didLookup)
+			return glossext->glosstex;
+	}
+	strcpy(name, mat->texture->name);
 	strcat(name, "_gloss");
-	return RwTexDictionaryFindNamedTexture(texdict, name);
+	tex = RwTexDictionaryFindNamedTexture(texdict, name);
+	if(glossext){
+		glossext->didLookup = true;
+		glossext->glosstex = tex;
+	}
+	return tex;
 }
 
 void
@@ -146,7 +159,7 @@ GlossPipe::RenderGloss(RxD3D8ResEntryHeader *header)
 
 	for(int i = 0; i < header->numMeshes; i++){
 		if(inst->material->texture){
-			RwTexture *gloss = Get()->GetGlossTex(inst->material->texture);
+			RwTexture *gloss = Get()->GetGlossTex(inst->material);
 			if(gloss){
 				RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
 				RwD3D9SetFVF(inst->vertexShader);				       // 9!
@@ -176,7 +189,7 @@ GlossPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUI
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
 						{
 							static bool keystate = false;
-							if(GetAsyncKeyState(VK_F12) & 0x8000){
+							if(GetAsyncKeyState(config.neoGlossPipeKey) & 0x8000){
 								if(!keystate){
 									keystate = true;
 									GlossPipe::Get()->isActive = !GlossPipe::Get()->isActive;

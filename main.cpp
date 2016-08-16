@@ -557,7 +557,7 @@ WRAPPER void TxdStore::SetCurrentTxd(int) { VARJMP(TxdStore_SetCurrentTxd_A); }
 //static addr TxdStore_GetTxdName_A = AddressByVersion<addr>(0, 0, 0, 0x580E50, 0, 0);
 //WRAPPER void TxdStore::GetTxdName(int) { VARJMP(TxdStore_SetCurrentTxd_A); }
 
-static int &gameTxdSlot = *AddressByVersion<int*>(0x628D88, 0x628D88, 0x638D88, 0, 0, 0); // TODO
+static int &gameTxdSlot = *AddressByVersion<int*>(0x628D88, 0x628D88, 0x638D88, 0, 0, 0); // only needed in III
 
 RwTexture*
 RwTextureRead_generic(char *name, char *mask)
@@ -573,27 +573,8 @@ RwTextureRead_generic(char *name, char *mask)
 	return tex;
 }
 
-RwTexture *dumpTxd(RwTexture *texture, void*)
-{
-	printf("  %s %s\n", texture->name, texture->mask);
-	return texture;
-}
 
-RwTexture*
-RwTextureRead_VC(char *name, char *mask)
-{
-	RwTexture *tex;
-	tex = RwTextureRead(name, mask);
-	if(tex)
-		return tex;
-	if(strcmp(name, "greyground256128") == 0)
-		_asm { int 3 };
-	int handle = TxdStore::FindTxdSlot("nbt_hotel02");
-	printf("texture not found: %s %s %d\n", name, mask, handle);
-	RwTexDictionary *txd = RwTexDictionaryGetCurrent();
-	RwTexDictionaryForAllTextures(txd, dumpTxd, NULL);
-	return tex;
-}
+#ifndef RELEASE
 
 void *curvePS;
 
@@ -705,7 +686,7 @@ curvehook(void)
 		retn
 	}
 }
-
+#endif
 
 //
 // real time reflection test; III 1.0
@@ -794,13 +775,17 @@ patch(void)
 
 	// hook for all things that are initialized once when a game is started
 	// ADDRESS
-	InterceptCall(&InitialiseGame, InitialiseGame_hook, AddressByVersion<addr>(0x582E6C, 0, 0, 0x600411, 0, 0));
+	if(gtaversion == III_10 || gtaversion == VC_10){
+		InterceptCall(&InitialiseGame, InitialiseGame_hook, AddressByVersion<addr>(0x582E6C, 0, 0, 0x600411, 0, 0));
+		hookplugins();
+	}
 
-	blendkey = readhex(cfg.get("SkyGfx", "texblendSwitchKey", "0x76").c_str());
-	texgenkey = readhex(cfg.get("SkyGfx", "texgenSwitchKey", "0x77").c_str());
-	xboxcarpipekey = readhex(cfg.get("SkyGfx", "neoCarPipeKey", "0x75").c_str());
-	rimlightkey = readhex(cfg.get("SkyGfx", "neoRimLightKey", "0x74").c_str());
-	config.neoWorldPipeKey = readhex(cfg.get("SkyGfx", "neoWorldPipeKey", "0x73").c_str());
+	blendkey = readhex(cfg.get("SkyGfx", "texblendSwitchKey", "0x0").c_str());
+	texgenkey = readhex(cfg.get("SkyGfx", "texgenSwitchKey", "0x0").c_str());
+	xboxcarpipekey = readhex(cfg.get("SkyGfx", "neoCarPipeKey", "0x0").c_str());
+	rimlightkey = readhex(cfg.get("SkyGfx", "neoRimLightKey", "0x0").c_str());
+	config.neoWorldPipeKey = readhex(cfg.get("SkyGfx", "neoWorldPipeKey", "0x0").c_str());
+	config.neoGlossPipeKey = readhex(cfg.get("SkyGfx", "neoGlossPipeKey", "0x0").c_str());
 
 	tmp = cfg.get("SkyGfx", "texblendSwitch", "");
 	if(tmp != ""){
@@ -886,6 +871,17 @@ patch(void)
 	if(tmp != "" && xboxwaterdrops)
 		hookWaterDrops();
 
+	tmp = cfg.get("SkyGfx", "replaceDefaultPipeline", "");
+	if(tmp != "" && readint(tmp)){
+		if(gtaversion == III_10){
+			Patch(0x5DB427 +2, D3D8AtomicDefaultInstanceCallback_fixed);
+			Patch(0x5DB43B +3, rxD3D8DefaultRenderCallback_xbox);
+		}else if(gtaversion == VC_10){
+			Patch(0x67BAB7 +2, D3D8AtomicDefaultInstanceCallback_fixed);
+			Patch(0x67BACB +3, rxD3D8DefaultRenderCallback_xbox);
+		}
+	}
+
 #ifndef RELEASE
 	if(gtaversion == III_10){
 		// ignore txd.img
@@ -913,8 +909,6 @@ patch(void)
 		Patch<uchar>(0x48E6A7+1, 3);
 		Patch<uchar>(0x48E78C+1, 3);
 
-		Patch(0x5DB427 +2, D3D8AtomicDefaultInstanceCallback_fixed);
-		Patch(0x5DB43B +3, rxD3D8DefaultRenderCallback_xbox);
 	}
 #endif
 #ifndef RELEASE
@@ -928,9 +922,6 @@ patch(void)
 		//MemoryVP::Nop(0x4A69D4, 1);
 		//// ff 74 24 78             push   DWORD PTR [esp+0x78]
 		//MemoryVP::Patch(0x4A69D4+1, 0x782474ff);
-
-		Patch(0x67BAB7 +2, D3D8AtomicDefaultInstanceCallback_fixed);
-		Patch(0x67BACB +3, rxD3D8DefaultRenderCallback_xbox);
 	}
 #endif
 

@@ -134,7 +134,7 @@ class GlossPipe : public CustomPipe
 	void CreateShaders(void);
 
 	static void RenderGloss(RxD3D8ResEntryHeader *header);
-	RwTexture *GetGlossTex(RwTexture *tex);
+	RwTexture *GetGlossTex(RpMaterial *mat);
 public:
 	Color specular;
 	bool isActive;

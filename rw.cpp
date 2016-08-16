@@ -26,6 +26,9 @@ WRAPPER int rwD3D8RWGetRasterStage(int) { VARJMP(rwD3D8RWGetRasterStage_A); }
 static uint32_t RpWorldAddCamera_A = AddressByVersion<uint32_t>(0x5AFB80, 0, 0, 0x654460, 0, 0);
 WRAPPER RpWorld *RpWorldAddCamera(RpWorld*, RwCamera*) { VARJMP(RpWorldAddCamera_A); }
 
+static uint32_t RpMaterialRegisterPlugin_A = AddressByVersion<uint32_t>(0x5ADD40, 0, 0, 0x6558C0, 0, 0);
+WRAPPER RwInt32 RpMaterialRegisterPlugin(RwInt32, RwUInt32, RwPluginObjectConstructor, RwPluginObjectDestructor, RwPluginObjectCopy) { VARJMP(RpMaterialRegisterPlugin_A); }
+
 //
  //
 //
@@ -40,7 +43,7 @@ static uint32_t RwMatrixInvert_A = AddressByVersion<uint32_t>(0x5A2C90, 0x5A2F50
 WRAPPER RwMatrix *RwMatrixInvert(RwMatrix*, const RwMatrix*) { VARJMP(RwMatrixInvert_A); }
 static uint32_t RwMatrixUpdate_A = AddressByVersion<uint32_t>(0x5A28E0, 0x5A2BA0, 0x5A2DF0, 0x6437B0, 0x643800, 0x642760);
 WRAPPER RwMatrix *RwMatrixUpdate(RwMatrix*) { VARJMP(RwMatrixUpdate_A); }
-static uint32_t RwMatrixRotate_A = AddressByVersion<uint32_t>(0x5A2BF0, 0x5A2EB0, 0x5A3510, 0x643EA0, 0x643EF0, 0x642E50); //TODO
+static uint32_t RwMatrixRotate_A = AddressByVersion<uint32_t>(0x5A2BF0, 0x5A2EB0, 0x5A3510, 0x643EA0, 0x643EF0, 0x642E50);
 WRAPPER RwMatrix *RwMatrixRotate(RwMatrix*, const RwV3d*, RwReal, RwOpCombineType) { VARJMP(RwMatrixRotate_A); }
 
 static uint32_t RwFrameCreate_A = AddressByVersion<uint32_t>(0x5A1A00, 0x5A1CC0, 0x5A2270, 0x644AA0, 0x644AF0, 0x643A50);
@@ -155,7 +158,7 @@ WRAPPER RwImage *RwImageFindRasterFormat(RwImage*, RwInt32, RwInt32*, RwInt32*, 
 static uint32_t RwImageDestroy_A = AddressByVersion<uint32_t>(0x5A9180, 0x5A9440, 0x5AB6A0, 0x6512B0, 0x651300, 0x650260);
 WRAPPER RwBool RwImageDestroy(RwImage*) { VARJMP(RwImageDestroy_A); }
 
-// ADDRESS III and VC 1.0
+// ADDRESS
 static uint32_t RwImageCreate_A = AddressByVersion<uint32_t>(0x5A9120, 0, 0, 0x651250, 0, 0);
 WRAPPER RwImage *RwImageCreate(RwInt32, RwInt32, RwInt32) { VARJMP(RwImageCreate_A); }
 static uint32_t RwImageAllocatePixels_A = AddressByVersion<uint32_t>(0x5A91E0, 0, 0, 0x651310, 0, 0);

@@ -60,6 +60,12 @@ inline T AddressByVersion(addr addressIII10, addr addressIII11, addr addressIIIS
 }
 
 inline bool
+is10(void)
+{
+	return gtaversion == III_10 || gtaversion == VC_10;
+}
+
+inline bool
 isIII(void)
 {
 	return gtaversion >= III_10 && gtaversion <= III_STEAM;

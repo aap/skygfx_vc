@@ -45,7 +45,7 @@ RenderEffects_hook(void)
 void
 hookWaterDrops(void)
 {
-	if(gtaversion == III_10 || gtaversion == VC_10){
+	if(is10()){
 		// ADDRESSES
 		InterceptCall(&RenderEffects_A, RenderEffects_hook, AddressByVersion<addr>(0x48E603, 0, 0, 0x4A604F, 0, 0));
 		INTERCEPT(reset_call_1, reset_hook_1, AddressByVersion<addr>(0x48C1AB, 0, 0, 0x4A4DD6, 0, 0));

@@ -54,7 +54,7 @@ struct MatFX
 
 struct CBaseModelInfo
 {
-//	void *vmt;
+//	void *vmt;			 // VC is different....
 //	char name[24];
 //	void *colModel;
 //	void *twodEffects;
@@ -68,7 +68,7 @@ struct CBaseModelInfo
 
 struct CSimpleModelInfo : CBaseModelInfo
 {
-//	RpAtomic *atomics[3];		   // VC is different....
+//	RpAtomic *atomics[3];
 //	float lodDistances[3];
 //	uchar numAtomics;
 //	uchar alpha;
@@ -114,7 +114,7 @@ extern char asipath[MAX_PATH];
 // ini switches
 struct Config {
 	int neoWorldPipe, neoWorldPipeKey;
-	int neoGlossPipe;
+	int neoGlossPipe, neoGlossPipeKey;
 	bool iCanHasNeoWorld, iCanHasNeoGloss;
 };
 extern Config config;
@@ -163,6 +163,19 @@ void rxD3D8DefaultRenderFFPMesh(RxD3D8InstanceData *inst, RwUInt32 flags);
 void rxD3D8DefaultRenderCallback_xbox(RwResEntry*, void*, RwUInt8, RwUInt32);
 
 int rwD3D8RWGetRasterStage(int);
+
+//
+// plugins
+//
+struct GlossMatExt
+{
+	bool didLookup;
+	RwTexture *glosstex;
+};
+extern RwInt32 GlossOffset;
+#define GETGLOSSEXT(m) RWPLUGINOFFSET(GlossMatExt, m, GlossOffset)
+void GlossAttach(void);
+void hookplugins(void);
 
 extern RwTexture *rampTex;
 void reloadRamp(void);
