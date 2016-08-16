@@ -35,6 +35,7 @@ GlossPipe::Get(void)
 {
 	static GlossPipe glosspipe;
 	return &glosspipe;
+
 }
 
 GlossPipe::GlossPipe(void)

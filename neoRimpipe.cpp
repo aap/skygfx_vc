@@ -48,10 +48,12 @@ extern "C" {
 __declspec(dllexport) void
 AttachRimPipeToRwObject(RwObject *obj)
 {
-	if(RwObjectGetType(obj) == rpATOMIC)
-		RimPipe::Get()->Attach((RpAtomic*)obj);
-	else if(RwObjectGetType(obj) == rpCLUMP)
-		RpClumpForAllAtomics((RpClump*)obj, CustomPipe::setatomicCB, RimPipe::Get());
+	if(config.iCanHasNeoRim){
+		if(RwObjectGetType(obj) == rpATOMIC)
+			RimPipe::Get()->Attach((RpAtomic*)obj);
+		else if(RwObjectGetType(obj) == rpCLUMP)
+			RpClumpForAllAtomics((RpClump*)obj, CustomPipe::setatomicCB, RimPipe::Get());
+	}
 }
 }
 
@@ -153,7 +155,12 @@ RimPipe::ShaderSetup(RwMatrix *world)
 	RwMatrix view;
 	RwMatrixInvert(&view, RwFrameGetLTM(RwCameraGetFrame(cam)));
 
-	RwToD3DMatrix(&worldMat, world);
+//	RwToD3DMatrix(&worldMat, world);
+	// Better get the D3D world matrix because for skinned geometry
+	// the vertices might already be in world space. (III cutscene heads)
+	RwD3D8GetTransform(D3DTS_WORLD, &worldMat);
+	worldMat = DirectX::XMMatrixTranspose(worldMat);
+
 	RwToD3DMatrix(&viewMat, &view);
 	viewMat.r[0] = DirectX::XMVectorNegate(viewMat.r[0]);
 	MakeProjectionMatrix(&projMat, cam);
@@ -186,16 +193,6 @@ RimPipe::ShaderSetup(RwMatrix *world)
 			UploadZero(LOC_lightCol+i);
 		}
 
-						{
-							static bool keystate = false;
-							if(GetAsyncKeyState(rimlightkey) & 0x8000){
-								if(!keystate){
-									keystate = true;
-									rimlight = (rimlight+1)%2;
-								}
-							}else
-								keystate = false;
-						}
 	// Rim values
 	Color c = rampStart.Get();
 	RwD3D9SetVertexShaderConstant(LOC_rampStart, (void*)&c, 1);
@@ -272,6 +269,20 @@ RimPipe::RenderMesh(RxD3D8InstanceData *inst)
 void
 RimPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
+						{
+							static bool keystate = false;
+							if(GetAsyncKeyState(rimlightkey) & 0x8000){
+								if(!keystate){
+									keystate = true;
+									rimlight = (rimlight+1)%2;
+								}
+							}else
+								keystate = false;
+						}
+	if(!rimlight){
+		rxD3D8DefaultRenderCallback_xbox(repEntry, object, type, flags);
+		return;
+	}
 	ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)));
 
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];

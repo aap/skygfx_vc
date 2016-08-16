@@ -70,10 +70,12 @@ extern "C" {
 __declspec(dllexport) void
 AttachCarPipeToRwObject(RwObject *obj)
 {
-	if(RwObjectGetType(obj) == rpATOMIC)
-		carpipe.Attach((RpAtomic*)obj);
-	else if(RwObjectGetType(obj) == rpCLUMP)
-		RpClumpForAllAtomics((RpClump*)obj, CustomPipe::setatomicCB, &carpipe);
+	if(config.iCanHasNeoCar){
+		if(RwObjectGetType(obj) == rpATOMIC)
+			carpipe.Attach((RpAtomic*)obj);
+		else if(RwObjectGetType(obj) == rpCLUMP)
+			RpClumpForAllAtomics((RpClump*)obj, CustomPipe::setatomicCB, &carpipe);
+	}
 }
 }
 

@@ -57,10 +57,12 @@ extern "C" {
 __declspec(dllexport) void
 AttachWorldPipeToRwObject(RwObject *obj)
 {
-	if(RwObjectGetType(obj) == rpATOMIC)
-		WorldPipe::Get()->Attach((RpAtomic*)obj);
-	else if(RwObjectGetType(obj) == rpCLUMP)
-		RpClumpForAllAtomics((RpClump*)obj, CustomPipe::setatomicCB, WorldPipe::Get());
+	if(config.iCanHasNeoWorld){
+		if(RwObjectGetType(obj) == rpATOMIC)
+			WorldPipe::Get()->Attach((RpAtomic*)obj);
+		else if(RwObjectGetType(obj) == rpCLUMP)
+			RpClumpForAllAtomics((RpClump*)obj, CustomPipe::setatomicCB, WorldPipe::Get());
+	}
 }
 }
 

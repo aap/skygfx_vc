@@ -28,7 +28,7 @@ typedef uintptr_t addr;
 
 #include "MemoryMgr.h"
 
-//#define RELEASE
+#define RELEASE
 
 struct MatFXEnv
 {
@@ -115,7 +115,7 @@ extern char asipath[MAX_PATH];
 struct Config {
 	int neoWorldPipe, neoWorldPipeKey;
 	int neoGlossPipe, neoGlossPipeKey;
-	bool iCanHasNeoWorld, iCanHasNeoGloss;
+	bool iCanHasNeoWorld, iCanHasNeoGloss, iCanHasNeoCar, iCanHasNeoRim;
 };
 extern Config config;
 extern int blendstyle, blendkey;

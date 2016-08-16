@@ -823,8 +823,10 @@ patch(void)
 		InjectHook(AddressByVersion<addr>(0x59BABF, 0x59BD7F, 0x598E6F, 0, 0, 0), CreateTextureFilterFlags);
 
 	xboxcarpipe = readint(cfg.get("SkyGfx", "neoCarPipe", ""), -1);
+	config.iCanHasNeoCar = xboxcarpipe >= 0;
 	envMapSize = readint(cfg.get("SkyGfx", "envMapSize", ""), 128);
 	rimlight = readint(cfg.get("SkyGfx", "neoRimLightPipe", ""), -1);
+	config.iCanHasNeoRim = rimlight >= 0;
 	int n = 1;
 	while(n < envMapSize) n *= 2;
 	envMapSize = n;

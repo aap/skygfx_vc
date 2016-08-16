@@ -61,6 +61,12 @@ MakeProjectionMatrix(void *d3d, RwCamera *cam, float nbias, float fbias)
 void
 neoInit(void)
 {
+	if(!RwD3D9Supported()){
+		config.iCanHasNeoGloss = false;
+		config.iCanHasNeoRim = false;
+		config.iCanHasNeoCar = false;
+	}
+
 	// World pipe has a non-shader fallback so works without d3d9
 	if(config.iCanHasNeoWorld)
 		neoWorldPipeInit();
@@ -86,19 +92,14 @@ neoInit(void)
 
 	WaterDrops::ms_maskTex = RwTextureRead("dropmask", NULL);
 
-	if(!RwD3D9Supported()){
-		config.iCanHasNeoGloss = false;
-		return;
-	}
+	if(config.iCanHasNeoGloss)
+		neoGlossPipeInit();
 
-	neoGlossPipeInit();
-
-	if(xboxcarpipe >= 0)
+	if(config.iCanHasNeoCar)
 		neoCarPipeInit();
 
-	if(rimlight >= 0)
+	if(config.iCanHasNeoRim)
 		neoRimPipeInit();
-
 }
 
 #define INTERP_SETUP \
