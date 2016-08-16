@@ -1,7 +1,7 @@
 extern RwTexDictionary *neoTxd;
 
 void RwToD3DMatrix(void *d3d, RwMatrix *rw);
-void MakeProjectionMatrix(void *d3d, RwCamera *cam);
+void MakeProjectionMatrix(void *d3d, RwCamera *cam, float nbias = 0.0f, float fbias = 0.0f);
 enum {
 	LOC_combined    = 0,
 	LOC_world       = 4,
@@ -16,6 +16,9 @@ enum {
 
 	LOC_directSpec  = 26,	// for carpipe
 	LOC_reflProps   = 27,
+
+	LOC_gloss2	= 28,
+	LOC_gloss3	= 29,
 
 	LOC_rampStart   = 36,	// for rim pipe
 	LOC_rampEnd     = 37,
@@ -85,14 +88,67 @@ public:
 void UploadZero(int loc);
 void UploadLightColor(RpLight *light, int loc);
 void UploadLightDirection(RpLight *light, int loc);
+void UploadLightDirectionInv(RpLight *light, int loc);
 
 void neoWorldPipeInit(void);
+void neoGlossPipeInit(void);
 void neoRimPipeInit(void);
 void neoCarPipeInit(void);
 
 void hookWaterDrops(void);
 void neoInit(void);
 
+class WorldPipe : CustomPipe
+{
+	void CreateShaders(void);
+	void LoadTweakingTable(void);
+public:
+	bool isActive;
+	bool modulate2x;
+	int setMaterial;
+	int setMaterialColor;
+	int modulateMaterial;
+	int lightingEnabled;
+//	int lastColor;
+//	float lastAmbient;
+//	float lastDiffuse;
+	bool usePixelShader;
+	void *pixelShader;
+	InterpolatedFloat lightmapBlend;
+
+	WorldPipe(void);
+	void Attach(RpAtomic *atomic);
+	static WorldPipe *Get(void);
+	void Init(void);
+
+	void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
+	void RenderObjectSetup(RwUInt32 flags);
+	void RenderMeshSetUp(RxD3D8InstanceData *inst);
+	void RenderMeshCombinerSetUp(RxD3D8InstanceData *inst, RwUInt32 flags);
+	void RenderMeshCombinerTearDown(void);
+	void RenderMesh(RxD3D8InstanceData *inst, RwUInt32 flags);
+};
+
+class GlossPipe : public CustomPipe
+{
+	void CreateShaders(void);
+
+	static void RenderGloss(RxD3D8ResEntryHeader *header);
+	RwTexture *GetGlossTex(RwTexture *tex);
+public:
+	Color specular;
+	bool isActive;
+//	uchar b2;
+	RwTexDictionary *texdict;
+	static void *vertexShader;
+	static void *pixelShader;
+
+	GlossPipe(void);
+	static GlossPipe *Get(void);
+	void Init(void);
+	static void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
+	static void ShaderSetup(RwMatrix *world);
+};
 
 /*
  * neo water drops

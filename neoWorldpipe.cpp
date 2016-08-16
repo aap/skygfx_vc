@@ -19,42 +19,22 @@ bool &CWeather__LightningFlash = *(bool*)AddressByVersion<uint32_t>(0x95CDA3, 0,
  * rendered without using a pixel shader.
  */
 
-class WorldPipe : CustomPipe
-{
-	void CreateShaders(void);
-	void LoadTweakingTable(void);
-public:
-	bool isActive;
-	bool modulate2x;
-	int setMaterial;
-	int setMaterialColor;
-	int modulateMaterial;
-	int lightingEnabled;
-//	int lastColor;
-//	float lastAmbient;
-//	float lastDiffuse;
-	bool usePixelShader;
-	void *pixelShader;
-	InterpolatedFloat lightmapBlend;
-
-	WorldPipe(void);
-	void Attach(RpAtomic *atomic);
-	static WorldPipe *Get(void);
-	void Init(void);
-
-	void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
-	void RenderObjectSetup(RwUInt32 flags);
-	void RenderMeshSetUp(RxD3D8InstanceData *inst);
-	void RenderMeshCombinerSetUp(RxD3D8InstanceData *inst, RwUInt32 flags);
-	void RenderMeshCombinerTearDown(void);
-	void RenderMesh(RxD3D8InstanceData *inst, RwUInt32 flags);
-};
-
 void
 CSimpleModelInfo::SetAtomic_hook(int n, RpAtomic *atomic)
 {
 	this->SetAtomic(n, atomic);
 	WorldPipe::Get()->Attach(atomic);
+}
+
+void
+CSimpleModelInfo::SetAtomicVC_hook(int n, RpAtomic *atomic)
+{
+	this->SetAtomic(n, atomic);
+	ushort flags = *(ushort*)((uchar*)this + 0x42);
+	if(flags & 4 && config.iCanHasNeoGloss)	// isRoad
+		GlossPipe::Get()->Attach(atomic);
+	else
+		WorldPipe::Get()->Attach(atomic);
 }
 
 // ADDRESS
@@ -68,8 +48,8 @@ neoWorldPipeInit(void)
 		InjectHook(0x476707, &CSimpleModelInfo::SetAtomic_hook);
 	}else if(gtaversion == VC_10){
 		// virtual in VC because of added CWeaponModelInfo
-		InterceptVmethod(&CSimpleModelInfo__SetAtomic_A, &CSimpleModelInfo::SetAtomic_hook, 0x697FF8);
-		Patch(0x698028, &CSimpleModelInfo::SetAtomic_hook);
+		InterceptVmethod(&CSimpleModelInfo__SetAtomic_A, &CSimpleModelInfo::SetAtomicVC_hook, 0x697FF8);
+		Patch(0x698028, &CSimpleModelInfo::SetAtomicVC_hook);
 	}
 }
 
@@ -287,10 +267,10 @@ WorldPipe::RenderMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 {
 							{
 								static bool keystate = false;
-								if(GetAsyncKeyState(xboxworldpipekey) & 0x8000){
+								if(GetAsyncKeyState(config.neoWorldPipeKey) & 0x8000){
 									if(!keystate){
 										keystate = true;
-										xboxworldpipe = (xboxworldpipe+1)%2;
+										config.neoWorldPipe = (config.neoWorldPipe+1)%2;
 									}
 								}else
 									keystate = false;
@@ -312,7 +292,7 @@ WorldPipe::RenderMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 		float f = 1.0f;
 		if(!CWeather__LightningFlash)
 			f = lightmapBlend.Get();
-		if(!xboxworldpipe)
+		if(!config.neoWorldPipe)
 			f = 0.0f;
 		lm[0] = lm[1] = lm[2] = f;
 		lm[3] = inst->material->color.alpha/255.0f;

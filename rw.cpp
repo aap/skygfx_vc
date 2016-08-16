@@ -4,6 +4,8 @@
  // ADDRESS
 //
 
+static addr RwTexDictionaryFindNamedTexture_A = AddressByVersion<uint32_t>(0x5A74D0, 0, 0, 0x64E060, 0, 0);
+WRAPPER RwTexture *RwTexDictionaryFindNamedTexture(RwTexDictionary*, const RwChar*) { VARJMP(RwTexDictionaryFindNamedTexture_A); }
 static uint32_t RwTextureRead_A = AddressByVersion<uint32_t>(0x5A7580, 0x5A7840, 0x5A8E00, 0x64E110, 0, 0);
 WRAPPER RwTexture *RwTextureRead(const RwChar*, const RwChar*) { VARJMP(RwTextureRead_A); }
 static uint32_t RwTexDictionaryGetCurrent_A = AddressByVersion<uint32_t>(0x5A7570, 0x5A7830, 0x5A8DA0, 0x64E100, 0, 0);

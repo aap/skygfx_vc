@@ -35,8 +35,10 @@ RwToD3DMatrix(void *d3d, RwMatrix *rw)
 }
 
 void
-MakeProjectionMatrix(void *d3d, RwCamera *cam)
+MakeProjectionMatrix(void *d3d, RwCamera *cam, float nbias, float fbias)
 {
+	float f = cam->farPlane + fbias;
+	float n = cam->nearPlane + nbias;
 	D3DMATRIX *m = (D3DMATRIX*)d3d;
 	m->m[0][0] = cam->recipViewWindow.x;
 	m->m[0][1] = 0.0f;
@@ -48,8 +50,8 @@ MakeProjectionMatrix(void *d3d, RwCamera *cam)
 	m->m[1][3] = 0.0f;
 	m->m[2][0] = 0.0f;
 	m->m[2][1] = 0.0f;
-	m->m[2][2] = cam->farPlane / (cam->farPlane - cam->nearPlane);
-	m->m[2][3] = -cam->nearPlane*m->m[2][2];
+	m->m[2][2] = f/(f-n);
+	m->m[2][3] = -n*m->m[2][2];
 	m->m[3][0] = 0.0f;
 	m->m[3][1] = 0.0f;
 	m->m[3][2] = 1.0f;
@@ -60,7 +62,7 @@ void
 neoInit(void)
 {
 	// World pipe has a non-shader fallback so works without d3d9
-	if(xboxworldpipe >= 0)
+	if(config.iCanHasNeoWorld)
 		neoWorldPipeInit();
 
 	if(xboxcarpipe >= 0 || xboxwaterdrops){
@@ -84,8 +86,12 @@ neoInit(void)
 
 	WaterDrops::ms_maskTex = RwTextureRead("dropmask", NULL);
 
-	if(!RwD3D9Supported())
+	if(!RwD3D9Supported()){
+		config.iCanHasNeoGloss = false;
 		return;
+	}
+
+	neoGlossPipeInit();
 
 	if(xboxcarpipe >= 0)
 		neoCarPipeInit();
@@ -306,4 +312,15 @@ UploadLightDirection(RpLight *light, int loc)
 		RwD3D9SetVertexShaderConstant(loc, (void*)c, 1);
 	}else
 		UploadZero(loc);
+}
+
+void
+UploadLightDirectionInv(RpLight *light, int loc)
+{
+	float c[4];
+	RwV3d *at = RwMatrixGetAt(RwFrameGetLTM(RpLightGetFrame(light)));
+	c[0] = -at->x;
+	c[1] = -at->y;
+	c[2] = -at->z;
+	RwD3D9SetVertexShaderConstant(loc, (void*)c, 1);
 }

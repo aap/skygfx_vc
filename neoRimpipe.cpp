@@ -38,15 +38,11 @@ InterpolatedFloat RimPipe::offset(0.5f);
 InterpolatedFloat RimPipe::scale(1.5f);
 InterpolatedFloat RimPipe::scaling(2.0f);
 
-RxPipeline *&skinpipe = *AddressByVersion<RxPipeline**>(0x663CAC, 0x663CAC, 0x673DB0, 0x78A0D4, 0x78A0DC, 0x7890DC);
+//
+// Hooks
+//
 
-void neoRimPipeInit(void)
-{
-	RxPipelineNode *node;
-	RimPipe::Get()->Init();
-	node = RxPipelineFindNodeByName(skinpipe, "nodeD3D8SkinAtomicAllInOne.csl", NULL, NULL);
-	*(void**)node->privateData = RimPipe::RenderCallback;
-}
+RxPipeline *&skinpipe = *AddressByVersion<RxPipeline**>(0x663CAC, 0x663CAC, 0x673DB0, 0x78A0D4, 0x78A0DC, 0x7890DC);
 
 extern "C" {
 __declspec(dllexport) void
@@ -58,6 +54,38 @@ AttachRimPipeToRwObject(RwObject *obj)
 		RpClumpForAllAtomics((RpClump*)obj, CustomPipe::setatomicCB, RimPipe::Get());
 }
 }
+
+class CPed
+{
+public:
+	uchar pad[0x4C];
+	RwObject *rwobject;
+	static addr SetModelIndex_A;
+	void SetModelIndex(int id);
+	void SetModelIndex_hook(int id){
+		this->SetModelIndex(id);
+		AttachRimPipeToRwObject(this->rwobject);
+	}
+};
+addr CPed::SetModelIndex_A;
+WRAPPER void CPed::SetModelIndex(int id) { VARJMP(SetModelIndex_A); }
+
+void neoRimPipeInit(void)
+{
+	RxPipelineNode *node;
+	RimPipe::Get()->Init();
+	node = RxPipelineFindNodeByName(skinpipe, "nodeD3D8SkinAtomicAllInOne.csl", NULL, NULL);
+	*(void**)node->privateData = RimPipe::RenderCallback;
+	// set the pipeline for peds unless iii_anim is taking care of that already
+	if(gtaversion == III_10 && !GetModuleHandleA("iii_anim.asi")){
+		InterceptVmethod(&CPed::SetModelIndex_A, &CPed::SetModelIndex_hook, 0x5F81A8);
+		Patch(0x5F82B0, &CPed::SetModelIndex_hook);
+		Patch(0x5F8380, &CPed::SetModelIndex_hook);
+		Patch(0x5F8C38, &CPed::SetModelIndex_hook);
+		Patch(0x5FA50C, &CPed::SetModelIndex_hook);
+	}
+}
+
 
 RimPipe::RimPipe(void)
 {

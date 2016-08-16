@@ -54,33 +54,34 @@ struct MatFX
 
 struct CBaseModelInfo
 {
-	void *vmt;
-	char name[24];
-	void *colModel;
-	void *twodEffects;
-	short id;
-	ushort refCount;
-	short txdSlot;
-	uchar type; // ModelInfo type
-	uchar num2dEffects;
-	bool freeCol;
+//	void *vmt;
+//	char name[24];
+//	void *colModel;
+//	void *twodEffects;
+//	short id;
+//	ushort refCount;
+//	short txdSlot;
+//	uchar type; // ModelInfo type
+//	uchar num2dEffects;
+//	bool freeCol;
 };
 
 struct CSimpleModelInfo : CBaseModelInfo
 {
-	RpAtomic *atomics[3];
-	float lodDistances[3];
-	uchar numAtomics;
-	uchar alpha;
-	ushort flags;
+//	RpAtomic *atomics[3];		   // VC is different....
+//	float lodDistances[3];
+//	uchar numAtomics;
+//	uchar alpha;
+//	ushort flags;
 
 	void SetAtomic(int n, RpAtomic *atomic);
 	void SetAtomic_hook(int n, RpAtomic *atomic);
+	void SetAtomicVC_hook(int n, RpAtomic *atomic);
 };
 
 struct CClumpModelInfo : CBaseModelInfo
 {
-	RpClump *clump;
+//	RpClump *clump;
 
 	RpClump *CreateInstance(void);
 	void SetClump(RpClump*);
@@ -111,11 +112,16 @@ extern HMODULE dllModule;
 extern char asipath[MAX_PATH];
 
 // ini switches
+struct Config {
+	int neoWorldPipe, neoWorldPipeKey;
+	int neoGlossPipe;
+	bool iCanHasNeoWorld, iCanHasNeoGloss;
+};
+extern Config config;
 extern int blendstyle, blendkey;
 extern int texgenstyle, texgenkey;
 extern int xboxcarpipe, xboxcarpipekey;
 extern int rimlight, rimlightkey;
-extern int xboxworldpipe, xboxworldpipekey;
 extern int xboxwaterdrops;
 extern int envMapSize;
 

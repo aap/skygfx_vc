@@ -156,6 +156,7 @@
     <ClCompile Include="misc.cpp" />
     <ClCompile Include="neo.cpp" />
     <ClCompile Include="neoCarpipe.cpp" />
+    <ClCompile Include="neoGlosspipe.cpp" />
     <ClCompile Include="neoRimpipe.cpp" />
     <ClCompile Include="neoWorldpipe.cpp" />
     <ClCompile Include="rwfix.cpp" />
@@ -180,6 +181,24 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">2.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">2.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">2.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="glossPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">2.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">2.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">2.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug - III|Win32'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug - III|Win32'">2.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="glossVS.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">2.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">2.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">2.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug - III|Win32'">2.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="rimVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug - VC|Win32'">Vertex</ShaderType>

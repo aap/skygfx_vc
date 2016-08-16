@@ -79,16 +79,28 @@ AttachCarPipeToRwObject(RwObject *obj)
 
 class CVehicleModelInfo {
 public:
-	static addr SetClump_a;
+	static addr SetClump_A;
 	void SetClump(RpClump *clump);
 	void SetClump_hook(RpClump *clump){
 		this->SetClump(clump);
 		AttachCarPipeToRwObject((RwObject*)clump);
 	}
 };
+addr CVehicleModelInfo::SetClump_A;
+WRAPPER void CVehicleModelInfo::SetClump(RpClump*) { VARJMP(SetClump_A); }
 
-addr CVehicleModelInfo::SetClump_a;
-WRAPPER void CVehicleModelInfo::SetClump(RpClump*) { VARJMP(SetClump_a); }
+class CVisibilityPlugins
+{
+public:
+	static addr SetAtomicRenderCallback_A;
+	static void SetAtomicRenderCallback(RpAtomic *atomic, RpAtomicCallBackRender cb);
+	static void SetAtomicRenderCallback_hook(RpAtomic *atomic, RpAtomicCallBackRender cb){
+		SetAtomicRenderCallback(atomic, cb);
+		AttachCarPipeToRwObject((RwObject*)atomic);
+	}
+};
+addr CVisibilityPlugins::SetAtomicRenderCallback_A;
+WRAPPER void CVisibilityPlugins::SetAtomicRenderCallback(RpAtomic*, RpAtomicCallBackRender) { VARJMP(SetAtomicRenderCallback_A); }
 
 static uint32_t RenderScene_A;
 WRAPPER void RenderScene(void) { VARJMP(RenderScene_A); }
@@ -105,8 +117,11 @@ neoCarPipeInit(void)
 {
 	carpipe.Init();
 	CarPipe::SetupEnvMap();
-	InterceptVmethod(&CVehicleModelInfo::SetClump_a, &CVehicleModelInfo::SetClump_hook,
+	InterceptVmethod(&CVehicleModelInfo::SetClump_A, &CVehicleModelInfo::SetClump_hook,
 	                 AddressByVersion<addr>(0x5FDFF0, 0x5FDDD8, 0x60ADD0, 0x698088, 0x698088, 0x697090));
+	// ADDRESS
+	InterceptCall(&CVisibilityPlugins::SetAtomicRenderCallback_A, &CVisibilityPlugins::SetAtomicRenderCallback_hook,
+	              AddressByVersion<addr>(0x5207C6, 0, 0, 0x579DFB, 0, 0));
 	InterceptCall(&RenderScene_A, RenderScene_hook, AddressByVersion<addr>(0x48E5F9, 0x48E6B9, 0x48E649, 0x4A604A, 0x4A606A, 0x4A5F1A));
 }
 

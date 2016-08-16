@@ -66,9 +66,9 @@ int blendstyle, blendkey;
 int texgenstyle, texgenkey;
 int xboxcarpipe, xboxcarpipekey;
 int rimlight, rimlightkey;
-int xboxworldpipe, xboxworldpipekey;
 int xboxwaterdrops;
 int envMapSize;
+Config config;
 
 int dualpass;
 
@@ -800,7 +800,7 @@ patch(void)
 	texgenkey = readhex(cfg.get("SkyGfx", "texgenSwitchKey", "0x77").c_str());
 	xboxcarpipekey = readhex(cfg.get("SkyGfx", "neoCarPipeKey", "0x75").c_str());
 	rimlightkey = readhex(cfg.get("SkyGfx", "neoRimLightKey", "0x74").c_str());
-	xboxworldpipekey = readhex(cfg.get("SkyGfx", "neoWorldPipeKey", "0x73").c_str());
+	config.neoWorldPipeKey = readhex(cfg.get("SkyGfx", "neoWorldPipeKey", "0x73").c_str());
 
 	tmp = cfg.get("SkyGfx", "texblendSwitch", "");
 	if(tmp != ""){
@@ -843,7 +843,10 @@ patch(void)
 	int n = 1;
 	while(n < envMapSize) n *= 2;
 	envMapSize = n;
-	xboxworldpipe = readint(cfg.get("SkyGfx", "neoWorldPipe", ""), -1);
+	config.neoWorldPipe = readint(cfg.get("SkyGfx", "neoWorldPipe", ""), -1);
+	config.iCanHasNeoWorld = config.neoWorldPipe >= 0;
+	config.neoGlossPipe = readint(cfg.get("SkyGfx", "neoGlossPipe", ""), -1);
+	config.iCanHasNeoGloss = config.neoGlossPipe >= 0;
 
 	tmp = cfg.get("SkyGfx", "dualPass", "");
 	if(tmp != ""){
