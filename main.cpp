@@ -920,6 +920,14 @@ patch(void)
 		//MemoryVP::InjectHook(0x650ACB, RwTextureRead_VC);
 		InjectHook(0x401000, printf, PATCH_JUMP);
 
+		// try to reduce timecyc flickering...didn't work
+		//static float s = 0.0f;
+		//Patch(0x4CEA71 + 2, &s);
+		//InjectHook(0x4CF5C7, 0x4D0189, PATCH_JUMP);
+		//
+		//Patch(0x4CF47D, 0xc031);	// xor eax, eax
+		//Nop(0x4CF47D + 2, 2);
+
 		// enable loadscreens. BREAKS FOR SOME REASON (OLA?)
 		//MemoryVP::Nop(0x4A69D4, 1);
 		//// ff 74 24 78             push   DWORD PTR [esp+0x78]

@@ -11,7 +11,6 @@ float4
 main(PS_INPUT IN) : COLOR
 {
 	float4 t0 = tex2D(tex, IN.texcoord0);
-
 	float3 n = 2*IN.normal-1;            // unpack
 	float3 v = 2*IN.light-1;             //
 

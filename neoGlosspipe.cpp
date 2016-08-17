@@ -133,18 +133,20 @@ GlossPipe::ShaderSetup(RwMatrix *world)
 void
 GlossPipe::RenderGloss(RxD3D8ResEntryHeader *header)
 {
-	int zwrite, spec, fog, src, dst;
+	int zwrite, spec, fog, src, dst, alpha;
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
 
 	RwD3D8GetRenderState(D3DRS_ZWRITEENABLE, &zwrite);
 	RwD3D8GetRenderState(D3DRS_SPECULARENABLE, &spec);
 	RwD3D8GetRenderState(D3DRS_FOGENABLE, &fog);
+	RwD3D8GetRenderState(D3DRS_ALPHAFUNC, &alpha);
 	RwRenderStateGet(rwRENDERSTATESRCBLEND, &src);
 	RwRenderStateGet(rwRENDERSTATEDESTBLEND, &dst);
 
 	RwD3D8SetRenderState(D3DRS_ZWRITEENABLE, 0);
 	RwD3D8SetRenderState(D3DRS_SPECULARENABLE, 1);		  // is this even used?
-	RwD3D8SetRenderState(D3DRS_FOGENABLE, 1);		  // why, vienna?
+	RwD3D8SetRenderState(D3DRS_FOGENABLE, 0);		  // why 1, vienna? Is this right? pixel shader does weird stuff, i think 0 is better...
+	RwD3D8SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
 
 	RwD3D8SetTexture(NULL, 0);
 	RwD3D8SetTexture(NULL, 1);
@@ -180,6 +182,7 @@ GlossPipe::RenderGloss(RxD3D8ResEntryHeader *header)
 	RwD3D8SetRenderState(D3DRS_ZWRITEENABLE, zwrite);
 	RwD3D8SetRenderState(D3DRS_SPECULARENABLE, spec);
 	RwD3D8SetRenderState(D3DRS_FOGENABLE, fog);
+	RwD3D8SetRenderState(D3DRS_ALPHAFUNC, alpha);
 	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)src);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)dst);
 }
