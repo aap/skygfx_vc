@@ -1,6 +1,6 @@
 #ifndef __MEMORYMGR
 #define __MEMORYMGR
-
+typedef uintptr_t addr;
 #define WRAPPER __declspec(naked)
 #define DEPRECATED __declspec(deprecated)
 #define EAXJMP(a) { _asm mov eax, a _asm jmp eax }
