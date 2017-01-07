@@ -1,0 +1,10 @@
+#include "resource.h"
+#include <windows.h>
+
+IDR_RIMVS RCDATA "cso\\rimVS.cso"
+IDR_VEHICLEONEVS RCDATA "cso\\vehiclePass1VS.cso"
+IDR_VEHICLETWOVS RCDATA "cso\\vehiclePass2VS.cso"
+IDR_WORLDPS RCDATA "cso\\worldPS.cso"
+IDR_GLOSSVS RCDATA "cso\\glossVS.cso"
+IDR_GLOSSPS RCDATA "cso\\glossPS.cso"
+IDR_CURVEPS RCDATA "cso\\curvePS.cso"
