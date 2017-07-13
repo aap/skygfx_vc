@@ -13,6 +13,7 @@ workspace "skygfx_vc"
    includedirs { "source" }
    includedirs { os.getenv("RWSDK34") }
    
+   includedirs { "external/injector/include" }
    includedirs { "external/rwd3d9/source" }
    libdirs { "external/rwd3d9/libs" }
    links { "rwd3d9.lib" }
@@ -33,11 +34,11 @@ project "skygfx_vc"
    characterset ("MBCS")
 
    filter "configurations:Debug"
-      defines { "DEBUG" }
-      symbols "On"
+	  defines { "DEBUG" }
+	  symbols "On"
 
    filter "configurations:Release"
-      defines { "NDEBUG" }
-      optimize "On"
+	  defines { "NDEBUG" }
+	  optimize "On"
 	  flags { "StaticRuntime" }
 	  
