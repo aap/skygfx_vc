@@ -11,7 +11,10 @@ workspace "skygfx_vc"
    includedirs { "src" }
    includedirs { os.getenv("RWSDK34") }
    
+   includedirs { "external/injector/include" }
+   includedirs { "external/rwd3d9/source" }
    includedirs { "../rwd3d9/source" }
+   libdirs { "external/rwd3d9/libs" }
    libdirs { "../rwd3d9/libs" }
    links { "rwd3d9.lib" }
    
