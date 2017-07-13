@@ -724,6 +724,9 @@ footsplash_ps2(uchar *ebx, uchar *esp)
 	vec2.z = (ps2rand()&0xFFFF)/65536.0f * 0.02f + 0.03f;
 	col = *(uint*)0x5F85C4;
 	CParticle__AddParticle(44, &vec1, &vec2, NULL, 0.0f, &col, 0, 0, 0, 0);
+
+	if (xboxwaterdrops)
+		WaterDrops::FillScreenMoving(0.1f, false);
 }
 
 void __declspec(naked)
@@ -864,13 +867,13 @@ patch(void)
 	if(isVC() && tmp != "" && readint(tmp)){
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x57A8BA, 0x57A8DA, 0x57A7AA), createIIIEnvFrame);
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x57A8C7, 0x57A8E7, 0x57A7B7),
-		           AddressByVersion<addr>(0, 0, 0, 0x57A8F4, 0x57A914, 0x57A7E4), PATCH_JUMP);
+				   AddressByVersion<addr>(0, 0, 0, 0x57A8F4, 0x57A914, 0x57A7E4), PATCH_JUMP);
 	}
 	tmp = cfg.get("SkyGfx", "VCEnvFrame", "");
 	if(isIII() && tmp != "" && readint(tmp)){
 		InjectHook(AddressByVersion<addr>(0x5218A2, 0x521AE2, 0x521A72, 0, 0, 0), createVCEnvFrame);
 		InjectHook(AddressByVersion<addr>(0x5218AC, 0x521AEC, 0x521A7C, 0, 0, 0),
-		           AddressByVersion<addr>(0x52195E, 0x521B9E, 0x521B2E, 0, 0, 0), PATCH_JUMP);
+				   AddressByVersion<addr>(0x52195E, 0x521B9E, 0x521B2E, 0, 0, 0), PATCH_JUMP);
 	}
 
 	if(isIII())
