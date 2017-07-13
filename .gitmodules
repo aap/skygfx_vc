@@ -1,0 +1,3 @@
+[submodule "external/rwd3d9"]
+	path = external/rwd3d9
+	url = https://github.com/aap/rwd3d9
