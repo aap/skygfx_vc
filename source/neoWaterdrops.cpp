@@ -240,6 +240,13 @@ void hookWaterDrops()
 					WaterDrops::RegisterSplash((CPlaceable_III*)regs.ebx, 10.0f);
 				}
 			}; injector::MakeInline<fountainhook2>(AddressByVersion<addr>(0, 0, 0, 0x4E795D, 0, 0), AddressByVersion<addr>(0, 0, 0, 0x4E795D+7, 0, 0));
+
+			//pools
+			auto AddParticlePoolHook = [](int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9)
+			{
+				AddParticle.fun(a1, a2, a3, a4, a5, a6, a7, a8, a9);
+				WaterDrops::FillScreenMoving(0.5f, false);
+			}; injector::MakeCALL(AddressByVersion<addr>(0, 0, 0, 0x50489F, 0, 0), static_cast<void(__cdecl*)(int, int, int, int, int, int, int, int, int)>(AddParticlePoolHook), true);
 		}
 	}
 }
