@@ -463,7 +463,7 @@ void WaterDrops::NewTrace(WaterDropMoving *moving)
 {
 	if (ms_numDrops < MAXDROPS) {
 		moving->dist = 0.0f;
-		PlaceNew(moving->drop->x, moving->drop->y, SC(MINSIZE), 500.0f, 1);
+		PlaceNew(moving->drop->x, moving->drop->y, SC(MINSIZE), 500.0f, 1, moving->drop->r, moving->drop->g, moving->drop->b);
 	}
 }
 
