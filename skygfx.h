@@ -28,7 +28,7 @@ typedef uintptr_t addr;
 
 #include "MemoryMgr.h"
 
-#define RELEASE
+//#define RELEASE
 
 struct MatFXEnv
 {

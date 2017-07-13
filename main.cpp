@@ -688,6 +688,57 @@ curvehook(void)
 }
 #endif
 
+unsigned __int64 rand_seed = 1;
+float ps2randnormalize = 1.0f/0x7FFFFFFF;
+
+int ps2rand()
+{
+	rand_seed = 0x5851F42D4C957F2D * rand_seed + 1;
+	return ((rand_seed >> 32) & 0x7FFFFFFF);
+}
+
+void ps2srand(unsigned int seed)
+{
+	rand_seed = seed;
+}
+
+struct CVector { float x, y, z; };
+
+WRAPPER void CParticle__AddParticle(int partcltype,CVector*,CVector*,void*entity,float,uint *rwrgba,int,int,int,int) { EAXJMP(0x50D190); }
+
+void
+footsplash_ps2(uchar *ebx, uchar *esp)
+{
+	RwMatrix *mtx;
+	CVector *speed;
+	CVector vec1, vec2;
+	uint col;
+	mtx = (RwMatrix*)(ebx+4);
+	speed = (CVector*)(ebx+0x78);
+
+	vec1.x = mtx->pos.x - mtx->at.x*0.3f + mtx->up.x*0.3f;
+	vec1.y = mtx->pos.y - mtx->at.y*0.3f + mtx->up.y*0.3f;
+	vec1.z = mtx->pos.z - mtx->at.z*0.3f + mtx->up.z*0.3f - 1.2f;
+	vec2.x = speed->x*0.45;
+	vec2.y = speed->y*0.45;
+	vec2.z = (ps2rand()&0xFFFF)/65536.0f * 0.02f + 0.03f;
+	col = *(uint*)0x5F85C4;
+	CParticle__AddParticle(44, &vec1, &vec2, NULL, 0.0f, &col, 0, 0, 0, 0);
+}
+
+void __declspec(naked)
+footsplash_hook(void)
+{
+	_asm {
+		push	esp
+		push	ebx
+		call	footsplash_ps2
+		add	esp,8
+		push	0x4CCDC3
+		retn
+	}
+}
+
 //
 // real time reflection test; III 1.0
 //
@@ -727,6 +778,9 @@ void (*InitialiseGame)(void);
 void
 InitialiseGame_hook(void)
 {
+	static int x = 0;
+	assert(x == 0);
+	x = 1;
 	if(isIII())
 		// fall back to generic.txd when reading from dff
 		InjectHook(AddressByVersion<addr>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
@@ -897,9 +951,9 @@ patch(void)
 		InjectHook(0x405DB0, printf, PATCH_JUMP);
 
 		// patch loadscreens
-		Patch<uint>(0x48D774, 0x6024448b);  // 8B 44 24 60 - mov eax,[esp+60h]
-		Patch<uchar>(0x48D778, 0x50);	      // push eax
-		InjectHook(0x48D779, 0x48D79B, PATCH_JUMP);
+		// ff 74 24 60             push   DWORD PTR [esp+0x60]
+		Patch<uint>(0x48D774, 0x602474ff);
+		InjectHook(0x48D778, 0x48D79B, PATCH_JUMP);
 
 		//MemoryVP::InjectHook(0x48E603, RenderEffectsHook);
 		//MemoryVP::InjectHook(0x5219B3, CVehicleModelInfo__SetEnvironmentMapCB_hook);
@@ -911,6 +965,22 @@ patch(void)
 		Patch<uchar>(0x48E6A7+1, 3);
 		Patch<uchar>(0x48E78C+1, 3);
 
+		static float randscl = 1/63556.0f;
+		static float splashscl = 0.4f;
+		static float splashadd = -0.2f;
+
+		InjectHook(0x4CC4EA, ps2rand);
+		InjectHook(0x4CC514, ps2rand);
+		InjectHook(0x4CC53E, ps2rand);
+		Patch<float*>(0x4CC4FA +2, &randscl);
+		Patch<float*>(0x4CC524 +2, &randscl);
+		Patch<float*>(0x4CC500 +2, &splashscl);
+		Patch<float*>(0x4CC52A +2, &splashscl);
+		Patch<float*>(0x4CC506 +2, &splashadd);
+		Patch<float*>(0x4CC530 +2, &splashadd);
+	//	Nop(0x4CCD69, 5);
+	//	Nop(0x4CCDBB, 5);
+		InjectHook(0x4CCC1A, footsplash_hook, PATCH_JUMP);
 	}
 #endif
 #ifndef RELEASE
@@ -928,10 +998,10 @@ patch(void)
 		//Patch(0x4CF47D, 0xc031);	// xor eax, eax
 		//Nop(0x4CF47D + 2, 2);
 
-		// enable loadscreens. BREAKS FOR SOME REASON (OLA?)
-		//MemoryVP::Nop(0x4A69D4, 1);
-		//// ff 74 24 78             push   DWORD PTR [esp+0x78]
-		//MemoryVP::Patch(0x4A69D4+1, 0x782474ff);
+		// enable loadscreens. BREAKS WITH OLD OLA
+		Nop(0x4A69D4, 1);
+		// ff 74 24 78             push   DWORD PTR [esp+0x78]
+		Patch(0x4A69D4+1, 0x782474ff);
 	}
 #endif
 

@@ -42,7 +42,7 @@ GlossPipe::GlossPipe(void)
  : specular(1.0f, 1.0f, 1.0f, 1.0f)
 {
 	CreateRwPipeline();
-	isActive = true;
+	isActive = config.neoGlossPipe;
 	texdict = NULL;
 }
 
