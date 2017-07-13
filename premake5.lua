@@ -1,27 +1,23 @@
 workspace "skygfx_vc"
-   configurations { "Release", "Debug" }
+   configurations { "Release", "DebugIII", "DebugVC" }
    location "build"
    
-   files { "external/*.*" }
    files { "resources/*.*" }
    files { "shaders/*.*" }
-   files { "source/*.*" }
+   files { "src/*.*" }
    
-   includedirs { "external" }
    includedirs { "resources" }
    includedirs { "shaders" }
-   includedirs { "source" }
+   includedirs { "src" }
    includedirs { os.getenv("RWSDK34") }
    
-   includedirs { "external/rwd3d9/source" }
-   libdirs { "external/rwd3d9/libs" }
+   includedirs { "../rwd3d9/source" }
+   libdirs { "../rwd3d9/libs" }
    links { "rwd3d9.lib" }
    
    prebuildcommands {
 	"for /R \"../shaders/ps/\" %%f in (*.hlsl) do \"%DXSDK_DIR%/Utilities/bin/x86/fxc.exe\" /T ps_2_0 /nologo /E main /Fo ../resources/cso/%%~nf.cso %%f",
 	"for /R \"../shaders/vs/\" %%f in (*.hlsl) do \"%DXSDK_DIR%/Utilities/bin/x86/fxc.exe\" /T vs_2_0 /nologo /E main /Fo ../resources/cso/%%~nf.cso %%f",
-	"\"%DXSDK_DIR%/Utilities/bin/x86/fxc.exe\" /T vs_2_0 /nologo /E mainVS /Fo ../resources/cso/vehiclePass1VS.cso ../shaders/pvs/vehiclePass1VS.hlsl",
-	"\"%DXSDK_DIR%/Utilities/bin/x86/fxc.exe\" /T vs_2_0 /nologo /E mainVS /Fo ../resources/cso/vehiclePass2VS.cso ../shaders/pvs/vehiclePass2VS.hlsl"
    }
 	  
 project "skygfx_vc"
@@ -32,12 +28,21 @@ project "skygfx_vc"
    targetextension ".asi"
    characterset ("MBCS")
 
-   filter "configurations:Debug"
+   filter "configurations:DebugIII"
       defines { "DEBUG" }
       symbols "On"
+      debugdir "C:/Users/aap/games/gta3"
+      debugcommand "C:/Users/aap/games/gta3/gta3.exe"
+      postbuildcommands "copy /y \"$(TargetPath)\" \"C:\\Users\\aap\\games\\gta3\\scripts\skygfx.asi\""
+
+   filter "configurations:DebugVC"
+      defines { "DEBUG" }
+      symbols "On"
+      debugdir "C:/Users/aap/games/gtavc"
+      debugcommand "C:/Users/aap/games/gtavc/gta_vc.exe"
+      postbuildcommands "copy /y \"$(TargetPath)\" \"C:\\Users\\aap\\games\\gtavc\\scripts\skygfx.asi\""
 
    filter "configurations:Release"
       defines { "NDEBUG" }
       optimize "On"
 	  flags { "StaticRuntime" }
-	  
