@@ -492,19 +492,6 @@ CreateTextureFilterFlags(RwRaster *raster)
 	return tex;
 }
 
-static addr CGame__InitialiseRenderWare_A = AddressByVersion<addr>(0x48BBA0, 0x48BC90, 0x48BC20, 0x4A51A0, 0x4A51C0, 0x4A5070);
-WRAPPER bool CGame__InitialiseRenderWare(void) { VARJMP(CGame__InitialiseRenderWare_A); }
-
-bool
-CGame__InitialiseRenderWare_hook(void)
-{
-	bool ret = CGame__InitialiseRenderWare();
-	neoInit();
-	return ret;
-}
-
-RwCamera *&pRwCamera = *AddressByVersion<RwCamera**>(0x72676C, 0x72676C, 0x7368AC, 0x8100BC, 0x8100C4, 0x80F0C4);
-
 WRAPPER void rpMatFXD3D8AtomicMatFXEnvRender_dual_IIISteam()
 {
 	__asm
@@ -774,17 +761,29 @@ RenderEffectsHook(void)
 }
 */
 
-void (*InitialiseGame)(void);
-void
-InitialiseGame_hook(void)
+#define ONCE do{ static int once = 0; assert(once == 0); once = 1; }while(0)
+
+bool (*InitialiseRenderWare)(void);
+bool
+InitialiseRenderWare_hook(void)
 {
-	static int x = 0;
-	assert(x == 0);
-	x = 1;
+	ONCE;
+	if(!InitialiseRenderWare())
+		return false;
 	if(isIII())
 		// fall back to generic.txd when reading from dff
 		InjectHook(AddressByVersion<addr>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
 	neoInit();
+	return true;
+}
+
+void (*InitialiseGame)(void);
+void
+InitialiseGame_hook(void)
+{
+	if(isIII())
+		// fall back to generic.txd when reading from dff
+		InjectHook(AddressByVersion<addr>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
 	InitialiseGame();
 }
 
@@ -807,6 +806,8 @@ readint(const std::string &s, int default = 0)
 	}
 }
 
+RwCamera *&pRwCamera = *AddressByVersion<RwCamera**>(0x72676C, 0x72676C, 0x7368AC, 0x8100BC, 0x8100C4, 0x80F0C4);
+
 void
 patch(void)
 {
@@ -815,22 +816,27 @@ patch(void)
 	string tmp;
 	char modulePath[MAX_PATH];
 
-	GetModuleFileName(dllModule, modulePath, MAX_PATH);
-	strncpy(asipath, modulePath, MAX_PATH);
-	char *p = strrchr(asipath, '\\');
-	if(p) p[1] = '\0';
-	size_t nLen = strlen(modulePath);
-	modulePath[nLen-1] = L'i';
-	modulePath[nLen-2] = L'n';
-	modulePath[nLen-3] = L'i';
+	// Fail if RenderWare has already been started
+	if(pRwCamera){
+		MessageBox(NULL, "SkyGFX cannot be loaded by the default Mss32 ASI loader.\nUse another ASI loader.", "Error", MB_ICONERROR | MB_OK);
+		return;
+	}
 
+	GetModuleFileName(dllModule, modulePath, MAX_PATH);
+	char *p = strrchr(modulePath, '\\');
+	if(p) p[1] = '\0';
+	strncpy(asipath, modulePath, MAX_PATH);
+	strcat(modulePath, "skygfx.ini");
 	linb::ini cfg;
 	cfg.load_file(modulePath);
 
-	// hook for all things that are initialized once when a game is started
 	// ADDRESS
 	if(gtaversion == III_10 || gtaversion == VC_10){
+		// Everything that is initialized with RenderWare
+		InterceptCall(&InitialiseRenderWare, InitialiseRenderWare_hook, AddressByVersion<addr>(0x48D52F, 0, 0, 0x4A5B6B, 0, 0));
+		// Everything that is initialized whenever a game is started
 		InterceptCall(&InitialiseGame, InitialiseGame_hook, AddressByVersion<addr>(0x582E6C, 0, 0, 0x600411, 0, 0));
+
 		hookplugins();
 	}
 
@@ -965,10 +971,10 @@ patch(void)
 		Patch<uchar>(0x48E6A7+1, 3);
 		Patch<uchar>(0x48E78C+1, 3);
 
+		// footsplash stuff
 		static float randscl = 1/63556.0f;
 		static float splashscl = 0.4f;
 		static float splashadd = -0.2f;
-
 		InjectHook(0x4CC4EA, ps2rand);
 		InjectHook(0x4CC514, ps2rand);
 		InjectHook(0x4CC53E, ps2rand);
@@ -1021,7 +1027,7 @@ DllMain(HINSTANCE hInst, DWORD reason, LPVOID)
 			freopen("CONOUT$", "w", stderr);
 		}
 		AddressByVersion<addr>(0, 0, 0, 0, 0, 0);
-		if(gtaversion != -1)
+		if(is10())
 			patch();
 	}
 

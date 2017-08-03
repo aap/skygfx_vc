@@ -33,14 +33,14 @@ project "skygfx_vc"
       symbols "On"
       debugdir "C:/Users/aap/games/gta3"
       debugcommand "C:/Users/aap/games/gta3/gta3.exe"
-      postbuildcommands "copy /y \"$(TargetPath)\" \"C:\\Users\\aap\\games\\gta3\\scripts\skygfx.asi\""
+      postbuildcommands "copy /y \"$(TargetPath)\" \"C:\\Users\\aap\\games\\gta3\\scripts\\skygfx.asi\""
 
    filter "configurations:DebugVC"
       defines { "DEBUG" }
       symbols "On"
       debugdir "C:/Users/aap/games/gtavc"
       debugcommand "C:/Users/aap/games/gtavc/gta_vc.exe"
-      postbuildcommands "copy /y \"$(TargetPath)\" \"C:\\Users\\aap\\games\\gtavc\\scripts\skygfx.asi\""
+      postbuildcommands "copy /y \"$(TargetPath)\" \"C:\\Users\\aap\\games\\gtavc\\scripts\\skygfx.asi\""
 
    filter "configurations:Release"
       defines { "NDEBUG" }

@@ -370,7 +370,7 @@ CarPipe::ShaderSetup(RwMatrix *world)
 		UploadZero(LOC_directDir);
 	}
 	for(int i = 0 ; i < 4; i++)
-		if(pExtraDirectionals[i]){
+		if(i < NumExtraDirLightsInWorld && RpLightGetType(pExtraDirectionals[i]) == rpLIGHTDIRECTIONAL){
 			UploadLightDirection(pExtraDirectionals[i], LOC_lightDir+i);
 			UploadLightColorWithSpecular(pExtraDirectionals[i], LOC_lightCol+i);
 		}else{
