@@ -172,6 +172,9 @@ class WaterDrop
 public:
 	float x, y, time;		// shorts on xbox (short float?)
 	float size, uvsize, ttl;	// "
+	uchar r;
+	uchar g;
+	uchar b;
 	uchar alpha;
 	bool active;
 	bool fades;
@@ -221,16 +224,16 @@ public:
 	static void ProcessMoving(void);
 	static void Fade(void);
 
-	static WaterDrop *PlaceNew(float x, float y, float size, float time, bool fades);
+	static WaterDrop *PlaceNew(float x, float y, float size, float time, bool fades, int R, int G, int B);
 	static void NewTrace(WaterDropMoving*);
 	static void NewDropMoving(WaterDrop*);
 	// this has one more argument in VC: ttl, but it's always 2000.0
-	static void FillScreenMoving(float amount);
+	static void FillScreenMoving(float amount, bool isBlood);
 	static void FillScreen(int n);
 	static void Clear(void);
 	static void Reset(void);
 
-	static void RegisterSplash(CPlaceable_III *plc);
+	static void RegisterSplash(CPlaceable_III *plc, float distance);
 	static bool NoRain(void);
 
 	// Rendering
