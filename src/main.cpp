@@ -64,9 +64,9 @@ int &NumExtraDirLightsInWorld = *AddressByVersion<int*>(0x64C608, 0x64C608, 0x65
 
 int blendstyle, blendkey;
 int texgenstyle, texgenkey;
-int xboxcarpipe, xboxcarpipekey;
+int neocarpipe, neocarpipekey;
 int rimlight, rimlightkey;
-int xboxwaterdrops;
+int neowaterdrops, neoblooddrops;
 int envMapSize;
 Config config;
 
@@ -560,8 +560,7 @@ RwTextureRead_generic(char *name, char *mask)
 	return tex;
 }
 
-
-#ifndef RELEASE
+#ifdef DEBUG
 
 void *curvePS;
 
@@ -712,7 +711,7 @@ footsplash_ps2(uchar *ebx, uchar *esp)
 	col = *(uint*)0x5F85C4;
 	CParticle__AddParticle(44, &vec1, &vec2, NULL, 0.0f, &col, 0, 0, 0, 0);
 
-	if (xboxwaterdrops)
+	if(neowaterdrops)
 		WaterDrops::FillScreenMoving(0.1f, false);
 }
 
@@ -845,7 +844,7 @@ patch(void)
 
 	blendkey = readhex(cfg.get("SkyGfx", "texblendSwitchKey", "0x0").c_str());
 	texgenkey = readhex(cfg.get("SkyGfx", "texgenSwitchKey", "0x0").c_str());
-	xboxcarpipekey = readhex(cfg.get("SkyGfx", "neoCarPipeKey", "0x0").c_str());
+	neocarpipekey = readhex(cfg.get("SkyGfx", "neoCarPipeKey", "0x0").c_str());
 	rimlightkey = readhex(cfg.get("SkyGfx", "neoRimLightKey", "0x0").c_str());
 	config.neoWorldPipeKey = readhex(cfg.get("SkyGfx", "neoWorldPipeKey", "0x0").c_str());
 	config.neoGlossPipeKey = readhex(cfg.get("SkyGfx", "neoGlossPipeKey", "0x0").c_str());
@@ -885,8 +884,8 @@ patch(void)
 	if(isIII())
 		InjectHook(AddressByVersion<addr>(0x59BABF, 0x59BD7F, 0x598E6F, 0, 0, 0), CreateTextureFilterFlags);
 
-	xboxcarpipe = readint(cfg.get("SkyGfx", "neoCarPipe", ""), -1);
-	config.iCanHasNeoCar = xboxcarpipe >= 0;
+	neocarpipe = readint(cfg.get("SkyGfx", "neoCarPipe", ""), -1);
+	config.iCanHasNeoCar = neocarpipe >= 0;
 	envMapSize = readint(cfg.get("SkyGfx", "envMapSize", ""), 128);
 	rimlight = readint(cfg.get("SkyGfx", "neoRimLightPipe", ""), -1);
 	config.iCanHasNeoRim = rimlight >= 0;
@@ -932,8 +931,10 @@ patch(void)
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x55EA39, 0x55EA59, 0x55E929), sniperTrailsHook, PATCH_JUMP);
 
 	tmp = cfg.get("SkyGfx", "neoWaterDrops", "");
-	xboxwaterdrops = readint(tmp);
-	if(tmp != "" && xboxwaterdrops)
+	neowaterdrops = readint(tmp);
+	tmp = cfg.get("SkyGfx", "neoBloodDrops", "");
+	neoblooddrops = readint(tmp);
+	if(tmp != "" && neowaterdrops)
 		hookWaterDrops();
 
 	tmp = cfg.get("SkyGfx", "replaceDefaultPipeline", "");
@@ -947,34 +948,9 @@ patch(void)
 		}
 	}
 
-#ifndef RELEASE
-	if(gtaversion == III_10){
-		// ignore txd.img
-		InjectHook(0x48C12E, 0x48C14C, PATCH_JUMP);
-
-		int i = readint(cfg.get("SkyGfx", "curve", ""), -1);
-		if(i >= 0){
-			curveIdx = i % 256;
-			InjectHook(0x48E44B, curvehook, PATCH_JUMP);
-		}
-		InjectHook(0x405DB0, printf, PATCH_JUMP);
-
-		// patch loadscreens
-		// ff 74 24 60             push   DWORD PTR [esp+0x60]
-		Patch<uint>(0x48D774, 0x602474ff);
-		InjectHook(0x48D778, 0x48D79B, PATCH_JUMP);
-
-		//MemoryVP::InjectHook(0x48E603, RenderEffectsHook);
-		//MemoryVP::InjectHook(0x5219B3, CVehicleModelInfo__SetEnvironmentMapCB_hook);
-		//MemoryVP::Patch<void*>(0x521986+1, CVehicleModelInfo__SetEnvironmentMapCB_hook);
-
-		// clear framebuffer
-		Patch<uchar>(0x48CFC1+1, 3);
-		Patch<uchar>(0x48D0AD+1, 3);
-		Patch<uchar>(0x48E6A7+1, 3);
-		Patch<uchar>(0x48E78C+1, 3);
-
-		// footsplash stuff
+	tmp = cfg.get("SkyGfx", "ps2FootSplash", "");
+	if(tmp != "" && readint(tmp) && gtaversion == III_10){
+		// footsplash stuff - needs ps2 particle.cfg PED_SPLASH
 		static float randscl = 1/63556.0f;
 		static float splashscl = 0.4f;
 		static float splashadd = -0.2f;
@@ -987,12 +963,50 @@ patch(void)
 		Patch<float*>(0x4CC52A +2, &splashscl);
 		Patch<float*>(0x4CC506 +2, &splashadd);
 		Patch<float*>(0x4CC530 +2, &splashadd);
-	//	Nop(0x4CCD69, 5);
-	//	Nop(0x4CCDBB, 5);
 		InjectHook(0x4CCC1A, footsplash_hook, PATCH_JUMP);
 	}
+
+	tmp = cfg.get("SkyGfx", "ps2Loadscreen", "");
+	if(tmp != "" && readint(tmp)){
+		if(gtaversion == III_10){
+			// ff 74 24 60             push   DWORD PTR [esp+0x60]
+			Patch<uint>(0x48D774, 0x602474ff);
+			InjectHook(0x48D778, 0x48D79B, PATCH_JUMP);
+		}
+		if(gtaversion == VC_10){
+			// BREAKS WITH OLD OLA
+			Nop(0x4A69D4, 1);
+			// ff 74 24 78             push   DWORD PTR [esp+0x78]
+			Patch(0x4A69D4+1, 0x782474ff);
+		}
+	}
+
+#ifdef DEBUG
+	if(gtaversion == III_10){
+		// ignore txd.img
+		InjectHook(0x48C12E, 0x48C14C, PATCH_JUMP);
+
+		int i = readint(cfg.get("SkyGfx", "curve", ""), -1);
+		if(i >= 0){
+			curveIdx = i % 256;
+			InjectHook(0x48E44B, curvehook, PATCH_JUMP);
+		}
+		InjectHook(0x405DB0, printf, PATCH_JUMP);
+
+
+		//MemoryVP::InjectHook(0x48E603, RenderEffectsHook);
+		//MemoryVP::InjectHook(0x5219B3, CVehicleModelInfo__SetEnvironmentMapCB_hook);
+		//MemoryVP::Patch<void*>(0x521986+1, CVehicleModelInfo__SetEnvironmentMapCB_hook);
+
+		// clear framebuffer
+		Patch<uchar>(0x48CFC1+1, 3);
+		Patch<uchar>(0x48D0AD+1, 3);
+		Patch<uchar>(0x48E6A7+1, 3);
+		Patch<uchar>(0x48E78C+1, 3);
+
+	}
 #endif
-#ifndef RELEASE
+#ifdef DEBUG
 	if(gtaversion == VC_10){
 		// remove "%s has not been pre-instanced", we don't really care
 		Nop(0x40C32B, 5);
@@ -1006,11 +1020,6 @@ patch(void)
 		//
 		//Patch(0x4CF47D, 0xc031);	// xor eax, eax
 		//Nop(0x4CF47D + 2, 2);
-
-		// enable loadscreens. BREAKS WITH OLD OLA
-		Nop(0x4A69D4, 1);
-		// ff 74 24 78             push   DWORD PTR [esp+0x78]
-		Patch(0x4A69D4+1, 0x782474ff);
 	}
 #endif
 

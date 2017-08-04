@@ -101,15 +101,15 @@ float &CTimer__ms_fTimeStep = *AddressByVersion<float*>(0x8E2CB4, 0, 0, 0x975424
 float &CWeather__Rain = *AddressByVersion<float*>(0x8E2BFC, 0, 0, 0x975340, 0, 0);
 bool &CCutsceneMgr__ms_running = *AddressByVersion<bool*>(0x95CCF5, 0, 0, 0xA10AB2, 0, 0);
 
-short getCamMode()
+short
+getCamMode()
 {
 	uchar selector = *(TheCamera + 0x76);
 	uchar *cam;
-	if (isIII()) {
+	if(isIII()){
 		cam = TheCamera + 0x1A4;
 		cam += selector * 0x1A4;
-	}
-	else {
+	}else{
 		cam = TheCamera + 0x188;
 		cam += selector * 0x1CC;
 	}
@@ -162,7 +162,8 @@ INJECTRESET(3)
 INJECTRESET(4)
 INJECTRESET(5)
 
-void hookWaterDrops()
+void
+hookWaterDrops()
 {
 	if (is10()) 
 	{
@@ -251,22 +252,23 @@ void hookWaterDrops()
 	}
 }
 
-void WaterDrops::RegisterSplash(CPlaceable_III *plc, float distance = 20.0f)
+void
+WaterDrops::RegisterSplash(CPlaceable_III *plc, float distance = 20.0f)
 {
 	RwV3d dist;
-	if (isIII())
+	if(isIII())
 		RwV3dSub(&dist, &plc->matrix.matrix.pos, &ms_lastPos);
 	else
 		RwV3dSub(&dist, &((CPlaceable*)plc)->matrix.matrix.pos, &ms_lastPos);
 
-	if (RwV3dLength(&dist) <= distance)
-	{
+	if(RwV3dLength(&dist) <= distance){
 		ms_splashDuration = 14;
 		ms_splashObject = plc;
 	}
 }
 
-void WaterDrops::InitialiseRender(RwCamera *cam)
+void
+WaterDrops::InitialiseRender(RwCamera *cam)
 {
 	srand(time(NULL));
 	ms_fbWidth = cam->frameBuffer->width;
@@ -282,7 +284,7 @@ void WaterDrops::InitialiseRender(RwCamera *cam)
 	ms_indexBuf = ibuf;
 	RwUInt16 *idx;
 	ibuf->Lock(0, 0, (BYTE**)&idx, 0);
-	for (int i = 0; i < MAXDROPS; i++) {
+	for(int i = 0; i < MAXDROPS; i++){
 		idx[i * 6 + 0] = i * 4 + 0;
 		idx[i * 6 + 1] = i * 4 + 1;
 		idx[i * 6 + 2] = i * 4 + 2;
@@ -293,8 +295,8 @@ void WaterDrops::InitialiseRender(RwCamera *cam)
 	ibuf->Unlock();
 
 	int w, h;
-	for (w = 1; w < cam->frameBuffer->width; w <<= 1);
-	for (h = 1; h < cam->frameBuffer->height; h <<= 1);
+	for(w = 1; w < cam->frameBuffer->width; w <<= 1);
+	for(h = 1; h < cam->frameBuffer->height; h <<= 1);
 	ms_raster = RwRasterCreate(w, h, 0, 5);
 	ms_tex = RwTextureCreate(ms_raster);
 	ms_tex->filterAddressing = 0x3302;
@@ -303,9 +305,10 @@ void WaterDrops::InitialiseRender(RwCamera *cam)
 	ms_initialised = 1;
 }
 
-void WaterDrops::Process()
+void
+WaterDrops::Process()
 {
-	if (!ms_initialised)
+	if(!ms_initialised)
 		InitialiseRender(rwcam);
 	WaterDrops::CalculateMovement();
 	WaterDrops::SprayDrops();
@@ -313,7 +316,8 @@ void WaterDrops::Process()
 	WaterDrops::Fade();
 }
 
-void WaterDrops::CalculateMovement()
+void
+WaterDrops::CalculateMovement()
 {
 	RwMatrix *modelMatrix;
 	modelMatrix = &RwCameraGetFrame(rwcam)->modelling;
@@ -336,7 +340,7 @@ void WaterDrops::CalculateMovement()
 	short mode = getCamMode();
 	bool istopdown = mode == CAMIII_TOPDOWN1 || mode == CAMIII_TOPDOWN2 || mode == CAMIII_TOPDOWNPED;
 	bool carlookdirection = 0;
-	if (mode == CAMIII_FIRSTPERSON && FindPlayerVehicle()) {
+	if(mode == CAMIII_FIRSTPERSON && FindPlayerVehicle()){
 		CPad *p = CPad::GetPad(0);
 		if (p->GetLookBehindForCar() || p->GetLookLeft() || p->GetLookRight())
 			carlookdirection = 1;
@@ -345,25 +349,27 @@ void WaterDrops::CalculateMovement()
 	ms_movingEnabled = !istopdown && !carlookdirection;
 
 	float c = modelMatrix->at.z;
-	if (c > 1.0f) c = 1.0f;
-	if (c < -1.0f) c = -1.0f;
+	if(c > 1.0f) c = 1.0f;
+	if(c < -1.0f) c = -1.0f;
 	ms_rainStrength = RAD2DEG(acos(c));
 }
 
-bool WaterDrops::NoRain()
+bool
+WaterDrops::NoRain()
 {
 	return CCullZones__CamNoRain() || CCullZones__PlayerNoRain();
 }
 
-WaterDrop* WaterDrops::PlaceNew(float x, float y, float size, float ttl, bool fades, int R = 0xFF, int G = 0xFF, int B = 0xFF)
+WaterDrop*
+WaterDrops::PlaceNew(float x, float y, float size, float ttl, bool fades, int R = 0xFF, int G = 0xFF, int B = 0xFF)
 {
 	WaterDrop *drop;
 	int i;
 
-	if (NoRain())
+	if(NoRain())
 		return NULL;
 
-	for (i = 0, drop = ms_drops; i < MAXDROPS; i++, drop++)
+	for(i = 0, drop = ms_drops; i < MAXDROPS; i++, drop++)
 		if (ms_drops[i].active == 0)
 			goto found;
 	return NULL;
@@ -387,8 +393,8 @@ found:
 void WaterDrops::NewDropMoving(WaterDrop *drop)
 {
 	WaterDropMoving *moving;
-	for (moving = ms_dropsMoving; moving < &ms_dropsMoving[MAXDROPSMOVING]; moving++)
-		if (moving->drop == NULL)
+	for(moving = ms_dropsMoving; moving < &ms_dropsMoving[MAXDROPSMOVING]; moving++)
+		if(moving->drop == NULL)
 			goto found;
 	return;
 found:
@@ -397,27 +403,30 @@ found:
 	moving->dist = 0.0f;
 }
 
-void WaterDrops::FillScreenMoving(float amount, bool isBlood = false)
+void
+WaterDrops::FillScreenMoving(float amount, bool isBlood = false)
 {
 	int n = (ms_vec.z <= 5.0f ? 1.0f : 1.5f)*amount*20.0f;
 	float x, y, time;
 	WaterDrop *drop;
 
-	while (n--)
-		if (ms_numDrops < MAXDROPS && ms_numDropsMoving < MAXDROPSMOVING) {
+	while(n--)
+		if(ms_numDrops < MAXDROPS && ms_numDropsMoving < MAXDROPSMOVING){
 			x = rand() % ms_fbWidth;
 			y = rand() % ms_fbHeight;
 			time = rand() % (SC(MAXSIZE) - SC(MINSIZE)) + SC(MINSIZE);
-			if (!isBlood)
+			drop = NULL;
+			if(!isBlood)
 				drop = PlaceNew(x, y, time, 2000.0f, 1);
-			else
+			if(isBlood && neoblooddrops)
 				drop = PlaceNew(x, y, time, 2000.0f, 1, 0xFF, 0x00, 0x00);
-			if (drop)
+			if(drop)
 				NewDropMoving(drop);
 		}
 }
 
-void WaterDrops::SprayDrops()
+void
+WaterDrops::SprayDrops()
 {
 	AudioHydrant *hyd;
 	RwV3d dist;
@@ -426,135 +435,135 @@ void WaterDrops::SprayDrops()
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 	};
 
-	if (CWeather__Rain != 0.0f && ms_enabled) {
+	if(CWeather__Rain != 0.0f && ms_enabled){
 		int tmp = 180.0f - ms_rainStrength;
 		if (tmp < 40) tmp = 40;
 		FillScreenMoving((tmp - 40.0f) / 150.0f * CWeather__Rain * 0.5f);
 	}
-	for (hyd = audioHydrants; hyd < &audioHydrants[8]; hyd++)
-		if (hyd->particleObject) {
-			if (isIII())
+	for(hyd = audioHydrants; hyd < &audioHydrants[8]; hyd++)
+		if (hyd->particleObject){
+			if(isIII())
 				RwV3dSub(&dist, &hyd->particleObjectIII->matrix.matrix.pos, &ms_lastPos);
 			else
 				RwV3dSub(&dist, &hyd->particleObject->matrix.matrix.pos, &ms_lastPos);
-			if (RwV3dDotProduct(&dist, &dist) <= 40.0f)
+			if(RwV3dDotProduct(&dist, &dist) <= 40.0f)
 				FillScreenMoving(1.0f);
 		}
-	if (ms_splashDuration >= 0) {
-		if (ms_numDrops < MAXDROPS) {
-			if (isIII()) 
-			{
-				if (ms_splashObject)
-				{
+	if(ms_splashDuration >= 0){
+		if(ms_numDrops < MAXDROPS) {
+			if(isIII()){
+				if(ms_splashObject){
 					RwV3dSub(&dist, &ms_splashObject->matrix.matrix.pos, &ms_lastPos);
 					int n = ndrops[ms_splashDuration] * (1.0f - (RwV3dLength(&dist) - 5.0f) / 15.0f);
-					while (n--)
-						if (ms_numDrops < MAXDROPS) {
+					while(n--)
+						if(ms_numDrops < MAXDROPS){
 							float x = rand() % ms_fbWidth;
 							float y = rand() % ms_fbHeight;
 							float time = rand() % (SC(MAXSIZE) - SC(MINSIZE)) + SC(MINSIZE);
 							PlaceNew(x, y, time, 10000.0f, 0);
 						}
-				}
-				else
+				}else
 					FillScreenMoving(1.0f);
-			}
-			else
+			}else
 				FillScreenMoving(1.0f); // VC does STRANGE things here
 		}
 		ms_splashDuration--;
 	}
 }
 
-void WaterDrops::NewTrace(WaterDropMoving *moving)
+void
+WaterDrops::NewTrace(WaterDropMoving *moving)
 {
-	if (ms_numDrops < MAXDROPS) {
+	if(ms_numDrops < MAXDROPS){
 		moving->dist = 0.0f;
 		PlaceNew(moving->drop->x, moving->drop->y, SC(MINSIZE), 500.0f, 1, moving->drop->r, moving->drop->g, moving->drop->b);
 	}
 }
 
-void WaterDrops::MoveDrop(WaterDropMoving *moving)
+void
+WaterDrops::MoveDrop(WaterDropMoving *moving)
 {
 	WaterDrop *drop = moving->drop;
-	if (!ms_movingEnabled)
+	if(!ms_movingEnabled)
 		return;
-	if (!drop->active) {
+	if(!drop->active){
 		moving->drop = NULL;
 		ms_numDropsMoving--;
 		return;
 	}
-	if (ms_vec.z <= 0.0f || ms_distMoved <= 0.3f)
+	if(ms_vec.z <= 0.0f || ms_distMoved <= 0.3f)
 		return;
 
 	short mode = getCamMode();
-	if (ms_vecLen <= 0.5f || mode == CAMIII_FIRSTPERSON) {
+	if(ms_vecLen <= 0.5f || mode == CAMIII_FIRSTPERSON){
 		// movement out of center 
 		float d = ms_vec.z*0.2f;
 		float dx, dy, sum;
 		dx = drop->x - ms_fbWidth*0.5f + ms_vec.x;
-		if (mode == CAMIII_FIRSTPERSON)
+		if(mode == CAMIII_FIRSTPERSON)
 			dy = drop->y - ms_fbHeight*1.2f - ms_vec.y;
 		else
 			dy = drop->y - ms_fbHeight*0.5f - ms_vec.y;
 		sum = fabs(dx) + fabs(dy);
-		if (sum >= 0.001f) {
+		if(sum >= 0.001f){
 			dx *= (1.0 / sum);
 			dy *= (1.0 / sum);
 		}
 		moving->dist += d;
-		if (moving->dist > 20.0f)
+		if(moving->dist > 20.0f)
 			NewTrace(moving);
 		drop->x += dx * d;
 		drop->y += dy * d;
-	}
-	else {
+	}else{
 		// movement when camera turns
 		moving->dist += ms_vecLen;
-		if (moving->dist > 20.0f)
+		if(moving->dist > 20.0f)
 			NewTrace(moving);
 		drop->x -= -ms_vec.x;
 		drop->y += ms_vec.y;
 	}
 
-	if (drop->x < 0.0f || drop->y < 0.0f ||
-		drop->x > ms_fbWidth || drop->y > ms_fbHeight) {
+	if(drop->x < 0.0f || drop->y < 0.0f ||
+	   drop->x > ms_fbWidth || drop->y > ms_fbHeight){
 		moving->drop = NULL;
 		ms_numDropsMoving--;
 	}
 }
 
-void WaterDrops::ProcessMoving()
+void
+WaterDrops::ProcessMoving()
 {
 	WaterDropMoving *moving;
-	if (!ms_movingEnabled)
+	if(!ms_movingEnabled)
 		return;
-	for (moving = ms_dropsMoving; moving < &ms_dropsMoving[MAXDROPSMOVING]; moving++)
-		if (moving->drop)
+	for(moving = ms_dropsMoving; moving < &ms_dropsMoving[MAXDROPSMOVING]; moving++)
+		if(moving->drop)
 			MoveDrop(moving);
 }
 
-void WaterDrop::Fade()
+void
+WaterDrop::Fade()
 {
 	int delta = CTimer__ms_fTimeStep * 1000.0f / 50.0f;
 	this->time += delta;
-	if (this->time >= this->ttl) {
+	if(this->time >= this->ttl){
 		WaterDrops::ms_numDrops--;
 		this->active = 0;
-	}
-	else if (this->fades)
+	}else if (this->fades)
 		this->alpha = 255 - time / ttl * 255;
 }
 
-void WaterDrops::Fade()
+void
+WaterDrops::Fade()
 {
 	WaterDrop *drop;
-	for (drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++)
-		if (drop->active)
+	for(drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++)
+		if(drop->active)
 			drop->Fade();
 }
 
-void WaterDrops::AddToRenderList(WaterDrop *drop)
+void
+WaterDrops::AddToRenderList(WaterDrop *drop)
 {
 	static float xy[] = {
 		-1.0f, -1.0f, -1.0f,  1.0f,
@@ -583,7 +592,7 @@ void WaterDrops::AddToRenderList(WaterDrop *drop)
 
 	scale = drop->size * 0.5f;
 
-	for (i = 0; i < 4; i++, ms_vertPtr++) {
+	for(i = 0; i < 4; i++, ms_vertPtr++){
 		ms_vertPtr->x = drop->x + xy[i * 2] * scale + ms_xOff;
 		ms_vertPtr->y = drop->y + xy[i * 2 + 1] * scale + ms_yOff;
 		ms_vertPtr->z = 0.0f;
@@ -597,17 +606,20 @@ void WaterDrops::AddToRenderList(WaterDrop *drop)
 	ms_numBatchedDrops++;
 }
 
-void WaterDrops::Render()
+void
+WaterDrops::Render()
 {
+	WaterDrop *drop;
+
 	bool nofirstperson = FindPlayerVehicle() == 0 && getCamMode() == CAMIII_FIRSTPERSON;
-	if (!ms_enabled || ms_numDrops <= 0 || nofirstperson || CCutsceneMgr__ms_running)
+	if(!ms_enabled || ms_numDrops <= 0 || nofirstperson || CCutsceneMgr__ms_running)
 		return;
 
 	IDirect3DVertexBuffer8 *vbuf = (IDirect3DVertexBuffer8*)ms_vertexBuf;
 	vbuf->Lock(0, 0, (BYTE**)&ms_vertPtr, 0);
 	ms_numBatchedDrops = 0;
-	for (auto drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++)
-		if (drop->active)
+	for(drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++)
+		if(drop->active)
 			AddToRenderList(drop);
 	vbuf->Unlock();
 
@@ -663,12 +675,12 @@ void WaterDrops::FillScreen(int n)
 	float x, y, time;
 	WaterDrop *drop;
 
-	if (!ms_initialised)
+	if(!ms_initialised)
 		return;
 	ms_numDrops = 0;
-	for (drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++) {
+	for(drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++){
 		drop->active = 0;
-		if (drop < &ms_drops[n]) {
+		if(drop < &ms_drops[n]){
 			x = rand() % ms_fbWidth;
 			y = rand() % ms_fbHeight;
 			time = rand() % (SC(MAXSIZE) - SC(MINSIZE)) + SC(MINSIZE);
@@ -680,7 +692,7 @@ void WaterDrops::FillScreen(int n)
 void WaterDrops::Clear()
 {
 	WaterDrop *drop;
-	for (drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++)
+	for(drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++)
 		drop->active = 0;
 	ms_numDrops = 0;
 }

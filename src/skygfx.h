@@ -120,9 +120,9 @@ struct Config {
 extern Config config;
 extern int blendstyle, blendkey;
 extern int texgenstyle, texgenkey;
-extern int xboxcarpipe, xboxcarpipekey;
+extern int neocarpipe, neocarpipekey;
 extern int rimlight, rimlightkey;
-extern int xboxwaterdrops;
+extern int neowaterdrops, neoblooddrops;
 extern int envMapSize;
 
 char *getpath(char *path);

@@ -71,7 +71,7 @@ neoInit(void)
 	if(config.iCanHasNeoWorld)
 		neoWorldPipeInit();
 
-	if(xboxcarpipe >= 0 || xboxwaterdrops){
+	if(neocarpipe >= 0 || neowaterdrops){
 		char *path = getpath("neo\\neo.txd");
 		if(path == NULL){
 			MessageBox(NULL, "Couldn't load 'neo\\neo.txd'", "Error", MB_ICONERROR | MB_OK);

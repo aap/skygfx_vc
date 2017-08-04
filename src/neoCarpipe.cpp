@@ -488,15 +488,15 @@ CarPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt
 {
 						{
 							static bool keystate = false;
-							if(GetAsyncKeyState(xboxcarpipekey) & 0x8000){
+							if(GetAsyncKeyState(neocarpipekey) & 0x8000){
 								if(!keystate){
 									keystate = true;
-									xboxcarpipe = (xboxcarpipe+1)%2;
+									neocarpipe = (neocarpipe+1)%2;
 								}
 							}else
 								keystate = false;
 						}
-	if(!xboxcarpipe){
+	if(!neocarpipe){
 		rwD3D8AtomicMatFXRenderCallback(repEntry, object, type, flags);
 		return;
 	}
