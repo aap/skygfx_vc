@@ -868,14 +868,12 @@ patch(void)
 	}
 	texgenstyle %= 2;
 
-	tmp = cfg.get("SkyGfx", "IIIEnvFrame", "");
-	if(isVC() && tmp != "" && readint(tmp)){
+	if(isVC() && readint(cfg.get("SkyGfx", "IIIEnvFrame", ""))){
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x57A8BA, 0x57A8DA, 0x57A7AA), createIIIEnvFrame);
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x57A8C7, 0x57A8E7, 0x57A7B7),
 				   AddressByVersion<addr>(0, 0, 0, 0x57A8F4, 0x57A914, 0x57A7E4), PATCH_JUMP);
 	}
-	tmp = cfg.get("SkyGfx", "VCEnvFrame", "");
-	if(isIII() && tmp != "" && readint(tmp)){
+	if(isIII() && readint(cfg.get("SkyGfx", "VCEnvFrame", ""))){
 		InjectHook(AddressByVersion<addr>(0x5218A2, 0x521AE2, 0x521A72, 0, 0, 0), createVCEnvFrame);
 		InjectHook(AddressByVersion<addr>(0x5218AC, 0x521AEC, 0x521A7C, 0, 0, 0),
 				   AddressByVersion<addr>(0x52195E, 0x521B9E, 0x521B2E, 0, 0, 0), PATCH_JUMP);
@@ -930,15 +928,12 @@ patch(void)
 	if(isVC())
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x55EA39, 0x55EA59, 0x55E929), sniperTrailsHook, PATCH_JUMP);
 
-	tmp = cfg.get("SkyGfx", "neoWaterDrops", "");
-	neowaterdrops = readint(tmp);
-	tmp = cfg.get("SkyGfx", "neoBloodDrops", "");
-	neoblooddrops = readint(tmp);
-	if(tmp != "" && neowaterdrops)
+	neowaterdrops = readint(cfg.get("SkyGfx", "neoWaterDrops", ""));
+	neoblooddrops = readint(cfg.get("SkyGfx", "neoBloodDrops", ""));
+	if(neowaterdrops)
 		hookWaterDrops();
 
-	tmp = cfg.get("SkyGfx", "replaceDefaultPipeline", "");
-	if(tmp != "" && readint(tmp)){
+	if(readint(cfg.get("SkyGfx", "replaceDefaultPipeline", ""))){
 		if(gtaversion == III_10){
 			Patch(0x5DB427 +2, D3D8AtomicDefaultInstanceCallback_fixed);
 			Patch(0x5DB43B +3, rxD3D8DefaultRenderCallback_xbox);
@@ -948,8 +943,7 @@ patch(void)
 		}
 	}
 
-	tmp = cfg.get("SkyGfx", "ps2FootSplash", "");
-	if(tmp != "" && readint(tmp) && gtaversion == III_10){
+	if(gtaversion == III_10 && readint(cfg.get("SkyGfx", "ps2FootSplash", ""))){
 		// footsplash stuff - needs ps2 particle.cfg PED_SPLASH
 		static float randscl = 1/63556.0f;
 		static float splashscl = 0.4f;
@@ -966,8 +960,7 @@ patch(void)
 		InjectHook(0x4CCC1A, footsplash_hook, PATCH_JUMP);
 	}
 
-	tmp = cfg.get("SkyGfx", "ps2Loadscreen", "");
-	if(tmp != "" && readint(tmp)){
+	if(readint(cfg.get("SkyGfx", "ps2Loadscreen", ""))){
 		if(gtaversion == III_10){
 			// ff 74 24 60             push   DWORD PTR [esp+0x60]
 			Patch<uint>(0x48D774, 0x602474ff);

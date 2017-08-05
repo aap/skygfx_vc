@@ -167,6 +167,7 @@ hookWaterDrops()
 {
 	if (is10()) 
 	{
+		static injector::hook_back<void(__cdecl*)(int, int, int, int, int, int, int, int, int)> AddParticle;
 		static injector::hook_back<void(*)()> RenderEffects;
 		auto RenderEffects_hook = []()
 		{
@@ -185,14 +186,16 @@ hookWaterDrops()
 			}
 		}; injector::MakeInline<splashhook>(AddressByVersion<addr>(0x4BC7D0, 0, 0, 0x4E8721, 0, 0));
 
-		//more blood
-		static injector::hook_back<void(__cdecl*)(int, int, int, int, int, int, int, int, int)> AddParticle;
-		auto AddParticleHook = [](int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9)
+		if (neoblooddrops)
 		{
-			AddParticle.fun(a1, a2, a3, a4, a5, a6, a7, a8, a9);
-			WaterDrops::FillScreenMoving(0.2f, true);
-		}; AddParticle.fun = injector::MakeCALL(AddressByVersion<addr>(0x4E78D1, 0, 0, 0x52A4B3, 0, 0), static_cast<void(__cdecl*)(int, int, int, int, int, int, int, int, int)>(AddParticleHook), true).get();
-		injector::MakeCALL(AddressByVersion<addr>(0x55CF2E, 0, 0, 0x5D343A, 0, 0), static_cast<void(__cdecl*)(int, int, int, int, int, int, int, int, int)>(AddParticleHook), true);
+			auto AddParticleHook = [](int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9)
+			{
+				AddParticle.fun(a1, a2, a3, a4, a5, a6, a7, a8, a9);
+				if (neoblooddrops)
+					WaterDrops::FillScreenMoving(0.2f, true);
+			}; AddParticle.fun = injector::MakeCALL(AddressByVersion<addr>(0x4E78D1, 0, 0, 0x52A4B3, 0, 0), static_cast<void(__cdecl*)(int, int, int, int, int, int, int, int, int)>(AddParticleHook), true).get();
+			injector::MakeCALL(AddressByVersion<addr>(0x55CF2E, 0, 0, 0x5D343A, 0, 0), static_cast<void(__cdecl*)(int, int, int, int, int, int, int, int, int)>(AddParticleHook), true);
+		}
 
 		//boats
 		struct boathook
@@ -214,14 +217,17 @@ hookWaterDrops()
 		{
 			injector::MakeNOP(AddressByVersion<addr>(0, 0, 0, 0x560D63, 0, 0), 5, true); //remove old effect in VC
 
-			//chainsaw
-			struct bloodhook
+			if (neoblooddrops)
 			{
-				void operator()(injector::reg_pack& regs)
+				//chainsaw
+				struct bloodhook
 				{
-					WaterDrops::FillScreenMoving(1.0f, true);
-				}
-			}; injector::MakeInline<bloodhook>(AddressByVersion<addr>(0, 0, 0, 0x5D3989, 0, 0));
+					void operator()(injector::reg_pack& regs)
+					{
+						WaterDrops::FillScreenMoving(1.0f, true);
+					}
+				}; injector::MakeInline<bloodhook>(AddressByVersion<addr>(0, 0, 0, 0x5D3989, 0, 0));
+			}
 
 			//fountains
 			struct fountainhook // near movie studio
@@ -247,7 +253,7 @@ hookWaterDrops()
 			{
 				AddParticle.fun(a1, a2, a3, a4, a5, a6, a7, a8, a9);
 				WaterDrops::FillScreenMoving(0.5f, false);
-			}; injector::MakeCALL(AddressByVersion<addr>(0, 0, 0, 0x50489F, 0, 0), static_cast<void(__cdecl*)(int, int, int, int, int, int, int, int, int)>(AddParticlePoolHook), true);
+			}; AddParticle.fun = injector::MakeCALL(AddressByVersion<addr>(0, 0, 0, 0x50489F, 0, 0), static_cast<void(__cdecl*)(int, int, int, int, int, int, int, int, int)>(AddParticlePoolHook), true).get();
 		}
 	}
 }
@@ -418,7 +424,7 @@ WaterDrops::FillScreenMoving(float amount, bool isBlood = false)
 			drop = NULL;
 			if(!isBlood)
 				drop = PlaceNew(x, y, time, 2000.0f, 1);
-			if(isBlood && neoblooddrops)
+			else
 				drop = PlaceNew(x, y, time, 2000.0f, 1, 0xFF, 0x00, 0x00);
 			if(drop)
 				NewDropMoving(drop);
