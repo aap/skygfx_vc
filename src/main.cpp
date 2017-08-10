@@ -762,7 +762,7 @@ RenderEffectsHook(void)
 	RwRasterPopContext();
 }
 */
-
+bool neo_once;
 #define ONCE do{ static int once = 0; assert(once == 0); once = 1; }while(0)
 
 bool (*InitialiseRenderWare)(void);
@@ -783,10 +783,17 @@ void (*InitialiseGame)(void);
 void
 InitialiseGame_hook(void)
 {
-	if(isIII())
-		// fall back to generic.txd when reading from dff
+	if(isIII()) // fall back to generic.txd when reading from dff
 		InjectHook(AddressByVersion<addr>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
 	InitialiseGame();
+
+	if (!neo_once)
+	{
+		if (isIII()) // fall back to generic.txd when reading from dff
+			InjectHook(AddressByVersion<addr>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
+		neoInit();
+		neo_once = true;
+	}
 }
 
 int
@@ -835,7 +842,7 @@ patch(void)
 	// ADDRESS
 	if(gtaversion == III_10 || gtaversion == VC_10){
 		// Everything that is initialized with RenderWare
-		InterceptCall(&InitialiseRenderWare, InitialiseRenderWare_hook, AddressByVersion<addr>(0x48D52F, 0, 0, 0x4A5B6B, 0, 0));
+		//InterceptCall(&InitialiseRenderWare, InitialiseRenderWare_hook, AddressByVersion<addr>(0x48D52F, 0, 0, 0x4A5B6B, 0, 0));
 		// Everything that is initialized whenever a game is started
 		InterceptCall(&InitialiseGame, InitialiseGame_hook, AddressByVersion<addr>(0x582E6C, 0, 0, 0x600411, 0, 0));
 
