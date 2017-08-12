@@ -167,7 +167,6 @@ hookWaterDrops()
 {
 	if (is10()) 
 	{
-		static injector::hook_back<void(__cdecl*)(int, int, int, int, int, int, int, int, int)> AddParticle;
 		static injector::hook_back<void(*)()> RenderEffects;
 		auto RenderEffects_hook = []()
 		{
@@ -188,6 +187,7 @@ hookWaterDrops()
 
 		if (neoblooddrops)
 		{
+			static injector::hook_back<void(__cdecl*)(int, int, int, int, int, int, int, int, int)> AddParticle;
 			auto AddParticleHook = [](int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9)
 			{
 				AddParticle.fun(a1, a2, a3, a4, a5, a6, a7, a8, a9);
@@ -249,6 +249,7 @@ hookWaterDrops()
 			}; injector::MakeInline<fountainhook2>(AddressByVersion<addr>(0, 0, 0, 0x4E795D, 0, 0), AddressByVersion<addr>(0, 0, 0, 0x4E795D+7, 0, 0));
 
 			//pools
+			static injector::hook_back<void(__cdecl*)(int, int, int, int, int, int, int, int, int)> AddParticle;
 			auto AddParticlePoolHook = [](int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9)
 			{
 				AddParticle.fun(a1, a2, a3, a4, a5, a6, a7, a8, a9);
@@ -314,7 +315,7 @@ WaterDrops::InitialiseRender(RwCamera *cam)
 void
 WaterDrops::Process()
 {
-	if(!ms_initialised)
+	if(!ms_initialised || rwcam->frameBuffer->width != ms_fbWidth)
 		InitialiseRender(rwcam);
 	WaterDrops::CalculateMovement();
 	WaterDrops::SprayDrops();
@@ -466,7 +467,7 @@ WaterDrops::SprayDrops()
 							float x = rand() % ms_fbWidth;
 							float y = rand() % ms_fbHeight;
 							float time = rand() % (SC(MAXSIZE) - SC(MINSIZE)) + SC(MINSIZE);
-							PlaceNew(x, y, time, 10000.0f, 0);
+							PlaceNew(x, y, time, 10000.0f, true);
 						}
 				}else
 					FillScreenMoving(1.0f);
@@ -525,7 +526,13 @@ WaterDrops::MoveDrop(WaterDropMoving *moving)
 		moving->dist += ms_vecLen;
 		if(moving->dist > 20.0f)
 			NewTrace(moving);
-		drop->x -= -ms_vec.x;
+
+		if (CPad::GetPad(0)->GetLookLeft() || CPad::GetPad(0)->GetLookRight())
+			drop->x -= ms_vec.x;
+		else
+			drop->x -= -ms_vec.x;
+
+
 		drop->y += ms_vec.y;
 	}
 
