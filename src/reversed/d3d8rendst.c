@@ -18,7 +18,9 @@ _rwD3D8RenderStateVertexAlphaEnable(RwBool enable)
 		RwD3D8SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 		vertexAlphaEnabled = 1;
 	}else{
- 		if(textureAlphaEnabled){
+ 		if(!vertexAlphaEnabled)
+			return 1;
+		if(textureAlphaEnabled){
 			RwD3D8SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
 			RwD3D8SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
 		}else{
@@ -40,7 +42,7 @@ rwD3D8RWSetRasterStage(RwRaster *raster, RwInt32 stage)
 		if(raster && natras->texture && natras->hasAlpha){
 			if(!textureAlphaEnabled){
 				textureAlphaEnabled = 1;
-				if(vertexAlphaEnabled){
+				if(!vertexAlphaEnabled){
 					RwD3D8SetRenderState(D3DRS_ALPHABLENDENABLE, (void*)1);
 					RwD3D8SetRenderState(D3DRS_ALPHATESTENABLE, (void*)1);
 				}
@@ -48,8 +50,10 @@ rwD3D8RWSetRasterStage(RwRaster *raster, RwInt32 stage)
 		}else{
 			if(textureAlphaEnabled){
 				textureAlphaEnabled = 0;
-				RwD3D8SetRenderState(D3DRS_ALPHABLENDENABLE, (void*)0);
-				RwD3D8SetRenderState(D3DRS_ALPHATESTENABLE, (void*)0);
+				if(!vertexAlphaEnabled){
+					RwD3D8SetRenderState(D3DRS_ALPHABLENDENABLE, (void*)0);
+					RwD3D8SetRenderState(D3DRS_ALPHATESTENABLE, (void*)0);
+				}
 			}
 		}
 	}

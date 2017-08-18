@@ -765,28 +765,12 @@ RenderEffectsHook(void)
 bool neo_once;
 #define ONCE do{ static int once = 0; assert(once == 0); once = 1; }while(0)
 
-bool (*InitialiseRenderWare)(void);
-bool
-InitialiseRenderWare_hook(void)
-{
-	ONCE;
-	if(!InitialiseRenderWare())
-		return false;
-	if(isIII())
-		// fall back to generic.txd when reading from dff
-		InjectHook(AddressByVersion<addr>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
-	neoInit();
-	return true;
-}
-
 void (*InitialiseGame)(void);
 void
 InitialiseGame_hook(void)
 {
 	if(isIII()) // fall back to generic.txd when reading from dff
 		InjectHook(AddressByVersion<addr>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
-	InitialiseGame();
-
 	if (!neo_once)
 	{
 		if (isIII()) // fall back to generic.txd when reading from dff
@@ -794,6 +778,7 @@ InitialiseGame_hook(void)
 		neoInit();
 		neo_once = true;
 	}
+	InitialiseGame();
 }
 
 int
