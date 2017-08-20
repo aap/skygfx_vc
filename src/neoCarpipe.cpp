@@ -111,7 +111,8 @@ void
 RenderScene_hook(void)
 {
 	RenderScene();
-	CarPipe::RenderEnvTex();
+	if(neocarpipe)
+		CarPipe::RenderEnvTex();
 }
 
 void
