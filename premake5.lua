@@ -28,7 +28,7 @@ project "skygfx_vc"
 	language "C++"
 	targetname "skygfx"
 	targetdir "bin/%{cfg.buildcfg}"
-	targetextension ".asi"
+	targetextension ".dll"
 	characterset ("MBCS")
 
 	filter "configurations:DebugIII"
@@ -36,14 +36,14 @@ project "skygfx_vc"
 		symbols "On"
 		debugdir "C:/Users/aap/games/gta3"
 		debugcommand "C:/Users/aap/games/gta3/gta3.exe"
-		postbuildcommands "copy /y \"$(TargetPath)\" \"C:\\Users\\aap\\games\\gta3\\scripts\\skygfx.asi\""
+		postbuildcommands "copy /y \"$(TargetPath)\" \"C:\\Users\\aap\\games\\gta3\\dlls\\skygfx.dll\""
 
 	filter "configurations:DebugVC"
 		defines { "DEBUG" }
 		symbols "On"
 		debugdir "C:/Users/aap/games/gtavc"
 		debugcommand "C:/Users/aap/games/gtavc/gta_vc.exe"
-		postbuildcommands "copy /y \"$(TargetPath)\" \"C:\\Users\\aap\\games\\gtavc\\scripts\\skygfx.asi\""
+		postbuildcommands "copy /y \"$(TargetPath)\" \"C:\\Users\\aap\\games\\gtavc\\dlls\\skygfx.dll\""
 
 	filter "configurations:Release"
 		defines { "NDEBUG" }

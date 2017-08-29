@@ -72,20 +72,22 @@ public:
 addr CPed::SetModelIndex_A;
 WRAPPER void CPed::SetModelIndex(int id) { VARJMP(SetModelIndex_A); }
 
-void neoRimPipeInit(void)
+void
+neoRimPipeInit(void)
 {
 	RxPipelineNode *node;
 	RimPipe::Get()->Init();
 	node = RxPipelineFindNodeByName(skinpipe, "nodeD3D8SkinAtomicAllInOne.csl", NULL, NULL);
 	*(void**)node->privateData = RimPipe::RenderCallback;
 	// set the pipeline for peds unless iii_anim is taking care of that already
-	if(gtaversion == III_10 && !GetModuleHandleA("iii_anim.asi")){
-		InterceptVmethod(&CPed::SetModelIndex_A, &CPed::SetModelIndex_hook, 0x5F81A8);
-		Patch(0x5F82B0, &CPed::SetModelIndex_hook);
-		Patch(0x5F8380, &CPed::SetModelIndex_hook);
-		Patch(0x5F8C38, &CPed::SetModelIndex_hook);
-		Patch(0x5FA50C, &CPed::SetModelIndex_hook);
-	}
+	if(gtaversion == III_10)
+		if(!GetModuleHandleA("iii_anim.asi") && !GetModuleHandleA("iii_anim.dll")){
+			InterceptVmethod(&CPed::SetModelIndex_A, &CPed::SetModelIndex_hook, 0x5F81A8);
+			Patch(0x5F82B0, &CPed::SetModelIndex_hook);
+			Patch(0x5F8380, &CPed::SetModelIndex_hook);
+			Patch(0x5F8C38, &CPed::SetModelIndex_hook);
+			Patch(0x5FA50C, &CPed::SetModelIndex_hook);
+		}
 }
 
 
