@@ -2,8 +2,10 @@
 #include "ini_parser.hpp"
 #include "d3d8.h"
 #include "d3d8types.h"
+#include "debugmenu_public.h"
 
 HMODULE dllModule;
+DebugMenuAPI gDebugMenuAPI;
 char asipath[MAX_PATH];
 int gtaversion = -1;
 
@@ -802,6 +804,28 @@ readint(const std::string &s, int default = 0)
 
 RwCamera *&pRwCamera = *AddressByVersion<RwCamera**>(0x72676C, 0x72676C, 0x7368AC, 0x8100BC, 0x8100C4, 0x80F0C4);
 
+int (*RsEventHandler_orig)(int a, int b);
+int
+delayedPatches(int a, int b)
+{
+	if(DebugMenuLoad()){
+		DebugMenuEntry *e;
+		static const char *ps2pc[] = { "PS2", "PC" };
+		e = DebugMenuAddVar("SkyGFX", "MatFX blend", &blendstyle, nil, 1, 0, 1, ps2pc);
+		DebugMenuEntrySetWrap(e, true);
+		e = DebugMenuAddVar("SkyGFX", "MatFX texgen", &texgenstyle, nil, 1, 0, 1, ps2pc);
+		DebugMenuEntrySetWrap(e, true);
+		DebugMenuAddVarBool32("SkyGFX", "Dual pass", &dualpass, nil);
+		DebugMenuAddVarBool32("SkyGFX", "Neo car pipe", &neocarpipe, nil);
+		DebugMenuAddVarBool32("SkyGFX", "Neo rim light pipe", &rimlight, nil);
+		DebugMenuAddVarBool32("SkyGFX", "Neo world pipe", &config.neoWorldPipe, nil);
+		DebugMenuAddVarBool32("SkyGFX", "Neo gloss pipe", &config.neoGlossPipe, nil);
+		DebugMenuAddVarBool32("SkyGFX", "Neo water drops", &neowaterdrops, nil);
+		DebugMenuAddVarBool32("SkyGFX", "Neo-style blood drops", &neoblooddrops, nil);
+	}
+	return RsEventHandler_orig(a, b);
+}
+
 void
 patch(void)
 {
@@ -823,6 +847,9 @@ patch(void)
 	strcat(modulePath, "skygfx.ini");
 	linb::ini cfg;
 	cfg.load_file(modulePath);
+
+	if(gtaversion == III_10 || gtaversion == VC_10)
+		InterceptCall(&RsEventHandler_orig, delayedPatches, AddressByVersion<uint32_t>(0x58275E, 0, 0, 0x5FFAFE, 0, 0));
 
 	// ADDRESS
 	if(gtaversion == III_10 || gtaversion == VC_10){

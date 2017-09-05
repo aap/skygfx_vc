@@ -25,6 +25,7 @@ typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
 typedef uintptr_t addr;
+#define nil NULL
 
 #include "MemoryMgr.h"
 
