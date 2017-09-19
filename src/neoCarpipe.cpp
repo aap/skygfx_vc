@@ -2,8 +2,14 @@
 #include "d3d8.h"
 #include "d3d8types.h"
 #include <DirectXMath.h>
+#include "debugmenu_public.h"
 
-//#define DEBUGTEX
+#define DEBUGTEX
+
+static int neoSpecularPass = 1;
+static int vcsBlend = 0;
+static int debugEnvMap;
+static int enableEnv = 1;
 
 static uint32_t CRenderer__RenderEverythingBarRoads_A = AddressByVersion<uint32_t>(0x4A7930, 0x4A7A20, 0x4A79B0, 0x4C9F40, 0x4C9F60, 0x4C9E00);
 WRAPPER void CRenderer__RenderEverythingBarRoads(void) { VARJMP(CRenderer__RenderEverythingBarRoads_A); }
@@ -59,6 +65,8 @@ RwTexture *CarPipe::reflectionMask;
 RwTexture *CarPipe::reflectionTex;
 RwIm2DVertex CarPipe::screenQuad[4];
 RwImVertexIndex CarPipe::screenindices[6] = { 0, 1, 2, 0, 2, 3 };
+
+void *vcsVertexShader;
 
 CarPipe carpipe;
 
@@ -149,7 +157,7 @@ CarPipe::SetupEnvMap(void)
 	RwV2d vw;
 	vw.x = vw.y = 0.4f;
 	RwCameraSetViewWindow(reflectionCam, &vw);
-	RpWorldAddCamera(pRpWorld, reflectionCam);
+	RpWorldAddCamera(Scene.world, reflectionCam);
 
 	reflectionTex = RwTextureCreate(envFB);
 	RwTextureSetFilterMode(reflectionTex, rwFILTERLINEAR);
@@ -249,7 +257,8 @@ CarPipe::RenderEnvTex(void)
 	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDZERO);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDSRCCOLOR);
 	RwRenderStateSet(rwRENDERSTATETEXTURERASTER, reflectionMask->raster);
-	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, screenQuad, 4, screenindices, 6);
+	if(!vcsBlend)
+		RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, screenQuad, 4, screenindices, 6);
 	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDINVSRCALPHA);
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, 0);
@@ -258,8 +267,10 @@ CarPipe::RenderEnvTex(void)
 
 	RwCameraBeginUpdate(cam);
 #ifdef DEBUGTEX
-	RwRenderStateSet(rwRENDERSTATETEXTURERASTER, reflectionTex->raster);
-	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, screenQuad, 4, screenindices, 6);
+	if(debugEnvMap){
+		RwRenderStateSet(rwRENDERSTATETEXTURERASTER, reflectionTex->raster);
+		RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, screenQuad, 4, screenindices, 6);
+	}
 #endif
 }
 
@@ -296,6 +307,12 @@ CarPipe::CreateShaders(void)
 	shader = (RwUInt32*)LoadResource(dllModule, resource);
 	RwD3D9CreateVertexShader(shader, &vertexShaderPass2);
 	assert(vertexShaderPass2);
+	FreeResource(shader);
+
+	resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_VCSVEHICLEVS), RT_RCDATA);
+	shader = (RwUInt32*)LoadResource(dllModule, resource);
+	RwD3D9CreateVertexShader(shader, &vcsVertexShader);
+	assert(vcsVertexShader);
 	FreeResource(shader);
 }
 
@@ -391,12 +408,34 @@ CarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
 
 	RwD3D8SetTexture(reflectionTex, 1);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_LERP);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_CURRENT);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_SPECULAR);
-	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
+
+	if(vcsBlend){
+//		RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MULTIPLYADD);
+//		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_SPECULAR);
+//		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+//		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_CURRENT);
+
+//		RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MULTIPLYADD);
+//		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
+//		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_TEXTURE);
+//		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_SPECULAR);
+
+		// ARG0 + ARG1*ARG2
+		RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MULTIPLYADD);
+		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_CURRENT);
+		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_SPECULAR);
+		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_TEXTURE);
+
+		RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+		RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
+	}else{
+		RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_LERP);
+		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_CURRENT);
+		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_SPECULAR);
+		RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+		RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
+	}
 
 	RwD3D8SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
 	RwD3D8SetTextureStageState(2, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
@@ -407,7 +446,10 @@ CarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
 	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDINVSRCALPHA);
 
-	RwD3D9SetVertexShader(vertexShaderPass1);                                      // 9!
+	if(vcsBlend)
+		RwD3D9SetVertexShader(vcsVertexShader);                                      // 9!
+	else
+		RwD3D9SetVertexShader(vertexShaderPass1);                                      // 9!
 
 	for(int i = 0; i < header->numMeshes; i++){
 		RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
@@ -432,7 +474,20 @@ CarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
 		RwD3D9SetVertexShaderConstant(LOC_matCol, (void*)&mat, 1);
 
 		float reflProps[4];
-		reflProps[0] = inst->material->surfaceProps.specular;
+		if(vcsBlend){
+/*
+			MatFX *matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);
+			float envcoeff = 0.0f;
+			if(matfx && matfx->effects == rpMATFXEFFECTENVMAP)
+				envcoeff = matfx->fx[0].envCoeff;
+			reflProps[0] = envcoeff;
+*/
+			float envcoeff = 0.0f;
+			if(enableEnv && inst->material->surfaceProps.specular)
+				envcoeff = 0.3f;
+			reflProps[0] = envcoeff;
+		}else
+			reflProps[0] = inst->material->surfaceProps.specular;
 		reflProps[1] = fresnel.Get();
 		reflProps[2] = 0.6f;	// unused
 		reflProps[3] = power.Get();
@@ -505,11 +560,22 @@ CarPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
 	ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)));
 	DiffusePass(header);
-	SpecularPass(header);
+	if(neoSpecularPass)
+		SpecularPass(header);
 	RwD3D8SetTexture(NULL, 1);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
 	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
 	RwD3D8SetTexture(NULL, 2);
 	RwD3D8SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
 	RwD3D8SetTextureStageState(2, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+}
+
+
+void
+neoMenu(void)
+{
+	DebugMenuAddVarBool32("SkyGFX", "Neo Car env map debug", &debugEnvMap, nil);
+	DebugMenuAddVarBool32("SkyGFX", "Neo Car specular", &neoSpecularPass, nil);
+	DebugMenuAddVarBool32("SkyGFX", "Neo Car VCS blend", &vcsBlend, nil);
+	DebugMenuAddVarBool32("SkyGFX", "Neo Car env", &enableEnv, nil);
 }

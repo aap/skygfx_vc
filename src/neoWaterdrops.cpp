@@ -96,7 +96,6 @@ int WaterDrops::ms_initialised;
 IDirect3DDevice8 *&RwD3DDevice = *AddressByVersion<IDirect3DDevice8**>(0x662EF0, 0x662EF0, 0x67342C, 0x7897A8, 0x7897B0, 0x7887B0);
 
 uchar *TheCamera = AddressByVersion<uchar*>(0x6FACF8, 0, 0, 0x7E4688, 0, 0);
-RwCamera *&rwcam = *AddressByVersion<RwCamera**>(0x72676C, 0, 0, 0x8100BC, 0, 0);
 float &CTimer__ms_fTimeStep = *AddressByVersion<float*>(0x8E2CB4, 0, 0, 0x975424, 0, 0);
 float &CWeather__Rain = *AddressByVersion<float*>(0x8E2BFC, 0, 0, 0x975340, 0, 0);
 bool &CCutsceneMgr__ms_running = *AddressByVersion<bool*>(0x95CCF5, 0, 0, 0xA10AB2, 0, 0);
@@ -315,8 +314,8 @@ WaterDrops::InitialiseRender(RwCamera *cam)
 void
 WaterDrops::Process()
 {
-	if(!ms_initialised || rwcam->frameBuffer->width != ms_fbWidth)
-		InitialiseRender(rwcam);
+	if(!ms_initialised || Scene.camera->frameBuffer->width != ms_fbWidth)
+		InitialiseRender(Scene.camera);
 	WaterDrops::CalculateMovement();
 	WaterDrops::SprayDrops();
 	WaterDrops::ProcessMoving();
@@ -327,7 +326,7 @@ void
 WaterDrops::CalculateMovement()
 {
 	RwMatrix *modelMatrix;
-	modelMatrix = &RwCameraGetFrame(rwcam)->modelling;
+	modelMatrix = &RwCameraGetFrame(Scene.camera)->modelling;
 	RwV3dSub(&ms_posDelta, &modelMatrix->pos, &ms_lastPos);
 	ms_distMoved = RwV3dLength(&ms_posDelta);
 	// RwV3d pos;
@@ -372,9 +371,6 @@ WaterDrops::PlaceNew(float x, float y, float size, float ttl, bool fades, int R 
 {
 	WaterDrop *drop;
 	int i;
-
-	if(NoRain())
-		return NULL;
 
 	for(i = 0, drop = ms_drops; i < MAXDROPS; i++, drop++)
 		if (ms_drops[i].active == 0)
@@ -425,7 +421,7 @@ WaterDrops::FillScreenMoving(float amount, bool isBlood = false)
 			drop = NULL;
 			if(!isBlood)
 				drop = PlaceNew(x, y, time, 2000.0f, 1);
-			else
+			else if(!NoRain())
 				drop = PlaceNew(x, y, time, 2000.0f, 1, 0xFF, 0x00, 0x00);
 			if(drop)
 				NewDropMoving(drop);
@@ -527,12 +523,7 @@ WaterDrops::MoveDrop(WaterDropMoving *moving)
 		if(moving->dist > 20.0f)
 			NewTrace(moving);
 
-		if (CPad::GetPad(0)->GetLookLeft() || CPad::GetPad(0)->GetLookRight())
-			drop->x -= ms_vec.x;
-		else
-			drop->x -= -ms_vec.x;
-
-
+		drop->x -= ms_vec.x;
 		drop->y += ms_vec.y;
 	}
 
@@ -637,7 +628,7 @@ WaterDrops::Render()
 	vbuf->Unlock();
 
 	RwRasterPushContext(ms_raster);
-	RwRasterRenderFast(RwCameraGetRaster(rwcam), 0, 0);
+	RwRasterRenderFast(RwCameraGetRaster(Scene.camera), 0, 0);
 	RwRasterPopContext();
 
 	DefinedState();

@@ -29,7 +29,34 @@ typedef uintptr_t addr;
 
 #include "MemoryMgr.h"
 
+class ScreenFX
+{
+public:
+	static RwRaster *pFrontBuffer;
+	static void *gradingPS;
+
+	static bool m_bYCbCrFilter;
+	static float m_lumaScale;
+	static float m_lumaOffset;
+	static float m_cbScale;
+	static float m_cbOffset;
+	static float m_crScale;
+	static float m_crOffset;
+
+	static void Initialise(void);
+	static void UpdateFrontBuffer(void);
+	static void AVColourCorrection(void);
+	static void Render(void);
+};
+
 //#define RELEASE
+
+struct GlobalScene
+{
+	RpWorld *world;
+	RwCamera *camera;
+};
+extern GlobalScene &Scene;
 
 struct MatFXEnv
 {
@@ -130,11 +157,13 @@ char *getpath(char *path);
 RwImage *readTGA(const char *afilename);
 
 void DefinedState(void);
+extern RwD3D8Vertex *blurVertices;
+extern RwImVertexIndex *blurIndices;
+
 
 #include "neo.h"
 
 extern void **&RwEngineInst;
-extern RpWorld *&pRpWorld;
 extern RpLight *&pAmbient;
 extern RpLight *&pDirect;
 extern RpLight **pExtraDirectionals;

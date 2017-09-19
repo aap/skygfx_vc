@@ -57,12 +57,17 @@ int &MatFXAtomicDataOffset = *AddressByVersion<int*>(0x66189C, 0x66189C, 0x67193
 RwMatrix &defmat = *AddressByVersion<RwMatrix*>(0x5E6738, 0x5E6738, 0x62C170, 0x67FB18, 0x67FB18, 0x67EB18);
 
 void **&RwEngineInst = *AddressByVersion<void***>(0x661228, 0x661228, 0x671248, 0x7870C0, 0x7870C8, 0x7860C8);
-// ADDRESS
-RpWorld *&pRpWorld = *AddressByVersion<RpWorld**>(0x726768, 0, 0, 0x8100B8, 0, 0);
 RpLight *&pAmbient = *AddressByVersion<RpLight**>(0x885B6C, 0x885B1C, 0x895C5C, 0x974B44, 0x974B4C, 0x973B4C);
 RpLight *&pDirect = *AddressByVersion<RpLight**>(0x880F7C, 0x880F2C, 0x89106C, 0x94DD40, 0x94DD48, 0x94CD48);
 RpLight **pExtraDirectionals = AddressByVersion<RpLight**>(0x60009C, 0x5FFE84, 0x60CE7C, 0x69A140, 0x69A140, 0x699140);
 int &NumExtraDirLightsInWorld = *AddressByVersion<int*>(0x64C608, 0x64C608, 0x65C608, 0x94DB48, 0x94DB50, 0x94CB50);
+GlobalScene &Scene = *AddressByVersion<GlobalScene*>(0x726768, 0x726768, 0x7368A8, 0x8100B8, 0x8100C0, 0x80F0C0);
+
+RwD3D8Vertex *blurVertices = AddressByVersion<RwD3D8Vertex*>(0x62F780, 0x62F780, 0x63F780, 0x7097A8, 0x7097A8, 0x7087A8);
+RwImVertexIndex *blurIndices = AddressByVersion<RwImVertexIndex*>(0x5FDD90, 0x5FDB78, 0x60AB70, 0x697D48, 0x697D48, 0x696D50);
+static addr DefinedState_A = AddressByVersion<addr>(0x526330, 0x526570, 0x526500, 0x57F9C0, 0x57F9E0, 0x57F7F0);
+WRAPPER void DefinedState(void) { VARJMP(DefinedState_A); }
+
 
 int blendstyle, blendkey;
 int texgenstyle, texgenkey;
@@ -427,10 +432,6 @@ dualPassHook_IIISteam(void)
 	}
 }
 
-RwD3D8Vertex *blurVertices = AddressByVersion<RwD3D8Vertex*>(0x62F780, 0x62F780, 0x63F780, 0x7097A8, 0x7097A8, 0x7087A8);
-RwImVertexIndex *blurIndices = AddressByVersion<RwImVertexIndex*>(0x5FDD90, 0x5FDB78, 0x60AB70, 0x697D48, 0x697D48, 0x696D50);
-static addr DefinedState_A = AddressByVersion<addr>(0x526330, 0x526570, 0x526500, 0x57F9C0, 0x57F9E0, 0x57F7F0);
-WRAPPER void DefinedState(void) { VARJMP(DefinedState_A); }
 
 void
 renderSniperTrails(RwRaster *raster)
@@ -656,11 +657,9 @@ applyCurve(void)
 	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, 0);
 	RwRenderStateSet(rwRENDERSTATETEXTURERASTER, rampRaster);
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, 0);
-	//hookPixelShader();
 	setcurveps();
 	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, blurVertices, 4, blurIndices, 6);
 	RwD3D9SetIm2DPixelShader(NULL);
-	//overridePS = NULL;
 	DefinedState();
 	RwD3D8SetTexture(NULL, 1);
 }
@@ -802,7 +801,15 @@ readint(const std::string &s, int default = 0)
 	}
 }
 
-RwCamera *&pRwCamera = *AddressByVersion<RwCamera**>(0x72676C, 0x72676C, 0x7368AC, 0x8100BC, 0x8100C4, 0x80F0C4);
+float
+readfloat(const std::string &s, float default = 0)
+{
+	try{
+		return std::stof(s);
+	}catch(...){
+		return default;
+	}
+}
 
 int (*RsEventHandler_orig)(int a, int b);
 int
@@ -822,6 +829,17 @@ delayedPatches(int a, int b)
 		DebugMenuAddVarBool32("SkyGFX", "Neo gloss pipe", &config.neoGlossPipe, nil);
 		DebugMenuAddVarBool32("SkyGFX", "Neo water drops", &neowaterdrops, nil);
 		DebugMenuAddVarBool32("SkyGFX", "Neo-style blood drops", &neoblooddrops, nil);
+
+		//void neoMenu();
+		//neoMenu();
+
+		DebugMenuAddVarBool8("SkyGFX|ScreenFX", "Enable YCbCr tweak", (int8_t*)&ScreenFX::m_bYCbCrFilter, nil);
+		DebugMenuAddVar("SkyGFX|ScreenFX", "Y scale", &ScreenFX::m_lumaScale, nil, 0.004f, 0.0f, 10.0f);
+		DebugMenuAddVar("SkyGFX|ScreenFX", "Y offset", &ScreenFX::m_lumaOffset, nil, 0.004f, -1.0f, 1.0f);
+		DebugMenuAddVar("SkyGFX|ScreenFX", "Cb scale", &ScreenFX::m_cbScale, nil, 0.004f, 0.0f, 10.0f);
+		DebugMenuAddVar("SkyGFX|ScreenFX", "Cb offset", &ScreenFX::m_cbOffset, nil, 0.004f, -1.0f, 1.0f);
+		DebugMenuAddVar("SkyGFX|ScreenFX", "Cr scale", &ScreenFX::m_crScale, nil, 0.004f, 0.0f, 10.0f);
+		DebugMenuAddVar("SkyGFX|ScreenFX", "Cr offset", &ScreenFX::m_crOffset, nil, 0.004f, -1.0f, 1.0f);
 	}
 	return RsEventHandler_orig(a, b);
 }
@@ -835,7 +853,7 @@ patch(void)
 	char modulePath[MAX_PATH];
 
 	// Fail if RenderWare has already been started
-	if(pRwCamera){
+	if(Scene.camera){
 		MessageBox(NULL, "SkyGFX cannot be loaded by the default Mss32 ASI loader.\nUse another ASI loader.", "Error", MB_ICONERROR | MB_OK);
 		return;
 	}
@@ -848,8 +866,10 @@ patch(void)
 	linb::ini cfg;
 	cfg.load_file(modulePath);
 
-	if(gtaversion == III_10 || gtaversion == VC_10)
+	if(gtaversion == III_10 || gtaversion == VC_10){
+		InjectHook(AddressByVersion<uint32_t>(0x48D445, 0, 0, 0x4A6151, 0, 0), ScreenFX::Render);
 		InterceptCall(&RsEventHandler_orig, delayedPatches, AddressByVersion<uint32_t>(0x58275E, 0, 0, 0x5FFAFE, 0, 0));
+	}
 
 	// ADDRESS
 	if(gtaversion == III_10 || gtaversion == VC_10){
@@ -992,6 +1012,15 @@ patch(void)
 			Patch(0x4A69D4+1, 0x782474ff);
 		}
 	}
+
+	ScreenFX::m_bYCbCrFilter = readint(cfg.get("SkyGfx", "YCbCrCorrection", ""), 0);
+	ScreenFX::m_lumaScale = readfloat(cfg.get("SkyGfx", "lumaScale", ""), 219.0f/255.0f);
+	ScreenFX::m_lumaOffset = readfloat(cfg.get("SkyGfx", "lumaOffset", ""), 16.0f/255.0f);
+	ScreenFX::m_cbScale = readfloat(cfg.get("SkyGfx", "CbScale", ""), 1.23f);
+	ScreenFX::m_cbOffset = readfloat(cfg.get("SkyGfx", "CbOffset", ""), 0.0f);
+	ScreenFX::m_crScale = readfloat(cfg.get("SkyGfx", "CrScale", ""), 1.23f);
+	ScreenFX::m_crOffset = readfloat(cfg.get("SkyGfx", "CrOffset", ""), 0.0f);
+
 
 #ifdef DEBUG
 	if(gtaversion == III_10){

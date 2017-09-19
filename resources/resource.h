@@ -5,3 +5,5 @@
 #define IDR_GLOSSVS				105
 #define IDR_GLOSSPS				106
 #define IDR_CURVEPS				107
+#define IDR_VCSVEHICLEVS                        108
+#define IDR_GRADINGPS				109

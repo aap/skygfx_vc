@@ -82,6 +82,9 @@ WRAPPER RwCamera *RwCameraClear(RwCamera*, RwRGBA*, RwInt32) { VARJMP(RwCameraCl
 
 static uint32_t RwRasterCreate_A = AddressByVersion<uint32_t>(0x5AD930, 0x5ADBF0, 0x5B0580, 0x655490, 0x6554E0, 0x654440);
 WRAPPER RwRaster *RwRasterCreate(RwInt32, RwInt32, RwInt32, RwInt32) { VARJMP(RwRasterCreate_A); }
+// ADDRESS
+static uint32_t RwRasterDestroy_A = AddressByVersion<uint32_t>(0x5AD780, 0, 0, 0x6552E0, 0, 0);
+WRAPPER RwBool RwRasterDestroy(RwRaster*) { VARJMP(RwRasterDestroy_A); }
 static uint32_t RwRasterSetFromImage_A = AddressByVersion<uint32_t>(0x5BBF50, 0x5BC210, 0x5C0BF0, 0x6602B0, 0x660300, 0x65F260);
 WRAPPER RwRaster *RwRasterSetFromImage(RwRaster*, RwImage*) { VARJMP(RwRasterSetFromImage_A); }
 static uint32_t RwRasterPushContext_A = AddressByVersion<uint32_t>(0x5AD7C0, 0x5ADA80, 0x5B03C0, 0x655320, 0x655370, 0x6542D0);
