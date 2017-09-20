@@ -420,9 +420,9 @@ WaterDrops::FillScreenMoving(float amount, bool isBlood = false)
 			time = rand() % (SC(MAXSIZE) - SC(MINSIZE)) + SC(MINSIZE);
 			drop = NULL;
 			if(!isBlood)
-				drop = PlaceNew(x, y, time, 2000.0f, 1);
-			else if(!NoRain())
-				drop = PlaceNew(x, y, time, 2000.0f, 1, 0xFF, 0x00, 0x00);
+				PlaceNew(x, y, time, 2000.0f, 1);
+			else
+				PlaceNew(x, y, time, 2000.0f, 1, 0xFF, 0x00, 0x00);
 			if(drop)
 				NewDropMoving(drop);
 		}
@@ -438,7 +438,7 @@ WaterDrops::SprayDrops()
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 	};
 
-	if(CWeather__Rain != 0.0f && ms_enabled){
+	if(!NoRain() && CWeather__Rain != 0.0f && ms_enabled){
 		int tmp = 180.0f - ms_rainStrength;
 		if (tmp < 40) tmp = 40;
 		FillScreenMoving((tmp - 40.0f) / 150.0f * CWeather__Rain * 0.5f);
