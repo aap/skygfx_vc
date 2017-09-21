@@ -420,16 +420,16 @@ WaterDrops::FillScreenMoving(float amount, bool isBlood = false)
 			time = rand() % (SC(MAXSIZE) - SC(MINSIZE)) + SC(MINSIZE);
 			drop = NULL;
 			if(!isBlood)
-				PlaceNew(x, y, time, 2000.0f, 1);
+				drop = PlaceNew(x, y, time, 2000.0f, 1);
 			else
-				PlaceNew(x, y, time, 2000.0f, 1, 0xFF, 0x00, 0x00);
+				drop = PlaceNew(x, y, time, 2000.0f, 1, 0xFF, 0x00, 0x00);
 			if(drop)
 				NewDropMoving(drop);
 		}
 }
 
 void
-WaterDrops::SprayDrops()
+WaterDrops::SprayDrops(void)
 {
 	AudioHydrant *hyd;
 	RwV3d dist;
@@ -596,7 +596,7 @@ WaterDrops::AddToRenderList(WaterDrop *drop)
 
 	scale = drop->size * 0.5f;
 
-	for(i = 0; i < 4; i++, ms_vertPtr++){
+	for(i = 0; i < 4; i++){
 		ms_vertPtr->x = drop->x + xy[i * 2] * scale + ms_xOff;
 		ms_vertPtr->y = drop->y + xy[i * 2 + 1] * scale + ms_yOff;
 		ms_vertPtr->z = 0.0f;
@@ -606,6 +606,7 @@ WaterDrops::AddToRenderList(WaterDrop *drop)
 		ms_vertPtr->v0 = uv[i * 2 + 1];
 		ms_vertPtr->u1 = i >= 2 ? u1_2 : u1_1;
 		ms_vertPtr->v1 = i % 3 == 0 ? v1_2 : v1_1;
+		ms_vertPtr++;
 	}
 	ms_numBatchedDrops++;
 }
@@ -659,7 +660,7 @@ WaterDrops::Render()
 	RwD3D8SetVertexShader(DROPFVF);
 	RwD3D8SetStreamSource(0, vbuf, sizeof(VertexTex2));
 	RwD3D8SetIndices(ms_indexBuf, 0);
-	RwD3D8DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, ms_numBatchedDrops * 4, 0, ms_numBatchedDrops * 6);
+	RwD3D8DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, ms_numBatchedDrops * 4, 0, ms_numBatchedDrops * 2);
 
 	RwD3D8SetTexture(NULL, 1);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
