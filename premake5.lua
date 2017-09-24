@@ -33,6 +33,7 @@ project "skygfx_vc"
 
 	filter "configurations:DebugIII"
 		defines { "DEBUG" }
+		flags { "StaticRuntime" }
 		symbols "On"
 		debugdir "C:/Users/aap/games/gta3"
 		debugcommand "C:/Users/aap/games/gta3/gta3.exe"
@@ -40,6 +41,7 @@ project "skygfx_vc"
 
 	filter "configurations:DebugVC"
 		defines { "DEBUG" }
+		flags { "StaticRuntime" }
 		symbols "On"
 		debugdir "C:/Users/aap/games/gtavc"
 		debugcommand "C:/Users/aap/games/gtavc/gta_vc.exe"

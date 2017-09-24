@@ -8,7 +8,7 @@
 
 static int neoSpecularPass = 1;
 static int vcsBlend = 0;
-static int debugEnvMap;
+static int debugEnvMap = 0;
 static int enableEnv = 1;
 
 static uint32_t CRenderer__RenderEverythingBarRoads_A = AddressByVersion<uint32_t>(0x4A7930, 0x4A7A20, 0x4A79B0, 0x4C9F40, 0x4C9F60, 0x4C9E00);
@@ -20,38 +20,6 @@ int &skyBotRed = *AddressByVersion<int*>(0x9414D0, 0x941688, 0x9517C8, 0xA0D958,
 int &skyBotGreen = *AddressByVersion<int*>(0x8F2BD0, 0x8F2C84, 0x902DC4, 0x97F208, 0x97F210, 0x97E210);
 int &skyBotBlue = *AddressByVersion<int*>(0x8F625C, 0x8F6414, 0x906554, 0x9B6DF4, 0x9B6DFC, 0x9B5DFC);
 
-
-class CarPipe : public CustomPipe
-{
-	void CreateShaders(void);
-	void LoadTweakingTable(void);
-
-	static void MakeScreenQuad(void);
-	static void MakeQuadTexCoords(bool textureSpace);
-	static void RenderReflectionScene(void);
-public:
-	static InterpolatedFloat fresnel;
-	static InterpolatedFloat power;
-	static InterpolatedLight diffColor;
-	static InterpolatedLight specColor;
-	static void *vertexShaderPass1;
-	static void *vertexShaderPass2;
-	// reflection map
-	static RwCamera *reflectionCam;
-	static RwTexture *reflectionMask;
-	static RwTexture *reflectionTex;
-	static RwIm2DVertex screenQuad[4];
-	static RwImVertexIndex screenindices[6];
-
-	CarPipe(void);
-	void Init(void);
-	static void RenderEnvTex(void);
-	static void SetupEnvMap(void);
-	static void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
-	static void ShaderSetup(RwMatrix *world);
-	static void DiffusePass(RxD3D8ResEntryHeader *header);
-	static void SpecularPass(RxD3D8ResEntryHeader *header);
-};
 
 InterpolatedFloat CarPipe::fresnel(0.4f);
 InterpolatedFloat CarPipe::power(18.0f);
@@ -119,7 +87,7 @@ void
 RenderScene_hook(void)
 {
 	RenderScene();
-	if(neocarpipe)
+//	if(neocarpipe)
 		CarPipe::RenderEnvTex();
 }
 
@@ -574,8 +542,10 @@ CarPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt
 void
 neoMenu(void)
 {
+#ifdef DEBUG
 	DebugMenuAddVarBool32("SkyGFX", "Neo Car env map debug", &debugEnvMap, nil);
 	DebugMenuAddVarBool32("SkyGFX", "Neo Car specular", &neoSpecularPass, nil);
 	DebugMenuAddVarBool32("SkyGFX", "Neo Car VCS blend", &vcsBlend, nil);
 	DebugMenuAddVarBool32("SkyGFX", "Neo Car env", &enableEnv, nil);
+#endif
 }

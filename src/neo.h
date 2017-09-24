@@ -103,7 +103,7 @@ class WorldPipe : CustomPipe
 	void CreateShaders(void);
 	void LoadTweakingTable(void);
 public:
-	bool isActive;
+	//bool isActive;
 	bool modulate2x;
 	int setMaterial;
 	int setMaterialColor;
@@ -137,7 +137,7 @@ class GlossPipe : public CustomPipe
 	RwTexture *GetGlossTex(RpMaterial *mat);
 public:
 	Color specular;
-	bool isActive;
+	//bool isActive;
 //	uchar b2;
 	RwTexDictionary *texdict;
 	static void *vertexShader;
@@ -148,6 +148,38 @@ public:
 	void Init(void);
 	static void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
 	static void ShaderSetup(RwMatrix *world);
+};
+
+class CarPipe : public CustomPipe
+{
+	void CreateShaders(void);
+	void LoadTweakingTable(void);
+
+	static void MakeScreenQuad(void);
+	static void MakeQuadTexCoords(bool textureSpace);
+	static void RenderReflectionScene(void);
+public:
+	static InterpolatedFloat fresnel;
+	static InterpolatedFloat power;
+	static InterpolatedLight diffColor;
+	static InterpolatedLight specColor;
+	static void *vertexShaderPass1;
+	static void *vertexShaderPass2;
+	// reflection map
+	static RwCamera *reflectionCam;
+	static RwTexture *reflectionMask;
+	static RwTexture *reflectionTex;
+	static RwIm2DVertex screenQuad[4];
+	static RwImVertexIndex screenindices[6];
+
+	CarPipe(void);
+	void Init(void);
+	static void RenderEnvTex(void);
+	static void SetupEnvMap(void);
+	static void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
+	static void ShaderSetup(RwMatrix *world);
+	static void DiffusePass(RxD3D8ResEntryHeader *header);
+	static void SpecularPass(RxD3D8ResEntryHeader *header);
 };
 
 /*

@@ -42,7 +42,7 @@ GlossPipe::GlossPipe(void)
  : specular(1.0f, 1.0f, 1.0f, 1.0f)
 {
 	CreateRwPipeline();
-	isActive = config.neoGlossPipe;
+//	isActive = config.neoGlossPipe;
 	texdict = NULL;
 }
 
@@ -196,13 +196,15 @@ GlossPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUI
 							if(GetAsyncKeyState(config.neoGlossPipeKey) & 0x8000){
 								if(!keystate){
 									keystate = true;
-									GlossPipe::Get()->isActive = !GlossPipe::Get()->isActive;
+									config.neoGlossPipe = !config.neoGlossPipe;
+								//	GlossPipe::Get()->isActive = !GlossPipe::Get()->isActive;
 								}
 							}else
 								keystate = false;
 						}
 	WorldPipe::Get()->RenderCallback(repEntry, object, type, flags);
-	if(GlossPipe::Get()->isActive){
+//	if(GlossPipe::Get()->isActive){
+	if(config.neoGlossPipe){
 		ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)));
 		RenderGloss(header);
 	}

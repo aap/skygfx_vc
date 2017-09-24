@@ -68,6 +68,7 @@ RwImVertexIndex *blurIndices = AddressByVersion<RwImVertexIndex*>(0x5FDD90, 0x5F
 static addr DefinedState_A = AddressByVersion<addr>(0x526330, 0x526570, 0x526500, 0x57F9C0, 0x57F9E0, 0x57F7F0);
 WRAPPER void DefinedState(void) { VARJMP(DefinedState_A); }
 
+float matFXcoef = 0.7f;
 
 int blendstyle, blendkey;
 int texgenstyle, texgenkey;
@@ -266,6 +267,9 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 
 	static float mult = isIII() ? 2.0f : 4.0f;
 	float factor = env->envCoeff*mult*255.0f;
+//if(factor != 0.0f) factor = matFXcoef*255.0f;
+//if(strstr(texture->name, "body")) texture = nil;
+//envMap = CarPipe::reflectionTex;
 	RwUInt8 intens = (RwUInt8)factor;
 
 	if(factor == 0.0f || !envMap){
@@ -830,8 +834,8 @@ delayedPatches(int a, int b)
 		DebugMenuAddVarBool32("SkyGFX", "Neo water drops", &neowaterdrops, nil);
 		DebugMenuAddVarBool32("SkyGFX", "Neo-style blood drops", &neoblooddrops, nil);
 
-		//void neoMenu();
-		//neoMenu();
+		void neoMenu();
+		neoMenu();
 
 		DebugMenuAddVarBool8("SkyGFX|ScreenFX", "Enable YCbCr tweak", (int8_t*)&ScreenFX::m_bYCbCrFilter, nil);
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Y scale", &ScreenFX::m_lumaScale, nil, 0.004f, 0.0f, 10.0f);
@@ -840,6 +844,8 @@ delayedPatches(int a, int b)
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Cb offset", &ScreenFX::m_cbOffset, nil, 0.004f, -1.0f, 1.0f);
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Cr scale", &ScreenFX::m_crScale, nil, 0.004f, 0.0f, 10.0f);
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Cr offset", &ScreenFX::m_crOffset, nil, 0.004f, -1.0f, 1.0f);
+
+//		DebugMenuAddVar("SkyGFX", "MatFX coeff", &matFXcoef, nil, 0.1f, 0.0f, 1.0f);
 	}
 	return RsEventHandler_orig(a, b);
 }

@@ -6,10 +6,6 @@ struct Grade
 };
 
 
-// ADDRESS
-static uint32_t CMBlur__CreateImmediateModeData_A = AddressByVersion<uint32_t>(0x50A800, 0, 0, 0x55F1D0, 0, 0);
-WRAPPER void CMBlur__CreateImmediateModeData(RwCamera *cam, RwRect *rect) { VARJMP(CMBlur__CreateImmediateModeData_A); }
-
 RwRaster *ScreenFX::pFrontBuffer;
 void *ScreenFX::gradingPS;
 
@@ -24,6 +20,59 @@ float ScreenFX::m_crOffset = 0.0f;
 static int curScreenWidth;
 static int curScreenHeight;
 static int curScreenDepth;
+
+RwIm2DVertex screenVertices[4];
+RwImVertexIndex screenIndices[6] = { 0, 1, 2, 0, 2, 3 };
+
+void
+ScreenFX::CreateImmediateModeData(RwCamera *cam, RwRect *rect)
+{
+	float zero = 0.0f;
+	float xmax = rect->w;
+	float ymax = rect->h;
+	// whatever this is...
+	if(RwRasterGetDepth(RwCameraGetRaster(cam)) == 16){
+		zero += 0.5f;
+		xmax += 0.5f;
+		ymax += 0.5f;
+	}else{
+		zero -= 0.5f;
+		xmax -= 0.5f;
+		ymax -= 0.5f;
+	}
+	const float recipz = 1.0f/RwCameraGetNearClipPlane(cam);
+	RwIm2DVertexSetScreenX(&screenVertices[0], zero);
+	RwIm2DVertexSetScreenY(&screenVertices[0], zero);
+	RwIm2DVertexSetScreenZ(&screenVertices[0], RwIm2DGetNearScreenZ());
+	RwIm2DVertexSetRecipCameraZ(&screenVertices[0], recipz);
+	RwIm2DVertexSetU(&screenVertices[0], 0.0f, recipz);
+	RwIm2DVertexSetV(&screenVertices[0], 0.0f, recipz);
+	RwIm2DVertexSetIntRGBA(&screenVertices[0], 255, 255, 255, 255);
+
+	RwIm2DVertexSetScreenX(&screenVertices[1], zero);
+	RwIm2DVertexSetScreenY(&screenVertices[1], ymax);
+	RwIm2DVertexSetScreenZ(&screenVertices[1], RwIm2DGetNearScreenZ());
+	RwIm2DVertexSetRecipCameraZ(&screenVertices[1], recipz);
+	RwIm2DVertexSetU(&screenVertices[1], 0.0f, recipz);
+	RwIm2DVertexSetV(&screenVertices[1], 1.0f, recipz);
+	RwIm2DVertexSetIntRGBA(&screenVertices[1], 255, 255, 255, 255);
+
+	RwIm2DVertexSetScreenX(&screenVertices[2], xmax);
+	RwIm2DVertexSetScreenY(&screenVertices[2], ymax);
+	RwIm2DVertexSetScreenZ(&screenVertices[2], RwIm2DGetNearScreenZ());
+	RwIm2DVertexSetRecipCameraZ(&screenVertices[2], recipz);
+	RwIm2DVertexSetU(&screenVertices[2], 1.0f, recipz);
+	RwIm2DVertexSetV(&screenVertices[2], 1.0f, recipz);
+	RwIm2DVertexSetIntRGBA(&screenVertices[2], 255, 255, 255, 255);
+
+	RwIm2DVertexSetScreenX(&screenVertices[3], xmax);
+	RwIm2DVertexSetScreenY(&screenVertices[3], zero);
+	RwIm2DVertexSetScreenZ(&screenVertices[3], RwIm2DGetNearScreenZ());
+	RwIm2DVertexSetRecipCameraZ(&screenVertices[3], recipz);
+	RwIm2DVertexSetU(&screenVertices[3], 1.0f, recipz);
+	RwIm2DVertexSetV(&screenVertices[3], 0.0f, recipz);
+	RwIm2DVertexSetIntRGBA(&screenVertices[3], 255, 255, 255, 255);
+}
 
 void
 ScreenFX::Initialise(void)
@@ -53,7 +102,7 @@ ScreenFX::Initialise(void)
 	}
 	r.w = width;
 	r.h = height;
-	CMBlur__CreateImmediateModeData(Scene.camera, &r);
+	CreateImmediateModeData(Scene.camera, &r);
 }
 
 void
@@ -130,7 +179,7 @@ ScreenFX::AVColourCorrection(void)
 
 	RwD3D9SetIm2DPixelShader(gradingPS);
 	// don't use these
-	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, blurVertices, 4, blurIndices, 6);
+	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, screenVertices, 4, screenIndices, 6);
 	RwD3D9SetIm2DPixelShader(nil);
 
 	RwRenderStateSet(rwRENDERSTATETEXTUREFILTER, (void*)rwFILTERLINEAR);

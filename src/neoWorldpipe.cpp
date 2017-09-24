@@ -78,14 +78,14 @@ WorldPipe::WorldPipe(void)
 {
 	CreateRwPipeline();
 	modulate2x = false;
-	isActive = true;
+//	isActive = true;
 	usePixelShader = RwD3D9Supported();
 }
 
 void
 WorldPipe::Attach(RpAtomic *atomic)
 {
-	if(isActive && *RWPLUGINOFFSET(int, atomic, MatFXAtomicDataOffset))
+	if(/*isActive &&*/ *RWPLUGINOFFSET(int, atomic, MatFXAtomicDataOffset))
 		CustomPipe::Attach(atomic);
 }
 
@@ -108,7 +108,10 @@ WorldPipe::CreateShaders(void)
 	if(RwD3D9Supported()){
 		HRSRC resource;
 		RwUInt32 *shader;
-		resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_WORLDPS), RT_RCDATA);
+		if(isIII())
+			resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_WORLDPS), RT_RCDATA);
+		else
+			resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_VCWORLDPS), RT_RCDATA);
 		shader = (RwUInt32*)LoadResource(dllModule, resource);
 		RwD3D9CreatePixelShader(shader, &pixelShader);
 		assert(WorldPipe::pixelShader);

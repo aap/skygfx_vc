@@ -44,6 +44,7 @@ public:
 	static float m_crOffset;
 
 	static void Initialise(void);
+	static void CreateImmediateModeData(RwCamera *cam, RwRect *rect);
 	static void UpdateFrontBuffer(void);
 	static void AVColourCorrection(void);
 	static void Render(void);
