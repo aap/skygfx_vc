@@ -20,6 +20,9 @@ WRAPPER RwReal RwV3dLength(const RwV3d*) { VARJMP(RwV3dLength_A); }
 
 static uint32_t D3D8AtomicDefaultInstanceCallback_A = AddressByVersion<uint32_t>(0x5DB450, 0x5DB710, 0x5EC520, 0x67BAE0, 0, 0);
 WRAPPER RwBool D3D8AtomicDefaultInstanceCallback(void*, RxD3D8InstanceData*, RwBool) { VARJMP(D3D8AtomicDefaultInstanceCallback_A); }
+static uint32_t D3D8AtomicDefaultReinstanceCallback_A = AddressByVersion<uint32_t>(0x5DBFB0, 0, 0, 0x67C640, 0, 0);
+WRAPPER RwBool D3D8AtomicDefaultReinstanceCallback(void*, RwResEntry*, const RpMeshHeader*, RxD3D8AllInOneInstanceCallBack) { VARJMP(D3D8AtomicDefaultReinstanceCallback_A); }
+
 static uint32_t rwD3D8RWGetRasterStage_A = AddressByVersion<uint32_t>(0x5B5390, 0x5B5650, 0x5BA2C0, 0x659840, 0x659890, 0x6587F0);
 WRAPPER int rwD3D8RWGetRasterStage(int) { VARJMP(rwD3D8RWGetRasterStage_A); }
 
@@ -179,6 +182,11 @@ WRAPPER RwBool RwStreamFindChunk(RwStream*, RwUInt32, RwUInt32*, RwUInt32*) { VA
 static uint32_t RwTexDictionaryStreamRead_A = AddressByVersion<uint32_t>(0x5924A0, 0, 0, 0x61E710, 0, 0);
 WRAPPER RwTexDictionary *RwTexDictionaryStreamRead(RwStream*) { VARJMP(RwTexDictionaryStreamRead_A); }
 
+static uint32_t RpGeometryLock_A = AddressByVersion<uint32_t>(0, 0, 0, 0x64CCD0, 0, 0);
+static uint32_t RpGeometryUnlock_A = AddressByVersion<uint32_t>(0, 0, 0, 0x64CD00, 0, 0);
+WRAPPER RpGeometry *RpGeometryLock(RpGeometry*, RwInt32) { VARJMP(RpGeometryLock_A); }
+WRAPPER RpGeometry *RpGeometryUnlock(RpGeometry*) { VARJMP(RpGeometryUnlock_A); }
+
 static uint32_t RwIm2DGetNearScreenZ_A = AddressByVersion<uint32_t>(0x5A43A0, 0x5A4660, 0x5A5340, 0x649B80, 0x649BD0, 0x648B30);
 WRAPPER RwReal RwIm2DGetNearScreenZ(void) { VARJMP(RwIm2DGetNearScreenZ_A); }
 static uint32_t RwIm2DRenderIndexedPrimitive_A = AddressByVersion<uint32_t>(0x5A4440, 0x5A4700, 0x5A5440, 0x649C20, 0x649C70, 0x648BD0);
@@ -219,3 +227,4 @@ WRAPPER void rwD3D8AtomicMatFXRenderCallback(RwResEntry*, void*, RwUInt8, RwUInt
 
 static uint32_t RpClumpForAllAtomics_A = AddressByVersion<uint32_t>(0x59EDD0, 0x59F090, 0x59EFC0, 0x640D00, 0x640D50, 0x63FCB0);
 WRAPPER RpClump *RpClumpForAllAtomics(RpClump*, RpAtomicCallBack, void*) { VARJMP(RpClumpForAllAtomics_A); }
+

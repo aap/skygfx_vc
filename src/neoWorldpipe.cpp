@@ -322,6 +322,7 @@ WorldPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUI
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
 
+	_rwD3D8EnableClippingIfNeeded(object, type);
 	RenderObjectSetup(flags);
 	for(int i = 0; i < header->numMeshes; i++){
 		matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);

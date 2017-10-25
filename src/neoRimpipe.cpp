@@ -285,6 +285,8 @@ RimPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt
 		rxD3D8DefaultRenderCallback_xbox(repEntry, object, type, flags);
 		return;
 	}
+	_rwD3D8EnableClippingIfNeeded(object, type);
+
 	ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)));
 
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];

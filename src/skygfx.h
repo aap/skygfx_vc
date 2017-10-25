@@ -174,13 +174,17 @@ extern int &MatFXAtomicDataOffset;
 
 void drawDualPass(RxD3D8InstanceData *inst);
 
+void _rwD3D8EnableClippingIfNeeded(void *object, RwUInt8 type);
+
 void rxD3D8DefaultRenderCallback(RwResEntry*, void*, RwUInt8, RwUInt32);
 void rwD3D8AtomicMatFXRenderCallback(RwResEntry*, void*, RwUInt8, RwUInt32);
 RwBool rwD3D8RenderStateIsVertexAlphaEnable(void);
 void rwD3D8RenderStateVertexAlphaEnable(RwBool x);
 RwBool D3D8AtomicDefaultInstanceCallback(void*, RxD3D8InstanceData*, RwBool);
+RwBool D3D8AtomicDefaultReinstanceCallback(void*, RwResEntry*, const RpMeshHeader*, RxD3D8AllInOneInstanceCallBack);
 
 RwBool D3D8AtomicDefaultInstanceCallback_fixed(void*, RxD3D8InstanceData*, RwBool);
+RwBool D3D8AtomicDefaultReinstanceCallback_fixed(void*, RwResEntry*, const RpMeshHeader*, RxD3D8AllInOneInstanceCallBack);
 
 void rxD3D8DefaultRenderCallback_d3d9(RwResEntry*, void*, RwUInt8, RwUInt32);
 RwBool RwD3D8SetSurfaceProperties_d3d9(RwRGBA*, RwSurfaceProperties*, RwUInt32);

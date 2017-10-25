@@ -87,7 +87,7 @@ void
 RenderScene_hook(void)
 {
 	RenderScene();
-//	if(neocarpipe)
+	if(neocarpipe)
 		CarPipe::RenderEnvTex();
 }
 
@@ -524,6 +524,8 @@ CarPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt
 		rwD3D8AtomicMatFXRenderCallback(repEntry, object, type, flags);
 		return;
 	}
+
+	_rwD3D8EnableClippingIfNeeded(object, type);
 
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
 	ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)));

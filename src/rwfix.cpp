@@ -16,6 +16,17 @@ D3D8AtomicDefaultInstanceCallback_fixed(void *object, RxD3D8InstanceData *instan
 	return ret;
 }
 
+RwBool
+D3D8AtomicDefaultReinstanceCallback_fixed(void *object, RwResEntry *resEntry, const RpMeshHeader *meshHeader, RxD3D8AllInOneInstanceCallBack instanceCallback)
+{
+	RpAtomic *atomic = (RpAtomic*)object;
+	RwUInt32 mod = atomic->geometry->flags & rpGEOMETRYMODULATEMATERIALCOLOR;
+	atomic->geometry->flags &= ~rpGEOMETRYMODULATEMATERIALCOLOR;
+	RwBool ret = D3D8AtomicDefaultReinstanceCallback(object, resEntry, meshHeader, instanceCallback);
+	atomic->geometry->flags |= mod;
+	return ret;
+}
+
 D3DMATERIAL8 d3dmaterial = { { 0.0f, 0.0f, 0.0f, 1.0f },
                              { 0.0f, 0.0f, 0.0f, 1.0f },
                              { 0.0f, 0.0f, 0.0f, 1.0f },
@@ -133,14 +144,7 @@ RwD3D8SetSurfaceProperties_d3d9(RwRGBA *color, RwSurfaceProperties *surfProps, R
 void
 rxD3D8DefaultRenderCallback_d3d9(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
-	int clip;
-	if(type == rpATOMIC)
-		clip = !RwD3D8CameraIsSphereFullyInsideFrustum((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera,
-		                                               RpAtomicGetWorldBoundingSphere((RpAtomic*)object));
-	else
-		clip = !RwD3D8CameraIsBBoxFullyInsideFrustum((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera,
-		                                             &((RpWorldSector*)object)->tightBoundingBox);
-	RwD3D8SetRenderState(D3DRS_CLIPPING, clip);
+	_rwD3D8EnableClippingIfNeeded(object, type);
 
 	int lighting, dither, shademode;
 	int nocolor = 0;

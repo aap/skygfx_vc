@@ -9,6 +9,10 @@ DebugMenuAPI gDebugMenuAPI;
 char asipath[MAX_PATH];
 int gtaversion = -1;
 
+
+void enableTrailsSetting(void);
+void patchWater(void);
+
 char*
 getpath(char *path)
 {
@@ -68,14 +72,13 @@ RwImVertexIndex *blurIndices = AddressByVersion<RwImVertexIndex*>(0x5FDD90, 0x5F
 static addr DefinedState_A = AddressByVersion<addr>(0x526330, 0x526570, 0x526500, 0x57F9C0, 0x57F9E0, 0x57F7F0);
 WRAPPER void DefinedState(void) { VARJMP(DefinedState_A); }
 
-float matFXcoef = 0.7f;
-
 int blendstyle, blendkey;
 int texgenstyle, texgenkey;
 int neocarpipe, neocarpipekey;
 int rimlight, rimlightkey;
 int neowaterdrops, neoblooddrops;
 int envMapSize;
+int disableColourOverlay;
 Config config;
 
 int dualpass;
@@ -116,6 +119,19 @@ d3dtorwmat(RwMatrix *rw, D3DMATRIX *d3d)
 	rw->pos.x	= d3d->m[3][0];
 	rw->pos.y	= d3d->m[3][1];
 	rw->pos.z	= d3d->m[3][2];
+}
+
+void
+_rwD3D8EnableClippingIfNeeded(void *object, RwUInt8 type)
+{
+	int clip;
+	if(type == rpATOMIC)
+		clip = !RwD3D8CameraIsSphereFullyInsideFrustum((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera,
+		                                               RpAtomicGetWorldBoundingSphere((RpAtomic*)object));
+	else
+		clip = !RwD3D8CameraIsBBoxFullyInsideFrustum((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera,
+		                                             &((RpWorldSector*)object)->tightBoundingBox);
+	RwD3D8SetRenderState(D3DRS_CLIPPING, clip);
 }
 
 static addr ApplyEnvMapTextureMatrix_A = AddressByVersion<addr>(0x5CFD40, 0x5D0000, 0x5D89E0, 0x6755D0, 0x675620, 0x674580);
@@ -244,10 +260,8 @@ int rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData *inst, int flags, RwT
 	return 0;
 }
 
-RwTexture *&pWaterTexReflection = *AddressByVersion<RwTexture**>(0, 0, 0, 0x77FA5C, 0x77FA5C, 0x77EA5C);
-
 int
-rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int sel, RwTexture *texture, RwTexture *envMap)
+rpMatFXD3D8AtomicMatFXEnvRender_ps2(RxD3D8InstanceData *inst, int flags, int sel, RwTexture *texture, RwTexture *envMap)
 {
 	MatFX *matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);
 	MatFXEnv *env = &matfx->fx[sel];
@@ -261,33 +275,29 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 		}else
 			keystate = false;
 	}
-	// rather ugly way to single out water. more research needed here
-	if(blendstyle == 1 || isVC() && envMap == pWaterTexReflection)
-		return rpMatFXD3D8AtomicMatFXEnvRender(inst, flags, sel, texture, envMap);
 
-	static float mult = isIII() ? 2.0f : 4.0f;
-	float factor = env->envCoeff*mult*255.0f;
-//if(factor != 0.0f) factor = matFXcoef*255.0f;
-//if(strstr(texture->name, "body")) texture = nil;
-//envMap = CarPipe::reflectionTex;
-	RwUInt8 intens = (RwUInt8)factor;
+	// Render PC envmap
+	if(blendstyle == 1){
+		float oldcoeff = env->envCoeff;
+		static float carMult = isIII() ? 0.5f : 0.25f;
+		if(env->envFBalpha == 0)	// hacky way to distinguish vehicles from water
+			env->envCoeff *= carMult;
+		int ret = rpMatFXD3D8AtomicMatFXEnvRender(inst, flags, sel, texture, envMap);
+		env->envCoeff = oldcoeff;
+		return ret;
+	}
 
-	if(factor == 0.0f || !envMap){
+	uchar intens = (uchar)(env->envCoeff*255.0f);
+	if(intens == 0 || !envMap){
 		if(sel == 0)
 			return rpMatFXD3D8AtomicMatFXDefaultRender(inst, flags, texture);
 		return 0;
 	}
-	if(inst->vertexAlpha || inst->material->color.alpha != 0xFFu){
-		if(!rwD3D8RenderStateIsVertexAlphaEnable())
-			rwD3D8RenderStateVertexAlphaEnable(1);
-	}else{
-		if(rwD3D8RenderStateIsVertexAlphaEnable())
-			rwD3D8RenderStateVertexAlphaEnable(0);
-	}
-	if(flags & 0x84 && texture)
+	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)(inst->vertexAlpha || inst->material->color.alpha != 0xFF));
+	if(flags & (rpGEOMETRYTEXTURED|rpGEOMETRYTEXTURED2) && texture)
 		RwD3D8SetTexture(texture, 0);
 	else
-		RwD3D8SetTexture(NULL, 0);
+		RwD3D8SetTexture(nil, 0);
 	RwD3D8SetVertexShader(inst->vertexShader);
 	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
 	RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
@@ -295,28 +305,33 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 		RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
 	else
 		RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
+
+	// Effect pass
 	
 	ApplyEnvMapTextureMatrix(envMap, 0, env->envFrame);
-	if(!rwD3D8RenderStateIsVertexAlphaEnable())
-		rwD3D8RenderStateVertexAlphaEnable(1);
+	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)1);
 	RwUInt32 src, dst, lighting, zwrite, fog, fogcol;
 	RwRenderStateGet(rwRENDERSTATESRCBLEND, &src);
 	RwRenderStateGet(rwRENDERSTATEDESTBLEND, &dst);
-//	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
-	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
+
+	// This is of course not using framebuffer alpha,
+	// but if the diffuse texture had no alpha, the result should actually be rather the same
+	if(env->envFBalpha)
+		RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
+	else
+		RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
 	RwD3D8GetRenderState(D3DRS_LIGHTING, &lighting);
 	RwD3D8GetRenderState(D3DRS_ZWRITEENABLE, &zwrite);
 	RwD3D8GetRenderState(D3DRS_FOGENABLE, &fog);
 	RwD3D8SetRenderState(D3DRS_FOGENABLE, 0);
-//	RwD3D8SetRenderState(D3DRS_LIGHTING, 0);
 	RwD3D8SetRenderState(D3DRS_ZWRITEENABLE, 0);
 	if(fog){
 		RwD3D8GetRenderState(D3DRS_FOGCOLOR, &fogcol);
 		RwD3D8SetRenderState(D3DRS_FOGCOLOR, 0);
 	}
 
-	RwUInt32 texfactor = ((intens | ((intens | (intens << 8)) << 8)) << 8) | intens;
+	D3DCOLOR texfactor = D3DCOLOR_RGBA(intens, intens, intens, intens);
 	RwD3D8SetRenderState(D3DRS_TEXTUREFACTOR, texfactor);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MODULATE);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
@@ -330,6 +345,8 @@ rpMatFXD3D8AtomicMatFXEnvRender_dual(RxD3D8InstanceData *inst, int flags, int se
 		RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
 	else
 		RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
+
+	// Reset states
 
 	rwD3D8RenderStateVertexAlphaEnable(0);
 	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)src);
@@ -499,7 +516,7 @@ CreateTextureFilterFlags(RwRaster *raster)
 	return tex;
 }
 
-WRAPPER void rpMatFXD3D8AtomicMatFXEnvRender_dual_IIISteam()
+WRAPPER void rpMatFXD3D8AtomicMatFXEnvRender_ps2_IIISteam()
 {
 	__asm
 	{
@@ -511,7 +528,7 @@ WRAPPER void rpMatFXD3D8AtomicMatFXEnvRender_dual_IIISteam()
 		mov [esp+0Ch], ecx
 		mov ecx, [esp+28h]
 		mov [esp+10h], ecx
-		call rpMatFXD3D8AtomicMatFXEnvRender_dual
+		call rpMatFXD3D8AtomicMatFXEnvRender_ps2
 		add esp, 20
 		retn
 	}
@@ -733,6 +750,22 @@ footsplash_hook(void)
 	}
 }
 
+void (*CMBlur__MotionBlurRenderIII_orig)(RwCamera*, RwUInt8, RwUInt8, RwUInt8, RwUInt8, int, int);
+void
+CMBlur__MotionBlurRenderIII(RwCamera *cam, RwUInt8 red, RwUInt8 green, RwUInt8 blue, RwUInt8 alpha, int type, int bluralpha)
+{
+	if(!disableColourOverlay)
+		CMBlur__MotionBlurRenderIII_orig(cam, red, green, blue, alpha, type, bluralpha);
+}
+
+void (*CMBlur__MotionBlurRenderVC_orig)(RwCamera*, RwUInt8, RwUInt8, RwUInt8, RwUInt8, int);
+void
+CMBlur__MotionBlurRenderVC(RwCamera *cam, RwUInt8 red, RwUInt8 green, RwUInt8 blue, RwUInt8 alpha, int type)
+{
+	if(!disableColourOverlay)
+		CMBlur__MotionBlurRenderVC_orig(cam, red, green, blue, alpha, type);
+}
+
 //
 // real time reflection test; III 1.0
 //
@@ -831,8 +864,13 @@ delayedPatches(int a, int b)
 		DebugMenuAddVarBool32("SkyGFX", "Neo rim light pipe", &rimlight, nil);
 		DebugMenuAddVarBool32("SkyGFX", "Neo world pipe", &config.neoWorldPipe, nil);
 		DebugMenuAddVarBool32("SkyGFX", "Neo gloss pipe", &config.neoGlossPipe, nil);
-		DebugMenuAddVarBool32("SkyGFX", "Neo water drops", &neowaterdrops, nil);
-		DebugMenuAddVarBool32("SkyGFX", "Neo-style blood drops", &neoblooddrops, nil);
+		if(neowaterdrops){
+			DebugMenuAddVarBool32("SkyGFX", "Neo water drops", &neowaterdrops, nil);
+			DebugMenuAddVarBool32("SkyGFX", "Neo-style blood drops", &neoblooddrops, nil);
+		}
+
+		if(disableColourOverlay >= 0)
+			DebugMenuAddVarBool32("SkyGFX", "Disable Colour Overlay", &disableColourOverlay, nil);
 
 		void neoMenu();
 		neoMenu();
@@ -844,8 +882,6 @@ delayedPatches(int a, int b)
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Cb offset", &ScreenFX::m_cbOffset, nil, 0.004f, -1.0f, 1.0f);
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Cr scale", &ScreenFX::m_crScale, nil, 0.004f, 0.0f, 10.0f);
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Cr offset", &ScreenFX::m_crOffset, nil, 0.004f, -1.0f, 1.0f);
-
-//		DebugMenuAddVar("SkyGFX", "MatFX coeff", &matFXcoef, nil, 0.1f, 0.0f, 1.0f);
 	}
 	return RsEventHandler_orig(a, b);
 }
@@ -887,6 +923,15 @@ patch(void)
 		hookplugins();
 	}
 
+	disableColourOverlay = readint(cfg.get("SkyGfx", "disableColourOverlay", ""), -1);
+
+	if(disableColourOverlay >= 0){
+		if(gtaversion == III_10)
+			InterceptCall(&CMBlur__MotionBlurRenderIII_orig, CMBlur__MotionBlurRenderIII, 0x46F978);
+		else if(gtaversion == VC_10)
+			InterceptCall(&CMBlur__MotionBlurRenderVC_orig, CMBlur__MotionBlurRenderVC, 0x46BE0F);
+	}
+
 	blendkey = readhex(cfg.get("SkyGfx", "texblendSwitchKey", "0x0").c_str());
 	texgenkey = readhex(cfg.get("SkyGfx", "texgenSwitchKey", "0x0").c_str());
 	neocarpipekey = readhex(cfg.get("SkyGfx", "neoCarPipeKey", "0x0").c_str());
@@ -894,13 +939,22 @@ patch(void)
 	config.neoWorldPipeKey = readhex(cfg.get("SkyGfx", "neoWorldPipeKey", "0x0").c_str());
 	config.neoGlossPipeKey = readhex(cfg.get("SkyGfx", "neoGlossPipeKey", "0x0").c_str());
 
+	int ps2water = readint(cfg.get("SkyGfx", "ps2Water", ""), 0);
+
 	tmp = cfg.get("SkyGfx", "texblendSwitch", "");
 	if(tmp != ""){
 		blendstyle = readint(tmp);
+
+		// MatFX env coefficient on cars
+		static float envCoeff = 1.0f;
+		Patch(AddressByVersion<addr>(0x5217DF, 0, 0, 0x578B7B, 0, 0) + 2, &envCoeff);
+		if(ps2water && gtaversion == VC_10)
+			patchWater();
+
 		if (gtaversion != III_STEAM)
-			InjectHook(AddressByVersion<addr>(0x5D0CE8, 0x5D0FA8, 0, 0x6765C8, 0x676618, 0x675578), rpMatFXD3D8AtomicMatFXEnvRender_dual);
+			InjectHook(AddressByVersion<addr>(0x5D0CE8, 0x5D0FA8, 0, 0x6765C8, 0x676618, 0x675578), rpMatFXD3D8AtomicMatFXEnvRender_ps2);
 		else
-			InjectHook(0x5D8D37, rpMatFXD3D8AtomicMatFXEnvRender_dual_IIISteam);
+			InjectHook(0x5D8D37, rpMatFXD3D8AtomicMatFXEnvRender_ps2_IIISteam);
 	}
 	blendstyle %= 2;
 	tmp = cfg.get("SkyGfx", "texgenSwitch", "");
@@ -981,9 +1035,11 @@ patch(void)
 	if(readint(cfg.get("SkyGfx", "replaceDefaultPipeline", ""))){
 		if(gtaversion == III_10){
 			Patch(0x5DB427 +2, D3D8AtomicDefaultInstanceCallback_fixed);
+			Patch(0x5DB42D +3, D3D8AtomicDefaultReinstanceCallback_fixed);
 			Patch(0x5DB43B +3, rxD3D8DefaultRenderCallback_xbox);
 		}else if(gtaversion == VC_10){
 			Patch(0x67BAB7 +2, D3D8AtomicDefaultInstanceCallback_fixed);
+			Patch(0x67BABD +3, D3D8AtomicDefaultReinstanceCallback_fixed);
 			Patch(0x67BACB +3, rxD3D8DefaultRenderCallback_xbox);
 		}
 	}
@@ -1027,6 +1083,22 @@ patch(void)
 	ScreenFX::m_crScale = readfloat(cfg.get("SkyGfx", "CrScale", ""), 1.23f);
 	ScreenFX::m_crOffset = readfloat(cfg.get("SkyGfx", "CrOffset", ""), 0.0f);
 
+	enableTrailsSetting();
+
+//	Nop(0x4A6594, 5);	// water
+//	Nop(0x4A65AE, 5);	// transparent water
+
+	// disable inlined RenderOneFlatLargeWaterPoly
+//	InjectHook(0x5C1265, 0x5C1442, PATCH_JUMP);
+	// disable RenderOneFlatSmallWaterPolyBlended
+//	InjectHook(0x5BD0A0, 0x5BD73D, PATCH_JUMP);
+	// wavy atomic
+//	Nop(0x5C0C46, 3);
+//	Nop(0x5C0E15, 3);
+//	Nop(0x5C0FEB, 3);
+//	Nop(0x5C11C0, 3);
+	// mask atomic
+//	Nop(0x5C1579, 3);
 
 #ifdef DEBUG
 	if(gtaversion == III_10){
@@ -1060,6 +1132,9 @@ patch(void)
 		//MemoryVP::InjectHook(0x650ACB, RwTextureRead_VC);
 		InjectHook(0x401000, printf, PATCH_JUMP);
 
+		static float lod0dist = 150.0f;
+		Patch(0x5818A3 + 2, &lod0dist);
+
 		// try to reduce timecyc flickering...didn't work
 		//static float s = 0.0f;
 		//Patch(0x4CEA71 + 2, &s);
@@ -1067,9 +1142,13 @@ patch(void)
 		//
 		//Patch(0x4CF47D, 0xc031);	// xor eax, eax
 		//Nop(0x4CF47D + 2, 2);
+
+		// disable level load screens
+		Nop(0x40E00E, 5);
+		Nop(0x40E01C, 5);
+		Nop(0x40E157, 5);
 	}
 #endif
-
 }
 
 BOOL WINAPI
