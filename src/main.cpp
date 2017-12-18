@@ -812,7 +812,7 @@ void (*CMBlur__MotionBlurRenderIII_orig)(RwCamera*, RwUInt8, RwUInt8, RwUInt8, R
 void
 CMBlur__MotionBlurRenderIII(RwCamera *cam, RwUInt8 red, RwUInt8 green, RwUInt8 blue, RwUInt8 alpha, int type, int bluralpha)
 {
-	if(config.trailsSwitch < 0) config.trailsSwitch = 1;
+	if(config.trailsSwitch < 0) config.trailsSwitch = 0;
 	if(config.disableColourOverlay)
 		return;
 	if(config.trailsSwitch)
@@ -825,7 +825,7 @@ void (*CMBlur__MotionBlurRenderVC_orig)(RwCamera*, RwUInt8, RwUInt8, RwUInt8, Rw
 void
 CMBlur__MotionBlurRenderVC(RwCamera *cam, RwUInt8 red, RwUInt8 green, RwUInt8 blue, RwUInt8 alpha, int type)
 {
-	if(config.trailsSwitch < 0) config.trailsSwitch = 1;
+	if(config.trailsSwitch < 0) config.trailsSwitch = 0;
 	if(config.disableColourOverlay)
 		return;
 	if(config.trailsSwitch)
