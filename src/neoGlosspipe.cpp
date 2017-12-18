@@ -9,7 +9,22 @@ void *GlossPipe::pixelShader;
 //
 // Hooks
 //
-static addr CRenderer__RenderOneRoad_A;
+void __declspec(naked)
+defaultRenderOneRoad(void *ent)
+{
+	// easier in asm
+	// ent->vmt->Render()
+	_asm {
+		mov     ecx, [esp+4]
+		push    ebx
+		mov     ebx, [ecx]
+		call    dword ptr [ebx+34h]
+		pop     ebx
+		retn
+	};
+}
+
+static addr CRenderer__RenderOneRoad_A = (addr)defaultRenderOneRoad;
 WRAPPER void CRenderer__RenderOneRoad(void *e) { VARJMP(CRenderer__RenderOneRoad_A); }
 void CRenderer__RenderOneRoad_hook(void *e)
 {
@@ -50,9 +65,17 @@ void
 GlossPipe::Init(void)
 {
 	SetRenderCallback(RenderCallback);
+
+	if(!d3d9){
+		canUse = false;
+		return;
+	}
+
 	CreateShaders();
 	// way easier than neo code....
 	texdict = neoTxd;
+	if(texdict == nil)
+		canUse = false;
 }
 
 void
@@ -113,6 +136,9 @@ GlossPipe::ShaderSetup(RwMatrix *world)
 	viewMat.r[0] = DirectX::XMVectorNegate(viewMat.r[0]);
 	// have to slightly adjust near clip to get rid of z-fighting
 	MakeProjectionMatrix(&projMat, cam, 0.01f);
+
+//	RwD3D8GetTransform(D3DTS_PROJECTION, &projMat);
+//	projMat = DirectX::XMMatrixTranspose(projMat);
 
 	DirectX::XMMATRIX combined = DirectX::XMMatrixMultiply(projMat, DirectX::XMMatrixMultiply(viewMat, worldMat));
 	RwD3D9SetVertexShaderConstant(LOC_combined, (void*)&combined, 4);
@@ -204,7 +230,7 @@ GlossPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUI
 						}
 	WorldPipe::Get()->RenderCallback(repEntry, object, type, flags);
 //	if(GlossPipe::Get()->isActive){
-	if(config.neoGlossPipe){
+	if(GlossPipe::Get()->canUse && config.neoGlossPipe){
 		ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)));
 		RenderGloss(header);
 	}

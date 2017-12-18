@@ -39,6 +39,7 @@ MakeProjectionMatrix(void *d3d, RwCamera *cam, float nbias, float fbias)
 {
 	float f = cam->farPlane + fbias;
 	float n = cam->nearPlane + nbias;
+	double d = f - n;
 	D3DMATRIX *m = (D3DMATRIX*)d3d;
 	m->m[0][0] = cam->recipViewWindow.x;
 	m->m[0][1] = 0.0f;
@@ -48,10 +49,10 @@ MakeProjectionMatrix(void *d3d, RwCamera *cam, float nbias, float fbias)
 	m->m[1][1] = cam->recipViewWindow.y;
 	m->m[1][2] = 0.0f;
 	m->m[1][3] = 0.0f;
-	m->m[2][0] = 0.0f;
-	m->m[2][1] = 0.0f;
-	m->m[2][2] = f/(f-n);
-	m->m[2][3] = -n*m->m[2][2];
+	m->m[2][0] = cam->viewOffset.x * cam->recipViewWindow.x;
+	m->m[2][1] = cam->viewOffset.y * cam->recipViewWindow.y;
+	m->m[2][2] = f/d;
+	m->m[2][3] = -m->m[2][2]*n;
 	m->m[3][0] = 0.0f;
 	m->m[3][1] = 0.0f;
 	m->m[3][2] = 1.0f;
@@ -59,47 +60,41 @@ MakeProjectionMatrix(void *d3d, RwCamera *cam, float nbias, float fbias)
 }
 
 void
+loadNeoTxd(void)
+{
+	char *path = getpath("neo\\neo.txd");
+	if(path == NULL){
+		errorMessage("Couldn't load 'neo\\neo.txd'");
+		return;
+	}
+	RwStream *stream = RwStreamOpen(rwSTREAMFILENAME, rwSTREAMREAD, path);
+	if(RwStreamFindChunk(stream, rwID_TEXDICTIONARY, NULL, NULL))
+		neoTxd = RwTexDictionaryStreamRead(stream);
+	RwStreamClose(stream, NULL);
+	if(neoTxd == NULL){
+		errorMessage("Couldn't find Tex Dictionary inside 'neo\\neo.txd'");
+		return;
+	}
+	// we can just set this to current because we're executing before CGame::Initialise
+	// which sets up "generic" as the current TXD
+	RwTexDictionarySetCurrent(neoTxd);
+}
+
+void
 neoInit(void)
 {
-	if(!RwD3D9Supported()){
-		config.iCanHasNeoGloss = false;
-		config.iCanHasNeoRim = false;
-		config.iCanHasNeoCar = false;
-	}
-
-	// World pipe has a non-shader fallback so works without d3d9
-	if(config.iCanHasNeoWorld)
-		neoWorldPipeInit();
-
-	if(neocarpipe >= 0 || neowaterdrops){
-		char *path = getpath("neo\\neo.txd");
-		if(path == NULL){
-			MessageBox(NULL, "Couldn't load 'neo\\neo.txd'", "Error", MB_ICONERROR | MB_OK);
-			exit(0);
-		}
-		RwStream *stream = RwStreamOpen(rwSTREAMFILENAME, rwSTREAMREAD, path);
-		if(RwStreamFindChunk(stream, rwID_TEXDICTIONARY, NULL, NULL))
-			neoTxd = RwTexDictionaryStreamRead(stream);
-		RwStreamClose(stream, NULL);
-		if(neoTxd == NULL){
-			MessageBox(NULL, "Couldn't find Tex Dictionary inside 'neo\\neo.txd'", "Error", MB_ICONERROR | MB_OK);
-			exit(0);
-		}
-		// we can just set this to current because we're executing before CGame::Initialise
-		// which sets up "generic" as the current TXD
-		RwTexDictionarySetCurrent(neoTxd);
-	}
+	loadNeoTxd();
 
 	WaterDrops::ms_maskTex = RwTextureRead("dropmask", NULL);
 
-	if(config.iCanHasNeoGloss)
-		neoGlossPipeInit();
+	neoGlossPipeInit();
 
-	if(config.iCanHasNeoCar)
-		neoCarPipeInit();
+	NeoCarPipe::Get()->Init();
 
-	if(config.iCanHasNeoRim)
-		neoRimPipeInit();
+	neoRimPipeInit();
+
+	NeoWorldPipe::Get()->Init();
+	NeoWorldPipe::Get()->modulate2x = true;
 }
 
 #define INTERP_SETUP \
@@ -238,6 +233,12 @@ neoCreatePipe(void)
 	return NULL;
 }
 
+CustomPipe::CustomPipe(void)
+{
+	rwPipeline = nil;
+	canUse = true;
+}
+
 void
 CustomPipe::CreateRwPipeline(void)
 {
@@ -251,6 +252,7 @@ CustomPipe::SetRenderCallback(RxD3D8AllInOneRenderCallBack cb)
 	RxNodeDefinition *nodedef = RxNodeDefinitionGetD3D8AtomicAllInOne();
 	node = RxPipelineFindNodeByName(rwPipeline, nodedef->name, NULL, NULL);
 	originalRenderCB = RxD3D8AllInOneGetRenderCallBack(node);
+	renderCB = cb;
 	RxD3D8AllInOneSetRenderCallBack(node, cb);
 }
 

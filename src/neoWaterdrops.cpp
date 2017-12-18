@@ -184,13 +184,13 @@ hookWaterDrops()
 			}
 		}; injector::MakeInline<splashhook>(AddressByVersion<addr>(0x4BC7D0, 0, 0, 0x4E8721, 0, 0));
 
-		if (neoblooddrops)
+		if (config.neoblooddrops)
 		{
 			static injector::hook_back<void(__cdecl*)(int, int, int, int, int, int, int, int, int)> AddParticle;
 			auto AddParticleHook = [](int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9)
 			{
 				AddParticle.fun(a1, a2, a3, a4, a5, a6, a7, a8, a9);
-				if (neoblooddrops)
+				if (config.neoblooddrops)
 					WaterDrops::FillScreenMoving(0.2f, true);
 			}; AddParticle.fun = injector::MakeCALL(AddressByVersion<addr>(0x4E78D1, 0, 0, 0x52A4B3, 0, 0), static_cast<void(__cdecl*)(int, int, int, int, int, int, int, int, int)>(AddParticleHook), true).get();
 			injector::MakeCALL(AddressByVersion<addr>(0x55CF2E, 0, 0, 0x5D343A, 0, 0), static_cast<void(__cdecl*)(int, int, int, int, int, int, int, int, int)>(AddParticleHook), true);
@@ -216,7 +216,7 @@ hookWaterDrops()
 		{
 			injector::MakeNOP(AddressByVersion<addr>(0, 0, 0, 0x560D63, 0, 0), 5, true); //remove old effect in VC
 
-			if (neoblooddrops)
+			if (config.neoblooddrops)
 			{
 				//chainsaw
 				struct bloodhook

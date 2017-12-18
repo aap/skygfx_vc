@@ -21,8 +21,8 @@ static int curScreenWidth;
 static int curScreenHeight;
 static int curScreenDepth;
 
-RwIm2DVertex screenVertices[4];
-RwImVertexIndex screenIndices[6] = { 0, 1, 2, 0, 2, 3 };
+RwIm2DVertex ScreenFX::screenVertices[4];
+RwImVertexIndex ScreenFX::screenIndices[6] = { 0, 1, 2, 0, 2, 3 };
 
 void
 ScreenFX::CreateImmediateModeData(RwCamera *cam, RwRect *rect)
@@ -192,10 +192,22 @@ ScreenFX::AVColourCorrection(void)
 void
 ScreenFX::Render(void)
 {
+	static int render = -1;
+	if(render == -1)
+		render = RwD3D9Supported();
+	if(!render)
+		return;
+
+	ScreenFX::Update();
+
+	AVColourCorrection();
+}
+
+void
+ScreenFX::Update(void)
+{
 	if(curScreenWidth != RwRasterGetWidth(RwCameraGetRaster(Scene.camera)) ||
 	   curScreenHeight != RwRasterGetHeight(RwCameraGetRaster(Scene.camera)) ||
 	   curScreenDepth != RwRasterGetDepth(RwCameraGetRaster(Scene.camera)))
 		Initialise();
-
-	AVColourCorrection();
 }

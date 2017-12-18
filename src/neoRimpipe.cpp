@@ -2,6 +2,7 @@
 #include "d3d8.h"
 #include "d3d8types.h"
 #include <DirectXMath.h>
+#include "ModuleList.hpp"
 
 /*
  * The following code is fairly close to the Xbox code.
@@ -48,12 +49,12 @@ extern "C" {
 __declspec(dllexport) void
 AttachRimPipeToRwObject(RwObject *obj)
 {
-	if(config.iCanHasNeoRim){
+//	if(config.iCanHasNeoRim){
 		if(RwObjectGetType(obj) == rpATOMIC)
 			RimPipe::Get()->Attach((RpAtomic*)obj);
 		else if(RwObjectGetType(obj) == rpCLUMP)
 			RpClumpForAllAtomics((RpClump*)obj, CustomPipe::setatomicCB, RimPipe::Get());
-	}
+//	}
 }
 }
 
@@ -80,14 +81,17 @@ neoRimPipeInit(void)
 	node = RxPipelineFindNodeByName(skinpipe, "nodeD3D8SkinAtomicAllInOne.csl", NULL, NULL);
 	*(void**)node->privateData = RimPipe::RenderCallback;
 	// set the pipeline for peds unless iii_anim is taking care of that already
-	if(gtaversion == III_10)
-		if(!GetModuleHandleA("iii_anim.asi") && !GetModuleHandleA("iii_anim.dll")){
+	if(gtaversion == III_10){
+		ModuleList modlist;
+		modlist.Enumerate();
+		if(modlist.Get(L"iii_anim") == 0){
 			InterceptVmethod(&CPed::SetModelIndex_A, &CPed::SetModelIndex_hook, 0x5F81A8);
 			Patch(0x5F82B0, &CPed::SetModelIndex_hook);
 			Patch(0x5F8380, &CPed::SetModelIndex_hook);
 			Patch(0x5F8C38, &CPed::SetModelIndex_hook);
 			Patch(0x5FA50C, &CPed::SetModelIndex_hook);
 		}
+	}
 }
 
 
@@ -108,6 +112,12 @@ RimPipe::Init(void)
 {
 	CreateRwPipeline();
 	SetRenderCallback(RenderCallback);
+
+	if(!d3d9){
+		canUse = false;
+		return;
+	}
+
 	LoadTweakingTable();
 	CreateShaders();
 }
@@ -132,8 +142,9 @@ RimPipe::LoadTweakingTable(void)
 	FILE *dat;
 	path = getpath("neo\\rimTweakingTable.dat");
 	if(path == NULL){
-		MessageBox(NULL, "Couldn't load 'neo\\rimTweakingTable.dat'", "Error", MB_ICONERROR | MB_OK);
-		exit(0);
+		errorMessage("Couldn't load 'neo\\rimTweakingTable.dat'");
+		canUse = false;
+		return;
 	}
 	dat = fopen(path, "r");
 	neoReadWeatherTimeBlock(dat, &rampStart);
@@ -165,7 +176,12 @@ RimPipe::ShaderSetup(RwMatrix *world)
 
 	RwToD3DMatrix(&viewMat, &view);
 	viewMat.r[0] = DirectX::XMVectorNegate(viewMat.r[0]);
-	MakeProjectionMatrix(&projMat, cam);
+
+//	Can't use this because GTA sets far plane after proj mat construction, damn you R*
+//	I fixed it, but still just use RW's matrix
+//	MakeProjectionMatrix(&projMat, cam);
+	RwD3D8GetTransform(D3DTS_PROJECTION, &projMat);
+	projMat = DirectX::XMMatrixTranspose(projMat);
 
 	DirectX::XMMATRIX combined = DirectX::XMMatrixMultiply(projMat, DirectX::XMMatrixMultiply(viewMat, worldMat));
 	RwD3D9SetVertexShaderConstant(LOC_combined, (void*)&combined, 4);
@@ -204,7 +220,7 @@ RimPipe::ShaderSetup(RwMatrix *world)
 	f[0] = offset.Get();
 	f[1] = scale.Get();
 	f[2] = scaling.Get();
-	if(!rimlight)
+	if(!config.rimlight)
 		f[2] = 0.0f;
 	f[3] = 1.0f;
 	RwD3D9SetVertexShaderConstant(LOC_rim, (void*)f, 1);
@@ -273,15 +289,15 @@ RimPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt
 {
 						{
 							static bool keystate = false;
-							if(GetAsyncKeyState(rimlightkey) & 0x8000){
+							if(GetAsyncKeyState(config.rimlightkey) & 0x8000){
 								if(!keystate){
 									keystate = true;
-									rimlight = (rimlight+1)%2;
+									config.rimlight = (config.rimlight+1)%2;
 								}
 							}else
 								keystate = false;
 						}
-	if(!rimlight){
+	if(!RimPipe::Get()->canUse || !config.rimlight){
 		rxD3D8DefaultRenderCallback_xbox(repEntry, object, type, flags);
 		return;
 	}

@@ -72,16 +72,80 @@ RwImVertexIndex *blurIndices = AddressByVersion<RwImVertexIndex*>(0x5FDD90, 0x5F
 static addr DefinedState_A = AddressByVersion<addr>(0x526330, 0x526570, 0x526500, 0x57F9C0, 0x57F9E0, 0x57F7F0);
 WRAPPER void DefinedState(void) { VARJMP(DefinedState_A); }
 
-int blendstyle, blendkey;
-int texgenstyle, texgenkey;
-int neocarpipe, neocarpipekey;
-int rimlight, rimlightkey;
-int neowaterdrops, neoblooddrops;
-int envMapSize;
-int disableColourOverlay;
-Config config;
+SkyGFXConfig config;
+bool d3d9;
 
-int dualpass;
+
+
+
+extern "C" {
+
+__declspec(dllexport) int
+SkyGFXGetVersion(const char *s)
+{
+	return VERSION;
+}
+
+__declspec(dllexport) int
+SkyGFXGetParam(const char *s)
+{
+#define X(v) if(strcmp(s, #v) == 0) return config.v;
+	INTPARAMS
+#undef X
+	return 0;
+}
+
+__declspec(dllexport) void
+SkyGFXSetParam(const char *s, int val)
+{
+#define X(v) if(strcmp(s, #v) == 0) { config.v = val; return; }
+	INTPARAMS
+#undef X
+}
+
+__declspec(dllexport) float
+SkyGFXGetParamF(const char *s)
+{
+#define X(v) if(strcmp(s, #v) == 0) return config.v;
+	FLOATPARAMS
+#undef X
+	return 0;
+}
+
+__declspec(dllexport) void
+SkyGFXSetParamF(const char *s, float val)
+{
+#define X(v) if(strcmp(s, #v) == 0) { config.v = val; return; }
+	FLOATPARAMS
+#undef X
+}
+
+__declspec(dllexport) void*
+SkyGFXGetParamPtr(const char *s)
+{
+#define X(v) if(strcmp(s, #v) == 0) return (void*)&config.v;
+	INTPARAMS
+	FLOATPARAMS
+#undef X
+	return 0;
+}
+
+}
+
+MatFXEnv*
+getEnvData(RpMaterial *mat)
+{
+	MatFX *matfx = *RWPLUGINOFFSET(MatFX*, mat, MatFXMaterialDataOffset);
+	if(matfx == nil || matfx->effects != rpMATFXEFFECTENVMAP && matfx->effects != rpMATFXEFFECTBUMPENVMAP)
+		return nil;
+	MatFXEnv *env = &matfx->fx[0];
+	if(env->effect == rpMATFXEFFECTENVMAP)
+		return env;
+	env = &matfx->fx[1];
+	if(env->effect == rpMATFXEFFECTENVMAP)
+		return env;
+	return nil;
+}
 
 void
 rwtod3dmat(D3DMATRIX *d3d, RwMatrix *rw)
@@ -157,21 +221,21 @@ ApplyEnvMapTextureMatrix_hook(RwTexture *tex, int n, RwFrame *frame)
 {
 	{
 		static bool keystate = false;
-		if(GetAsyncKeyState(texgenkey) & 0x8000){
+		if(GetAsyncKeyState(config.texgenkey) & 0x8000){
 			if(!keystate){
 				keystate = true;
-				texgenstyle = (texgenstyle+1)%2;
+				config.texgenstyle = (config.texgenstyle+1)%2;
 			}
 		}else
 			keystate = false;
 	}
 	RwD3D8SetTexture(tex, n);
 	if(isVC() && rwD3D8RasterIsCubeRaster(tex->raster)){
-		RwD3D8SetTextureStageState(n, D3DTSS_TEXCOORDINDEX, 0x30000);
+		RwD3D8SetTextureStageState(n, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR);
 		return;
 	}
 	RwD3D8SetTextureStageState(n, D3DRS_ALPHAREF, 2);
-	RwD3D8SetTextureStageState(n, D3DTSS_TEXCOORDINDEX, 0x10000);
+	RwD3D8SetTextureStageState(n, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACENORMAL);
 	if(frame){
 		D3DMATRIX invmat;
 
@@ -184,7 +248,7 @@ ApplyEnvMapTextureMatrix_hook(RwTexture *tex, int n, RwFrame *frame)
 
 		RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera));
 		RwMatrix *envfrm = RwFrameGetLTM(frame);
-		if(texgenstyle == 0){
+		if(config.texgenstyle == 0){
 			memcpy(m2, camfrm, 0x40);
 			m2->pos.x = 0.0f;
 			m2->pos.y = 0.0f;
@@ -245,13 +309,7 @@ int rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData *inst, int flags, RwT
 		RwD3D8SetTexture(texture, 0);
 	else
 		RwD3D8SetTexture(NULL, 0);
-	if(inst->vertexAlpha || inst->material->color.alpha != 0xFFu){
-		if(!rwD3D8RenderStateIsVertexAlphaEnable())
-			rwD3D8RenderStateVertexAlphaEnable(1);
-	}else{
-		if(rwD3D8RenderStateIsVertexAlphaEnable())
-			rwD3D8RenderStateVertexAlphaEnable(0);
-	}
+	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)(inst->vertexAlpha || inst->material->color.alpha != 0xFF));
 	RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha != 0);
 	RwD3D8SetPixelShader(0);
 	RwD3D8SetVertexShader(inst->vertexShader);
@@ -267,17 +325,17 @@ rpMatFXD3D8AtomicMatFXEnvRender_ps2(RxD3D8InstanceData *inst, int flags, int sel
 	MatFXEnv *env = &matfx->fx[sel];
 	{
 		static bool keystate = false;
-		if(GetAsyncKeyState(blendkey) & 0x8000){
+		if(GetAsyncKeyState(config.blendkey) & 0x8000){
 			if(!keystate){
 				keystate = true;
-				blendstyle = (blendstyle+1)%2;
+				config.blendstyle = (config.blendstyle+1)%2;
 			}
 		}else
 			keystate = false;
 	}
 
 	// Render PC envmap
-	if(blendstyle == 1){
+	if(config.blendstyle == 1){
 		float oldcoeff = env->envCoeff;
 		static float carMult = isIII() ? 0.5f : 0.25f;
 		if(env->envFBalpha == 0)	// hacky way to distinguish vehicles from water
@@ -389,7 +447,7 @@ createIIIEnvFrame(void)
 void
 drawDualPass(RxD3D8InstanceData *inst)
 {
-	if(!dualpass){
+	if(!config.dualpass){
 		if(inst->indexBuffer){
 			RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
 			RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
@@ -584,7 +642,7 @@ RwTextureRead_generic(char *name, char *mask)
 	return tex;
 }
 
-#ifdef DEBUG
+#if 0
 
 void *curvePS;
 
@@ -733,7 +791,7 @@ footsplash_ps2(uchar *ebx, uchar *esp)
 	col = *(uint*)0x5F85C4;
 	CParticle__AddParticle(44, &vec1, &vec2, NULL, 0.0f, &col, 0, 0, 0, 0);
 
-	if(neowaterdrops)
+	if(config.neowaterdrops)
 		WaterDrops::FillScreenMoving(0.1f, false);
 }
 
@@ -754,7 +812,12 @@ void (*CMBlur__MotionBlurRenderIII_orig)(RwCamera*, RwUInt8, RwUInt8, RwUInt8, R
 void
 CMBlur__MotionBlurRenderIII(RwCamera *cam, RwUInt8 red, RwUInt8 green, RwUInt8 blue, RwUInt8 alpha, int type, int bluralpha)
 {
-	if(!disableColourOverlay)
+	if(config.trailsSwitch < 0) config.trailsSwitch = 1;
+	if(config.disableColourOverlay)
+		return;
+	if(config.trailsSwitch)
+		CMBlur::MotionBlurRender_custom(cam, red, green, blue, alpha, type);
+	else
 		CMBlur__MotionBlurRenderIII_orig(cam, red, green, blue, alpha, type, bluralpha);
 }
 
@@ -762,7 +825,12 @@ void (*CMBlur__MotionBlurRenderVC_orig)(RwCamera*, RwUInt8, RwUInt8, RwUInt8, Rw
 void
 CMBlur__MotionBlurRenderVC(RwCamera *cam, RwUInt8 red, RwUInt8 green, RwUInt8 blue, RwUInt8 alpha, int type)
 {
-	if(!disableColourOverlay)
+	if(config.trailsSwitch < 0) config.trailsSwitch = 1;
+	if(config.disableColourOverlay)
+		return;
+	if(config.trailsSwitch)
+		CMBlur::MotionBlurRender_custom(cam, red, green, blue, alpha, type);
+	else
 		CMBlur__MotionBlurRenderVC_orig(cam, red, green, blue, alpha, type);
 }
 
@@ -800,24 +868,16 @@ RenderEffectsHook(void)
 	RwRasterPopContext();
 }
 */
-bool neo_once;
-#define ONCE do{ static int once = 0; assert(once == 0); once = 1; }while(0)
 
-void (*InitialiseGame)(void);
+int dontnag;
 void
-InitialiseGame_hook(void)
+errorMessage(char *msg)
 {
-	if(isIII()) // fall back to generic.txd when reading from dff
-		InjectHook(AddressByVersion<addr>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
-	if (!neo_once)
-	{
-		if (isIII()) // fall back to generic.txd when reading from dff
-			InjectHook(AddressByVersion<addr>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
-		neoInit();
-		neo_once = true;
-	}
-	InitialiseGame();
+	if(dontnag) return;
+	MessageBox(NULL, msg, "Error - SkyGFX", MB_ICONERROR | MB_OK);
 }
+
+#define ONCE do{ static int once = 0; assert(once == 0); once = 1; }while(0)
 
 int
 readhex(const char *str)
@@ -848,6 +908,30 @@ readfloat(const std::string &s, float default = 0)
 	}
 }
 
+void (*InitialiseGame)(void);
+void
+InitialiseGame_hook(void)
+{
+	static bool postrw_once;
+	// Post RW Init
+	if(!postrw_once){
+		d3d9 = RwD3D9Supported();
+
+		if (isIII()) // fall back to generic.txd when reading from dff
+			InjectHook(AddressByVersion<addr>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
+		CarPipe::Init();
+		WorldPipe::Init();
+		LeedsCarPipe::Get()->Init();
+
+		neoInit();
+		postrw_once = true;
+	}
+	if(config.carPipeSwitch < 0) config.carPipeSwitch = 0;
+	if(config.worldPipeSwitch < 0) config.worldPipeSwitch = 0;
+
+	InitialiseGame();
+}
+
 int (*RsEventHandler_orig)(int a, int b);
 int
 delayedPatches(int a, int b)
@@ -855,25 +939,36 @@ delayedPatches(int a, int b)
 	if(DebugMenuLoad()){
 		DebugMenuEntry *e;
 		static const char *ps2pc[] = { "PS2", "PC" };
-		e = DebugMenuAddVar("SkyGFX", "MatFX blend", &blendstyle, nil, 1, 0, 1, ps2pc);
+		e = DebugMenuAddVar("SkyGFX", "MatFX blend", &config.blendstyle, nil, 1, 0, 1, ps2pc);
 		DebugMenuEntrySetWrap(e, true);
-		e = DebugMenuAddVar("SkyGFX", "MatFX texgen", &texgenstyle, nil, 1, 0, 1, ps2pc);
+		e = DebugMenuAddVar("SkyGFX", "MatFX texgen", &config.texgenstyle, nil, 1, 0, 1, ps2pc);
 		DebugMenuEntrySetWrap(e, true);
-		DebugMenuAddVarBool32("SkyGFX", "Dual pass", &dualpass, nil);
-		DebugMenuAddVarBool32("SkyGFX", "Neo car pipe", &neocarpipe, nil);
-		DebugMenuAddVarBool32("SkyGFX", "Neo rim light pipe", &rimlight, nil);
-		DebugMenuAddVarBool32("SkyGFX", "Neo world pipe", &config.neoWorldPipe, nil);
+		DebugMenuAddVarBool32("SkyGFX", "Dual pass", &config.dualpass, nil);
+		static const char *pipeStr[] = {
+			"invalid", "default", "neo", "leeds"
+		};
+		static const char *postfxStr[] = {
+			"invalid", "default", "leeds"
+		};
+		DebugMenuAddVar("SkyGFX", "World pipe", &config.worldPipeSwitch, nil, 1, WORLD_DEFAULT, WORLD_LEEDS, pipeStr+1);
+		DebugMenuAddVar("SkyGFX", "Car pipe", &config.carPipeSwitch, nil, 1, CAR_DEFAULT, CAR_LEEDS, pipeStr+1);
+		DebugMenuAddVar("SkyGFX|Advanced", "Trails switch", &config.trailsSwitch, nil, 1, 0, 1, postfxStr+1);
+
+		DebugMenuAddVarBool32("SkyGFX", "Neo rim light pipe", &config.rimlight, nil);
 		DebugMenuAddVarBool32("SkyGFX", "Neo gloss pipe", &config.neoGlossPipe, nil);
-		if(neowaterdrops){
-			DebugMenuAddVarBool32("SkyGFX", "Neo water drops", &neowaterdrops, nil);
-			DebugMenuAddVarBool32("SkyGFX", "Neo-style blood drops", &neoblooddrops, nil);
+		if(config.neowaterdrops){
+			DebugMenuAddVarBool32("SkyGFX", "Neo water drops", &config.neowaterdrops, nil);
+			DebugMenuAddVarBool32("SkyGFX", "Neo-style blood drops", &config.neoblooddrops, nil);
 		}
 
-		if(disableColourOverlay >= 0)
-			DebugMenuAddVarBool32("SkyGFX", "Disable Colour Overlay", &disableColourOverlay, nil);
+//		if(config.disableColourOverlay >= 0)
+			DebugMenuAddVarBool32("SkyGFX", "Disable Colour Overlay", &config.disableColourOverlay, nil);
+		if(config.disableColourOverlay < 0) config.disableColourOverlay = 0;
 
 		void neoMenu();
 		neoMenu();
+		void leedsMenu();
+		leedsMenu();
 
 		DebugMenuAddVarBool8("SkyGFX|ScreenFX", "Enable YCbCr tweak", (int8_t*)&ScreenFX::m_bYCbCrFilter, nil);
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Y scale", &ScreenFX::m_lumaScale, nil, 0.004f, 0.0f, 10.0f);
@@ -882,6 +977,23 @@ delayedPatches(int a, int b)
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Cb offset", &ScreenFX::m_cbOffset, nil, 0.004f, -1.0f, 1.0f);
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Cr scale", &ScreenFX::m_crScale, nil, 0.004f, 0.0f, 10.0f);
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Cr offset", &ScreenFX::m_crOffset, nil, 0.004f, -1.0f, 1.0f);
+
+#ifdef DEBUG
+
+	if(gtaversion == III_10){
+		// car zoom angles
+		static float angle1 = 30.0f;
+		static float angle2 = 30.0f;
+		static float angle3 = 30.0f;
+		Patch(0x466763 + 2, &angle1);
+		Patch(0x46679A + 2, &angle2);
+		Patch(0x4667CE + 2, &angle3);
+		DebugMenuAddVar("SkyGFX|Debug", "Angle1", &angle1, nil, 0.5f, -90.0f, 90.0f);
+		DebugMenuAddVar("SkyGFX|Debug", "Angle2", &angle2, nil, 0.5f, -90.0f, 90.0f);
+		DebugMenuAddVar("SkyGFX|Debug", "Angle3", &angle3, nil, 0.5f, -90.0f, 90.0f);
+	}
+
+#endif
 	}
 	return RsEventHandler_orig(a, b);
 }
@@ -893,6 +1005,11 @@ patch(void)
 //	char tmp[32];
 	string tmp;
 	char modulePath[MAX_PATH];
+
+	config.trailsBlur = 1;
+	config.trailsMotionBlur = 1;
+	config.currentBlurAlpha = 39.0f;
+	config.currentBlurOffset = 2.1f;
 
 	// Fail if RenderWare has already been started
 	if(Scene.camera){
@@ -923,27 +1040,38 @@ patch(void)
 		hookplugins();
 	}
 
-	disableColourOverlay = readint(cfg.get("SkyGfx", "disableColourOverlay", ""), -1);
+	dontnag = readint(cfg.get("SkyGfx", "dontNag", ""), 0);
+	config.seamfix = readint(cfg.get("SkyGfx", "seamFix", ""), 0);
 
-	if(disableColourOverlay >= 0){
+	// set to reasonable values when used
+	config.radiosity = readint(cfg.get("SkyGfx", "radiosity", ""), -1);
+	config.trailsSwitch = readint(cfg.get("SkyGfx", "trailsSwitch", ""), -1);
+	config.leedsWorldAmbTweak = readfloat(cfg.get("SkyGFX", "leedsWorldAmbTweak", ""), -9999.0f);
+	config.leedsWorldEmissTweak = readfloat(cfg.get("SkyGFX", "leedsWorldEmissTweak", ""), -9999.0f);
+
+
+	config.disableColourOverlay = readint(cfg.get("SkyGfx", "disableColourOverlay", ""), -1);
+
+// TEMP
+//	if(disableColourOverlay >= 0){
 		if(gtaversion == III_10)
 			InterceptCall(&CMBlur__MotionBlurRenderIII_orig, CMBlur__MotionBlurRenderIII, 0x46F978);
 		else if(gtaversion == VC_10)
 			InterceptCall(&CMBlur__MotionBlurRenderVC_orig, CMBlur__MotionBlurRenderVC, 0x46BE0F);
-	}
+//	}
 
-	blendkey = readhex(cfg.get("SkyGfx", "texblendSwitchKey", "0x0").c_str());
-	texgenkey = readhex(cfg.get("SkyGfx", "texgenSwitchKey", "0x0").c_str());
-	neocarpipekey = readhex(cfg.get("SkyGfx", "neoCarPipeKey", "0x0").c_str());
-	rimlightkey = readhex(cfg.get("SkyGfx", "neoRimLightKey", "0x0").c_str());
-	config.neoWorldPipeKey = readhex(cfg.get("SkyGfx", "neoWorldPipeKey", "0x0").c_str());
+	config.blendkey = readhex(cfg.get("SkyGfx", "texblendSwitchKey", "0x0").c_str());
+	config.texgenkey = readhex(cfg.get("SkyGfx", "texgenSwitchKey", "0x0").c_str());
+	config.carPipeKey = readhex(cfg.get("SkyGfx", "carPipeKey", "0x0").c_str());
+	config.worldPipeKey = readhex(cfg.get("SkyGfx", "worldPipeKey", "0x0").c_str());
+	config.rimlightkey = readhex(cfg.get("SkyGfx", "neoRimLightKey", "0x0").c_str());
 	config.neoGlossPipeKey = readhex(cfg.get("SkyGfx", "neoGlossPipeKey", "0x0").c_str());
 
 	int ps2water = readint(cfg.get("SkyGfx", "ps2Water", ""), 0);
 
 	tmp = cfg.get("SkyGfx", "texblendSwitch", "");
 	if(tmp != ""){
-		blendstyle = readint(tmp);
+		config.blendstyle = readint(tmp);
 
 		// MatFX env coefficient on cars
 		static float envCoeff = 1.0f;
@@ -951,21 +1079,27 @@ patch(void)
 		if(ps2water && gtaversion == VC_10)
 			patchWater();
 
+		// disable car colour textures (messes up matfx)
+		if(gtaversion == III_10){
+			Nop(0x520EEA, 2);
+			Nop(0x520F8A, 2);
+		}
+
 		if (gtaversion != III_STEAM)
 			InjectHook(AddressByVersion<addr>(0x5D0CE8, 0x5D0FA8, 0, 0x6765C8, 0x676618, 0x675578), rpMatFXD3D8AtomicMatFXEnvRender_ps2);
 		else
 			InjectHook(0x5D8D37, rpMatFXD3D8AtomicMatFXEnvRender_ps2_IIISteam);
 	}
-	blendstyle %= 2;
+	config.blendstyle %= 2;
 	tmp = cfg.get("SkyGfx", "texgenSwitch", "");
 	if(tmp != ""){
-		texgenstyle = readint(tmp);
+		config.texgenstyle = readint(tmp);
 		if (gtaversion != III_STEAM)
 			InjectHook(ApplyEnvMapTextureMatrix_A, ApplyEnvMapTextureMatrix_hook, PATCH_JUMP);
 		else
 			InjectHook(ApplyEnvMapTextureMatrix_A, ApplyEnvMapTextureMatrix_hook_IIISteam, PATCH_JUMP);
 	}
-	texgenstyle %= 2;
+	config.texgenstyle %= 2;
 
 	if(isVC() && readint(cfg.get("SkyGfx", "IIIEnvFrame", ""))){
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x57A8BA, 0x57A8DA, 0x57A7AA), createIIIEnvFrame);
@@ -981,22 +1115,22 @@ patch(void)
 	if(isIII())
 		InjectHook(AddressByVersion<addr>(0x59BABF, 0x59BD7F, 0x598E6F, 0, 0, 0), CreateTextureFilterFlags);
 
-	neocarpipe = readint(cfg.get("SkyGfx", "neoCarPipe", ""), -1);
-	config.iCanHasNeoCar = neocarpipe >= 0;
-	envMapSize = readint(cfg.get("SkyGfx", "envMapSize", ""), 128);
-	rimlight = readint(cfg.get("SkyGfx", "neoRimLightPipe", ""), -1);
-	config.iCanHasNeoRim = rimlight >= 0;
+	config.carPipeSwitch = readint(cfg.get("SkyGfx", "carPipe", ""), -1);
+	config.worldPipeSwitch = readint(cfg.get("SkyGfx", "worldPipe", ""), -1);
+
+	config.envMapSize = readint(cfg.get("SkyGfx", "envMapSize", ""), 128);
 	int n = 1;
-	while(n < envMapSize) n *= 2;
-	envMapSize = n;
-	config.neoWorldPipe = readint(cfg.get("SkyGfx", "neoWorldPipe", ""), -1);
-	config.iCanHasNeoWorld = config.neoWorldPipe >= 0;
+	while(n < config.envMapSize) n *= 2;
+	config.envMapSize = n;
+	// set to a reasonable value when used
+	config.leedsEnvMult = readfloat(cfg.get("SkyGFX", "leedsEnvMult", ""), -9999.0f);
+
+	config.rimlight = readint(cfg.get("SkyGfx", "neoRimLightPipe", ""), -1);
 	config.neoGlossPipe = readint(cfg.get("SkyGfx", "neoGlossPipe", ""), -1);
-	config.iCanHasNeoGloss = config.neoGlossPipe >= 0;
 
 	tmp = cfg.get("SkyGfx", "dualPass", "");
 	if(tmp != ""){
-		dualpass = readint(tmp);
+		config.dualpass = readint(tmp);
 		if (gtaversion != III_STEAM)
 			InjectHook(AddressByVersion<addr>(0x5DFB99, 0x5DFE59, 0, 0x678D69, 0x678DB9, 0x677D19), dualPassHook, PATCH_JUMP);
 		else
@@ -1027,9 +1161,9 @@ patch(void)
 	if(isVC())
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x55EA39, 0x55EA59, 0x55E929), sniperTrailsHook, PATCH_JUMP);
 
-	neowaterdrops = readint(cfg.get("SkyGfx", "neoWaterDrops", ""));
-	neoblooddrops = readint(cfg.get("SkyGfx", "neoBloodDrops", ""));
-	if(neowaterdrops)
+	config.neowaterdrops = readint(cfg.get("SkyGfx", "neoWaterDrops", ""));
+	config.neoblooddrops = readint(cfg.get("SkyGfx", "neoBloodDrops", ""));
+	if(config.neowaterdrops)
 		hookWaterDrops();
 
 	if(readint(cfg.get("SkyGfx", "replaceDefaultPipeline", ""))){
@@ -1105,11 +1239,13 @@ patch(void)
 		// ignore txd.img
 		InjectHook(0x48C12E, 0x48C14C, PATCH_JUMP);
 
+#if 0
 		int i = readint(cfg.get("SkyGfx", "curve", ""), -1);
 		if(i >= 0){
 			curveIdx = i % 256;
 			InjectHook(0x48E44B, curvehook, PATCH_JUMP);
 		}
+#endif
 		InjectHook(0x405DB0, printf, PATCH_JUMP);
 
 
@@ -1123,6 +1259,8 @@ patch(void)
 		Patch<uchar>(0x48E6A7+1, 3);
 		Patch<uchar>(0x48E78C+1, 3);
 
+		// disable replays
+		Nop(0x48C975, 5);
 	}
 #endif
 #ifdef DEBUG
@@ -1142,6 +1280,11 @@ patch(void)
 		//
 		//Patch(0x4CF47D, 0xc031);	// xor eax, eax
 		//Nop(0x4CF47D + 2, 2);
+
+		// fix directional colour
+		Patch(0x58051D + 2, 0x94B210);
+		Patch(0x58054D + 2, 0x94B210+4);
+		Patch(0x58057D + 2, 0x94B210+8);
 
 		// disable level load screens
 		Nop(0x40E00E, 5);

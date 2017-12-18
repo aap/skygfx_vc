@@ -44,8 +44,8 @@ main(in VS_INPUT In)
 		c += lightCol[i]*saturate(dot(N, -lightDir[i]));
 	Out.color = float4(saturate(c), 1.0f)*matCol;
 
-	float a = dot(V, N)*2.0;
-	float3 uv2 = N*a - V;
+	// reflect V along N
+	float3 uv2 = N*dot(V, N)*2.0 - V;
 	uv2 = mul((float3x3)tex, uv2);
 	Out.texcoord1.xy = uv2.xy*0.5 + 0.5;
 	float b = 1.0 - saturate(dot(V, N));

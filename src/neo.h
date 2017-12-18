@@ -74,11 +74,19 @@ public:
 
 void neoReadWeatherTimeBlock(FILE *file, InterpolatedValue *interp);
 
+// DISCLAIMER: This is all much too complicated.
+// I wanted to copy Vienna's code as much as possible but
+// now everything is a mess. Fuck!
+
 class CustomPipe
 {
 public:
+	bool canUse;
 	RxPipeline *rwPipeline;
+	RxD3D8AllInOneRenderCallBack renderCB;
 	RxD3D8AllInOneRenderCallBack originalRenderCB;
+
+	CustomPipe(void);
 	void CreateRwPipeline(void);
 	void SetRenderCallback(RxD3D8AllInOneRenderCallBack);
 	void Attach(RpAtomic *atomic);
@@ -90,15 +98,13 @@ void UploadLightColor(RpLight *light, int loc);
 void UploadLightDirection(RpLight *light, int loc);
 void UploadLightDirectionInv(RpLight *light, int loc);
 
-void neoWorldPipeInit(void);
 void neoGlossPipeInit(void);
 void neoRimPipeInit(void);
-void neoCarPipeInit(void);
 
 void hookWaterDrops(void);
 void neoInit(void);
 
-class WorldPipe : CustomPipe
+class NeoWorldPipe : public CustomPipe
 {
 	void CreateShaders(void);
 	void LoadTweakingTable(void);
@@ -116,9 +122,9 @@ public:
 	void *pixelShader;
 	InterpolatedFloat lightmapBlend;
 
-	WorldPipe(void);
+	NeoWorldPipe(void);
 	void Attach(RpAtomic *atomic);
-	static WorldPipe *Get(void);
+	static NeoWorldPipe *Get(void);
 	void Init(void);
 
 	void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
@@ -150,7 +156,7 @@ public:
 	static void ShaderSetup(RwMatrix *world);
 };
 
-class CarPipe : public CustomPipe
+class NeoCarPipe : public CustomPipe
 {
 	void CreateShaders(void);
 	void LoadTweakingTable(void);
@@ -172,7 +178,7 @@ public:
 	static RwIm2DVertex screenQuad[4];
 	static RwImVertexIndex screenindices[6];
 
-	CarPipe(void);
+	static NeoCarPipe *Get(void);
 	void Init(void);
 	static void RenderEnvTex(void);
 	static void SetupEnvMap(void);

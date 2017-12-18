@@ -39,6 +39,7 @@ D3DCOLORVALUE &AmbientSaturated = *AddressByVersion<D3DCOLORVALUE*>(0x619458, 0,
 //
 // D3D9-like pipeline
 //
+// This one has a problem with transparency
 
 RwReal lastDiffuse;
 RwReal lastAmbient;
@@ -187,7 +188,7 @@ rxD3D8DefaultRenderCallback_d3d9(RwResEntry *repEntry, void *object, RwUInt8 typ
 		if(curalpha != a)
 			rwD3D8RenderStateVertexAlphaEnable(curalpha = a);
 		if(lighting){
-			RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha != 0);
+			RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha ? D3DMCS_COLOR1 : D3DMCS_MATERIAL);
 			RwD3D8SetSurfaceProperties_d3d9(&inst->material->color, &inst->material->surfaceProps, flags);
 		}
 		if(vertbuf != inst->vertexBuffer)
@@ -226,11 +227,11 @@ rxD3D8DefaultRenderCallback_d3d9(RwResEntry *repEntry, void *object, RwUInt8 typ
 // Xbox-like pipeline
 //
 
-int lightingEnabled;	// d3d lighting on
-int setMaterial;	// set d3d material, needed for lighting
+static int lightingEnabled;	// d3d lighting on
+static int setMaterial;	// set d3d material, needed for lighting
 // these two are mutually exclusive:
-int setMaterialColor;	// multiply material color at vertex stage
-int modulateMaterial;	// modulate by material color at texture stage
+static int setMaterialColor;	// multiply material color at vertex stage
+static int modulateMaterial;	// modulate by material color at texture stage
 
 void
 rxD3D8DefaultRenderFFPObjectSetUp(RwUInt32 flags)
@@ -264,12 +265,13 @@ rxD3D8DefaultRenderFFPObjectSetUp(RwUInt32 flags)
 	if(lightingEnabled){
 		if(flags & rpGEOMETRYPRELIT){
 			RwD3D8SetRenderState(D3DRS_COLORVERTEX, 1);
-			RwD3D8SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, 1);
+			RwD3D8SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, D3DMCS_COLOR1);
 		}else{
 			RwD3D8SetRenderState(D3DRS_COLORVERTEX, 0);
-			RwD3D8SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, 0);
+			RwD3D8SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, D3DMCS_MATERIAL);
 		}
 	}
+	RwD3D8SetRenderState(D3DRS_AMBIENTMATERIALSOURCE, D3DMCS_MATERIAL);	// not found in xbox code for some reason
 }
 
 void
@@ -307,8 +309,9 @@ rxD3D8DefaultRenderFFPMeshSetUp(RxD3D8InstanceData *inst)
 			RwD3DDevice->SetMaterial(&d3dmaterial);
 		}
 	}
+	// normally done in rxD3D8DefaultRenderFFPObjectSetUp, but we don't know vertexAlpha for the whole geomtetry
 	if(lightingEnabled)
-		RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha);
+		RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha ? D3DMCS_COLOR1 : D3DMCS_MATERIAL);
 }
 
 void

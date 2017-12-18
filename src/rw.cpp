@@ -96,6 +96,11 @@ static uint32_t RwRasterPopContext_A = AddressByVersion<uint32_t>(0x5AD870, 0x5A
 WRAPPER RwRaster *RwRasterPopContext(void) { VARJMP(RwRasterPopContext_A); }
 static uint32_t RwRasterRenderFast_A = AddressByVersion<uint32_t>(0x5AD710, 0x5AD9D0, 0x5B0800, 0x655270, 0x6552C0, 0x654220);
 WRAPPER RwRaster *RwRasterRenderFast(RwRaster*, RwInt32, RwInt32) { VARJMP(RwRasterRenderFast_A); }
+//RwRaster *RwRasterRenderScaled(RwRaster *raster, RwRect *rect)
+//{
+//	((RwGlobals*)RwEngineInst)->stdFunc[rwSTANDARDRASTERRENDERSCALED](raster, rect, 0);
+//	return raster;
+//}
 
 static uint32_t RwTextureCreate_A = AddressByVersion<uint32_t>(0x5A72D0, 0x5A7590, 0x5A8AC0, 0x64DE60, 0x64DEB0, 0x64CE10);
 WRAPPER RwTexture *RwTextureCreate(RwRaster*) { VARJMP(RwTextureCreate_A); }
@@ -189,6 +194,9 @@ WRAPPER RpGeometry *RpGeometryUnlock(RpGeometry*) { VARJMP(RpGeometryUnlock_A); 
 
 static uint32_t RwIm2DGetNearScreenZ_A = AddressByVersion<uint32_t>(0x5A43A0, 0x5A4660, 0x5A5340, 0x649B80, 0x649BD0, 0x648B30);
 WRAPPER RwReal RwIm2DGetNearScreenZ(void) { VARJMP(RwIm2DGetNearScreenZ_A); }
+// ADDRESS
+static uint32_t RwIm2DGetFarScreenZ_A = AddressByVersion<uint32_t>(0x5A43B0, 0, 0, 0x649B90, 0, 0);
+WRAPPER RwReal RwIm2DGetFarScreenZ(void) { VARJMP(RwIm2DGetFarScreenZ_A); }
 static uint32_t RwIm2DRenderIndexedPrimitive_A = AddressByVersion<uint32_t>(0x5A4440, 0x5A4700, 0x5A5440, 0x649C20, 0x649C70, 0x648BD0);
 WRAPPER RwBool RwIm2DRenderIndexedPrimitive(RwPrimitiveType, RwIm2DVertex*, RwInt32, RwImVertexIndex*, RwInt32) { VARJMP(RwIm2DRenderIndexedPrimitive_A); }
 

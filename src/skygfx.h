@@ -24,10 +24,19 @@
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
+typedef uint8_t uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef int8_t int8;
+typedef int16_t int16;
+typedef int32_t int32;
 typedef uintptr_t addr;
 #define nil NULL
+#define FIELD(type, var, offset) *(type*)((uint8*)var + offset)
 
 #include "MemoryMgr.h"
+
+#define VERSION 0x280
 
 class ScreenFX
 {
@@ -43,11 +52,15 @@ public:
 	static float m_crScale;
 	static float m_crOffset;
 
+	static RwIm2DVertex screenVertices[4];
+	static RwImVertexIndex screenIndices[6];
+
 	static void Initialise(void);
 	static void CreateImmediateModeData(RwCamera *cam, RwRect *rect);
 	static void UpdateFrontBuffer(void);
 	static void AVColourCorrection(void);
 	static void Render(void);
+	static void Update(void);
 };
 
 //#define RELEASE
@@ -138,22 +151,74 @@ struct CPlaceable
 typedef void (*voidfunc)(void);
 
 extern HMODULE dllModule;
-extern char asipath[MAX_PATH];
+
+enum eWorldPipe
+{
+	WORLD_DEFAULT,
+	WORLD_NEO,
+	WORLD_LEEDS,
+
+	WORLD_NUMPIPES
+};
+
+enum eCarPipe
+{
+	CAR_DEFAULT,
+	CAR_NEO,
+	CAR_LEEDS,
+
+	CAR_NUMPIPES
+};
 
 // ini switches
-struct Config {
-	int neoWorldPipe, neoWorldPipeKey;
-	int neoGlossPipe, neoGlossPipeKey;
-	bool iCanHasNeoWorld, iCanHasNeoGloss, iCanHasNeoCar, iCanHasNeoRim;
-};
-extern Config config;
-extern int blendstyle, blendkey;
-extern int texgenstyle, texgenkey;
-extern int neocarpipe, neocarpipekey;
-extern int rimlight, rimlightkey;
-extern int neowaterdrops, neoblooddrops;
-extern int envMapSize;
+struct SkyGFXConfig {
+	// These are exported
+#define INTPARAMS \
+	X(worldPipeSwitch) \
+	X(carPipeSwitch) \
+	X(trailsSwitch) \
+	X(trailsBlur) \
+	X(trailsMotionBlur) \
+	X(radiosity) \
+	X(radiosityIntensity) \
+	X(radiosityLimit)
+#define FLOATPARAMS \
+	X(currentAmbientMultRed) \
+	X(currentAmbientMultGreen) \
+	X(currentAmbientMultBlue) \
+	X(currentBlurAlpha) \
+	X(currentBlurOffset) \
+	X(leedsWorldAmbTweak) \
+	X(leedsWorldEmissTweak)
 
+#define X(v) int v;
+	INTPARAMS
+#undef X
+
+#define X(v) float v;
+	FLOATPARAMS
+#undef X
+
+	// These are not (yet?) exported
+	int worldPipeKey;
+	int carPipeKey;
+
+	int dualpass;
+	int seamfix;
+
+	int neoGlossPipe, neoGlossPipeKey;
+	int blendstyle, blendkey;
+	int texgenstyle, texgenkey;
+	int rimlight, rimlightkey;
+	int neowaterdrops, neoblooddrops;
+	int envMapSize;
+	float leedsEnvMult;
+
+	int disableColourOverlay;
+};
+extern SkyGFXConfig config;
+
+void errorMessage(char *msg);
 char *getpath(char *path);
 RwImage *readTGA(const char *afilename);
 
@@ -161,8 +226,81 @@ void DefinedState(void);
 extern RwD3D8Vertex *blurVertices;
 extern RwImVertexIndex *blurIndices;
 
+struct CMBlur
+{
+	static bool &ms_bJustInitialised;
+	static bool &BlurOn;
+	static RwRaster *&pFrontBuffer;	// this holds the last rendered frame
+	static RwRaster *pBackBuffer;	// this is a copy of the current frame
+
+	// VCS Radiosity;
+	static RwRaster *ms_pRadiosityRaster1;
+	static RwRaster *ms_pRadiosityRaster2;
+	static RwIm2DVertex ms_radiosityVerts[44];
+	static RwImVertexIndex ms_radiosityIndices[7*6];
+
+	static void MotionBlurRender_custom(RwCamera *cam, uint8 red, uint8 green, uint8 blue, uint8 alpha, uint8 type);
+	static void OverlayRender_leeds(RwCamera *cam, RwRaster *frontbuf, RwRGBA *col, uint8 type);
+
+	static void RadiosityInit(RwCamera *cam);
+	static void RadiosityCreateImmediateData(RwCamera *cam);
+	static void RadiosityRender(RwCamera *cam, int limit, int intensity);
+
+	static void Initialise(void);
+};
 
 #include "neo.h"
+
+// Switch for other car pipes
+class CarPipe : public CustomPipe
+{
+public:
+	// dummy for other pipes
+	static void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
+	static void Init(void);
+};
+
+// Switch for other car pipes
+class WorldPipe : public CustomPipe
+{
+public:
+	static WorldPipe *Get(void);
+	static void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
+	static void Init(void);
+};
+
+class LeedsCarPipe : public CustomPipe
+{
+	void CreateShaders(void);
+
+	static void MakeScreenQuad(void);
+	static void MakeQuadTexCoords(bool textureSpace);
+	static void RenderReflectionScene(void);
+public:
+	static RwCamera *reflectionCam;
+	static RwTexture *reflectionMask;
+	static RwTexture *reflectionTex;
+	static RwIm2DVertex screenQuad[4];
+	static RwImVertexIndex screenindices[6];
+	static void *vertexShader;
+
+	LeedsCarPipe(void);
+	static LeedsCarPipe *Get(void);
+	void Init(void);
+	static void RenderEnvTex(void);
+	static void SetupEnvMap(void);
+	static void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
+	static void ShaderSetup(RwMatrix *world);
+	static void DiffusePass(RxD3D8ResEntryHeader *header);
+};
+//extern LeedsCarPipe leedsCarpipe;
+
+void leedsRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
+
+void CClouds__RenderBackground(int16 tr, int16 tg, int16 tb, int16 br, int16 bg, int16 bb, uint8 a);
+void RenderEveryBarCarsPeds(void);
+void RenderAlphaListBarCarsPeds(void);
+
 
 extern void **&RwEngineInst;
 extern RpLight *&pAmbient;
@@ -171,6 +309,10 @@ extern RpLight **pExtraDirectionals;
 extern int &NumExtraDirLightsInWorld;
 extern int &MatFXMaterialDataOffset;
 extern int &MatFXAtomicDataOffset;
+
+extern bool d3d9;
+
+MatFXEnv *getEnvData(RpMaterial *mat);
 
 void drawDualPass(RxD3D8InstanceData *inst);
 

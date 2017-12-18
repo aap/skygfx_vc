@@ -5,9 +5,6 @@
 extern IDirect3DDevice8 *&RwD3DDevice;
 extern D3DMATERIAL8 &lastmaterial;
 
-static uint32_t CSimpleModelInfo__SetAtomic_A; // for reference: AddressByVersion<uint32_t>(0x517950, 0x517B60, 0x517AF0, 0x56F790, 0, 0);
-WRAPPER void CSimpleModelInfo::SetAtomic(int, RpAtomic*) { VARJMP(CSimpleModelInfo__SetAtomic_A); }
-
 // ADDRESS
 bool &CWeather__LightningFlash = *(bool*)AddressByVersion<uint32_t>(0x95CDA3, 0, 0, 0xA10B67, 0, 0);
 
@@ -19,61 +16,14 @@ bool &CWeather__LightningFlash = *(bool*)AddressByVersion<uint32_t>(0x95CDA3, 0,
  * rendered without using a pixel shader.
  */
 
-void
-CSimpleModelInfo::SetAtomic_hook(int n, RpAtomic *atomic)
+NeoWorldPipe*
+NeoWorldPipe::Get(void)
 {
-	this->SetAtomic(n, atomic);
-	WorldPipe::Get()->Attach(atomic);
-}
-
-void
-CSimpleModelInfo::SetAtomicVC_hook(int n, RpAtomic *atomic)
-{
-	this->SetAtomic(n, atomic);
-	ushort flags = *(ushort*)((uchar*)this + 0x42);
-	if(flags & 4 && config.iCanHasNeoGloss)	// isRoad
-		GlossPipe::Get()->Attach(atomic);
-	else
-		WorldPipe::Get()->Attach(atomic);
-}
-
-// ADDRESS
-void
-neoWorldPipeInit(void)
-{
-	WorldPipe::Get()->Init();
-	WorldPipe::Get()->modulate2x = true;
-	if(gtaversion == III_10){
-		InterceptCall(&CSimpleModelInfo__SetAtomic_A, &CSimpleModelInfo::SetAtomic_hook, 0x4768F1);
-		InjectHook(0x476707, &CSimpleModelInfo::SetAtomic_hook);
-	}else if(gtaversion == VC_10){
-		// virtual in VC because of added CWeaponModelInfo
-		InterceptVmethod(&CSimpleModelInfo__SetAtomic_A, &CSimpleModelInfo::SetAtomicVC_hook, 0x697FF8);
-		Patch(0x698028, &CSimpleModelInfo::SetAtomicVC_hook);
-	}
-}
-
-extern "C" {
-__declspec(dllexport) void
-AttachWorldPipeToRwObject(RwObject *obj)
-{
-	if(config.iCanHasNeoWorld){
-		if(RwObjectGetType(obj) == rpATOMIC)
-			WorldPipe::Get()->Attach((RpAtomic*)obj);
-		else if(RwObjectGetType(obj) == rpCLUMP)
-			RpClumpForAllAtomics((RpClump*)obj, CustomPipe::setatomicCB, WorldPipe::Get());
-	}
-}
-}
-
-WorldPipe*
-WorldPipe::Get(void)
-{
-	static WorldPipe worldpipe;
+	static NeoWorldPipe worldpipe;
 	return &worldpipe;
 }
 
-WorldPipe::WorldPipe(void)
+NeoWorldPipe::NeoWorldPipe(void)
  : lightmapBlend(1.0f)
 {
 	CreateRwPipeline();
@@ -83,52 +33,54 @@ WorldPipe::WorldPipe(void)
 }
 
 void
-WorldPipe::Attach(RpAtomic *atomic)
+NeoWorldPipe::Attach(RpAtomic *atomic)
 {
-	if(/*isActive &&*/ *RWPLUGINOFFSET(int, atomic, MatFXAtomicDataOffset))
+// TEMP: unconditionally so leeds pipe will work
+//	if(/*isActive &&*/ *RWPLUGINOFFSET(int, atomic, MatFXAtomicDataOffset))
 		CustomPipe::Attach(atomic);
 }
 
 static void rendercbwrapper(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
-	WorldPipe::Get()->RenderCallback(repEntry, object, type, flags);
+	NeoWorldPipe::Get()->RenderCallback(repEntry, object, type, flags);
 }
 
 void
-WorldPipe::Init(void)
+NeoWorldPipe::Init(void)
 {
 	SetRenderCallback(rendercbwrapper);
 	LoadTweakingTable();
-	CreateShaders();
+
+	if(d3d9)
+		CreateShaders();
 }
 
 void
-WorldPipe::CreateShaders(void)
+NeoWorldPipe::CreateShaders(void)
 {
-	if(RwD3D9Supported()){
-		HRSRC resource;
-		RwUInt32 *shader;
-		if(isIII())
-			resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_WORLDPS), RT_RCDATA);
-		else
-			resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_VCWORLDPS), RT_RCDATA);
-		shader = (RwUInt32*)LoadResource(dllModule, resource);
-		RwD3D9CreatePixelShader(shader, &pixelShader);
-		assert(WorldPipe::pixelShader);
-		FreeResource(shader);
-	}
+	HRSRC resource;
+	RwUInt32 *shader;
+	if(isIII())
+		resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_WORLDPS), RT_RCDATA);
+	else
+		resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_VCWORLDPS), RT_RCDATA);
+	shader = (RwUInt32*)LoadResource(dllModule, resource);
+	RwD3D9CreatePixelShader(shader, &pixelShader);
+	assert(NeoWorldPipe::pixelShader);
+	FreeResource(shader);
 }
 
 void
-WorldPipe::LoadTweakingTable(void)
+NeoWorldPipe::LoadTweakingTable(void)
 {
 
 	char *path;
 	FILE *dat;
 	path = getpath("neo\\worldTweakingTable.dat");
 	if(path == NULL){
-		MessageBox(NULL, "Couldn't load 'neo\\worldTweakingTable.dat'", "Error", MB_ICONERROR | MB_OK);
-		exit(0);
+		errorMessage("Couldn't load 'neo\\worldTweakingTable.dat'");
+		canUse = false;
+		return;
 	}
 	dat = fopen(path, "r");
 	neoReadWeatherTimeBlock(dat, &lightmapBlend);
@@ -140,7 +92,7 @@ WorldPipe::LoadTweakingTable(void)
 //
 
 void
-WorldPipe::RenderObjectSetup(RwUInt32 flags)
+NeoWorldPipe::RenderObjectSetup(RwUInt32 flags)
 {
 	// NB: the flags set here are part of the class, *not* the global ones with the same names
 	RwD3D8GetRenderState(D3DRS_LIGHTING, &lightingEnabled);
@@ -169,19 +121,21 @@ WorldPipe::RenderObjectSetup(RwUInt32 flags)
 		setMaterialColor = 0;
 		modulateMaterial = 1;
 	}
-	if(lightingEnabled)
+	if(lightingEnabled){
 		if(flags & rpGEOMETRYPRELIT){
 			RwD3D8SetRenderState(D3DRS_COLORVERTEX, 1);
-			RwD3D8SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, 1);
+			RwD3D8SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, D3DMCS_COLOR1);
 		}else{
 			RwD3D8SetRenderState(D3DRS_COLORVERTEX, 0);
-			RwD3D8SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, 0);
+			RwD3D8SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, D3DMCS_MATERIAL);
 		}
+	}
+	RwD3D8SetRenderState(D3DRS_AMBIENTMATERIALSOURCE, D3DMCS_MATERIAL);	// not found in xbox code for some reason
 }
 
 // Mostly unused because we have pixel shader
 void
-WorldPipe::RenderMeshSetUp(RxD3D8InstanceData *inst)
+NeoWorldPipe::RenderMeshSetUp(RxD3D8InstanceData *inst)
 {
 	static D3DMATERIAL8 material = { { 0.0f, 0.0f, 0.0f, 1.0f },
 	                                 { 0.0f, 0.0f, 0.0f, 1.0f },
@@ -221,13 +175,14 @@ WorldPipe::RenderMeshSetUp(RxD3D8InstanceData *inst)
 			RwD3DDevice->SetMaterial(&material);
 		}
 	}
+	// normally done in rxD3D8DefaultRenderFFPObjectSetUp, but we don't know vertexAlpha for the whole geomtetry
 	if(lightingEnabled)
-		RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha);
+		RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha ? D3DMCS_COLOR1 : D3DMCS_MATERIAL);
 }
 
 // Not really used as we should have a pixel shader
 void
-WorldPipe::RenderMeshCombinerSetUp(RxD3D8InstanceData *inst, RwUInt32 flags)
+NeoWorldPipe::RenderMeshCombinerSetUp(RxD3D8InstanceData *inst, RwUInt32 flags)
 {
 	RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
 	RwD3D8SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
@@ -258,7 +213,7 @@ WorldPipe::RenderMeshCombinerSetUp(RxD3D8InstanceData *inst, RwUInt32 flags)
 }
 
 void
-WorldPipe::RenderMeshCombinerTearDown(void)
+NeoWorldPipe::RenderMeshCombinerTearDown(void)
 {
 	RwD3D8SetPixelShader(NULL);                     // 8!
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
@@ -268,19 +223,8 @@ WorldPipe::RenderMeshCombinerTearDown(void)
 }
 
 void
-WorldPipe::RenderMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
+NeoWorldPipe::RenderMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 {
-							{
-								static bool keystate = false;
-								if(GetAsyncKeyState(config.neoWorldPipeKey) & 0x8000){
-									if(!keystate){
-										keystate = true;
-										config.neoWorldPipe = (config.neoWorldPipe+1)%2;
-									}
-								}else
-									keystate = false;
-							}
-
 	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
 	if(flags & (rpGEOMETRYTEXTURED|rpGEOMETRYTEXTURED2))
 		RwD3D8SetTexture(inst->material->texture, 0);
@@ -297,7 +241,7 @@ WorldPipe::RenderMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 		float f = 1.0f;
 		if(!CWeather__LightningFlash)
 			f = lightmapBlend.Get();
-		if(!config.neoWorldPipe)
+		if(config.worldPipeSwitch != WORLD_NEO)
 			f = 0.0f;
 		lm[0] = lm[1] = lm[2] = f;
 		lm[3] = inst->material->color.alpha/255.0f;
@@ -313,10 +257,14 @@ WorldPipe::RenderMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 }
 
 void
-WorldPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
+NeoWorldPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
 	int objinit = 0;
 	MatFX *matfx;
+
+	if(!canUse)
+		return;
+
 	rxD3D8SetAmbientLight();
 
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];

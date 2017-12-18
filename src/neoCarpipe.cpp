@@ -7,115 +7,47 @@
 #define DEBUGTEX
 
 static int neoSpecularPass = 1;
-static int vcsBlend = 0;
 static int debugEnvMap = 0;
 static int enableEnv = 1;
 
-static uint32_t CRenderer__RenderEverythingBarRoads_A = AddressByVersion<uint32_t>(0x4A7930, 0x4A7A20, 0x4A79B0, 0x4C9F40, 0x4C9F60, 0x4C9E00);
-WRAPPER void CRenderer__RenderEverythingBarRoads(void) { VARJMP(CRenderer__RenderEverythingBarRoads_A); }
-static uint32_t CRenderer__RenderFadingInEntities_A = AddressByVersion<uint32_t>(0x4A7910, 0x4A7A00, 0x4A7990, 0x4CA140, 0x4CA160, 0x4CA000);
-WRAPPER void CRenderer__RenderFadingInEntities(void) { VARJMP(CRenderer__RenderFadingInEntities_A); }
+//static uint32_t CRenderer__RenderEverythingBarRoads_A = AddressByVersion<uint32_t>(0x4A7930, 0x4A7A20, 0x4A79B0, 0x4C9F40, 0x4C9F60, 0x4C9E00);
+//WRAPPER void CRenderer__RenderEverythingBarRoads(void) { VARJMP(CRenderer__RenderEverythingBarRoads_A); }
+//static uint32_t CRenderer__RenderFadingInEntities_A = AddressByVersion<uint32_t>(0x4A7910, 0x4A7A00, 0x4A7990, 0x4CA140, 0x4CA160, 0x4CA000);
+//WRAPPER void CRenderer__RenderFadingInEntities(void) { VARJMP(CRenderer__RenderFadingInEntities_A); }
 
 int &skyBotRed = *AddressByVersion<int*>(0x9414D0, 0x941688, 0x9517C8, 0xA0D958, 0xA0D960, 0xA0C960);
 int &skyBotGreen = *AddressByVersion<int*>(0x8F2BD0, 0x8F2C84, 0x902DC4, 0x97F208, 0x97F210, 0x97E210);
 int &skyBotBlue = *AddressByVersion<int*>(0x8F625C, 0x8F6414, 0x906554, 0x9B6DF4, 0x9B6DFC, 0x9B5DFC);
 
 
-InterpolatedFloat CarPipe::fresnel(0.4f);
-InterpolatedFloat CarPipe::power(18.0f);
-InterpolatedLight CarPipe::diffColor(Color(0.0f, 0.0f, 0.0f, 0.0f));
-InterpolatedLight CarPipe::specColor(Color(0.7f, 0.7f, 0.7f, 1.0f));
-void *CarPipe::vertexShaderPass1;
-void *CarPipe::vertexShaderPass2;
+InterpolatedFloat NeoCarPipe::fresnel(0.4f);
+InterpolatedFloat NeoCarPipe::power(18.0f);
+InterpolatedLight NeoCarPipe::diffColor(Color(0.0f, 0.0f, 0.0f, 0.0f));
+InterpolatedLight NeoCarPipe::specColor(Color(0.7f, 0.7f, 0.7f, 1.0f));
+void *NeoCarPipe::vertexShaderPass1;
+void *NeoCarPipe::vertexShaderPass2;
 // reflection map
-RwCamera *CarPipe::reflectionCam;
-RwTexture *CarPipe::reflectionMask;
-RwTexture *CarPipe::reflectionTex;
-RwIm2DVertex CarPipe::screenQuad[4];
-RwImVertexIndex CarPipe::screenindices[6] = { 0, 1, 2, 0, 2, 3 };
-
-void *vcsVertexShader;
-
-CarPipe carpipe;
-
-//
-// Hooks
-//
-
-extern "C" {
-__declspec(dllexport) void
-AttachCarPipeToRwObject(RwObject *obj)
-{
-	if(config.iCanHasNeoCar){
-		if(RwObjectGetType(obj) == rpATOMIC)
-			carpipe.Attach((RpAtomic*)obj);
-		else if(RwObjectGetType(obj) == rpCLUMP)
-			RpClumpForAllAtomics((RpClump*)obj, CustomPipe::setatomicCB, &carpipe);
-	}
-}
-}
-
-class CVehicleModelInfo {
-public:
-	static addr SetClump_A;
-	void SetClump(RpClump *clump);
-	void SetClump_hook(RpClump *clump){
-		this->SetClump(clump);
-		AttachCarPipeToRwObject((RwObject*)clump);
-	}
-};
-addr CVehicleModelInfo::SetClump_A;
-WRAPPER void CVehicleModelInfo::SetClump(RpClump*) { VARJMP(SetClump_A); }
-
-class CVisibilityPlugins
-{
-public:
-	static addr SetAtomicRenderCallback_A;
-	static void SetAtomicRenderCallback(RpAtomic *atomic, RpAtomicCallBackRender cb);
-	static void SetAtomicRenderCallback_hook(RpAtomic *atomic, RpAtomicCallBackRender cb){
-		SetAtomicRenderCallback(atomic, cb);
-		AttachCarPipeToRwObject((RwObject*)atomic);
-	}
-};
-addr CVisibilityPlugins::SetAtomicRenderCallback_A;
-WRAPPER void CVisibilityPlugins::SetAtomicRenderCallback(RpAtomic*, RpAtomicCallBackRender) { VARJMP(SetAtomicRenderCallback_A); }
-
-static uint32_t RenderScene_A;
-WRAPPER void RenderScene(void) { VARJMP(RenderScene_A); }
-
-void
-RenderScene_hook(void)
-{
-	RenderScene();
-	if(neocarpipe)
-		CarPipe::RenderEnvTex();
-}
-
-void
-neoCarPipeInit(void)
-{
-	carpipe.Init();
-	CarPipe::SetupEnvMap();
-	InterceptVmethod(&CVehicleModelInfo::SetClump_A, &CVehicleModelInfo::SetClump_hook,
-	                 AddressByVersion<addr>(0x5FDFF0, 0x5FDDD8, 0x60ADD0, 0x698088, 0x698088, 0x697090));
-	// ADDRESS
-	if(is10())
-		InterceptCall(&CVisibilityPlugins::SetAtomicRenderCallback_A, &CVisibilityPlugins::SetAtomicRenderCallback_hook,
-		              AddressByVersion<addr>(0x5207C6, 0, 0, 0x579DFB, 0, 0));
-	InterceptCall(&RenderScene_A, RenderScene_hook, AddressByVersion<addr>(0x48E5F9, 0x48E6B9, 0x48E649, 0x4A604A, 0x4A606A, 0x4A5F1A));
-}
+RwCamera *NeoCarPipe::reflectionCam;
+RwTexture *NeoCarPipe::reflectionMask;
+RwTexture *NeoCarPipe::reflectionTex;
+RwIm2DVertex NeoCarPipe::screenQuad[4];
+RwImVertexIndex NeoCarPipe::screenindices[6] = { 0, 1, 2, 0, 2, 3 };
 
 //
 // Reflection map
 //
 
 void
-CarPipe::SetupEnvMap(void)
+NeoCarPipe::SetupEnvMap(void)
 {
-	reflectionMask = RwTextureRead("CarReflectionMask", NULL);
+	reflectionMask = RwTextureRead("CarReflectionMask", nil);
+	if(reflectionMask == nil){
+		NeoCarPipe::Get()->canUse = false;
+		return;
+	}
 
-	RwRaster *envFB = RwRasterCreate(envMapSize, envMapSize, 0, rwRASTERTYPECAMERATEXTURE);
-	RwRaster *envZB = RwRasterCreate(envMapSize, envMapSize, 0, rwRASTERTYPEZBUFFER);
+	RwRaster *envFB = RwRasterCreate(config.envMapSize, config.envMapSize, 0, rwRASTERTYPECAMERATEXTURE);
+	RwRaster *envZB = RwRasterCreate(config.envMapSize, config.envMapSize, 0, rwRASTERTYPEZBUFFER);
 	reflectionCam = RwCameraCreate();
 	RwCameraSetRaster(reflectionCam, envFB);
 	RwCameraSetZRaster(reflectionCam, envZB);
@@ -134,7 +66,7 @@ CarPipe::SetupEnvMap(void)
 }
 
 void
-CarPipe::MakeQuadTexCoords(bool textureSpace)
+NeoCarPipe::MakeQuadTexCoords(bool textureSpace)
 {
 	float minU, minV, maxU, maxV;
 	if(textureSpace){
@@ -154,7 +86,7 @@ CarPipe::MakeQuadTexCoords(bool textureSpace)
 }
 
 void
-CarPipe::MakeScreenQuad(void)
+NeoCarPipe::MakeScreenQuad(void)
 {
 	int width = reflectionTex->raster->width;
 	int height = reflectionTex->raster->height;
@@ -182,16 +114,25 @@ CarPipe::MakeScreenQuad(void)
 }
 
 void
-CarPipe::RenderReflectionScene(void)
+NeoCarPipe::RenderReflectionScene(void)
 {
-	RwRenderStateSet(rwRENDERSTATEFOGENABLE, 0);
-	CRenderer__RenderEverythingBarRoads();
-	CRenderer__RenderFadingInEntities();
+//	RwRenderStateSet(rwRENDERSTATEFOGENABLE, 0);
+//	CRenderer__RenderEverythingBarRoads();
+//	CRenderer__RenderFadingInEntities();
+
+	// ^ This also renders cars, which causes wheels to spin too fast
+	// in III, so use your own code instead
+	RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)1);
+	RenderEveryBarCarsPeds();
+	RenderAlphaListBarCarsPeds();
 }
 
 void
-CarPipe::RenderEnvTex(void)
+NeoCarPipe::RenderEnvTex(void)
 {
+	if(!NeoCarPipe::Get()->canUse || !enableEnv)
+		return;
+
 	RwCamera *cam = (RwCamera*)((RwGlobals*)RwEngineInst)->curCamera;
 	RwCameraEndUpdate(cam);
 
@@ -225,8 +166,7 @@ CarPipe::RenderEnvTex(void)
 	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDZERO);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDSRCCOLOR);
 	RwRenderStateSet(rwRENDERSTATETEXTURERASTER, reflectionMask->raster);
-	if(!vcsBlend)
-		RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, screenQuad, 4, screenindices, 6);
+	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, screenQuad, 4, screenindices, 6);
 	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDINVSRCALPHA);
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, 0);
@@ -246,22 +186,32 @@ CarPipe::RenderEnvTex(void)
 //
 //
 
-CarPipe::CarPipe(void)
+NeoCarPipe*
+NeoCarPipe::Get(void)
 {
-	rwPipeline = NULL;
+	static NeoCarPipe neocarpipe;
+	return &neocarpipe;
 }
 
 void
-CarPipe::Init(void)
+NeoCarPipe::Init(void)
 {
 	CreateRwPipeline();
 	SetRenderCallback(RenderCallback);
+
+	if(!d3d9){
+		canUse = false;
+		return;
+	}
+
 	CreateShaders();
 	LoadTweakingTable();
+
+	SetupEnvMap();
 }
 
 void
-CarPipe::CreateShaders(void)
+NeoCarPipe::CreateShaders(void)
 {
 	HRSRC resource;
 	RwUInt32 *shader;
@@ -276,23 +226,18 @@ CarPipe::CreateShaders(void)
 	RwD3D9CreateVertexShader(shader, &vertexShaderPass2);
 	assert(vertexShaderPass2);
 	FreeResource(shader);
-
-	resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_VCSVEHICLEVS), RT_RCDATA);
-	shader = (RwUInt32*)LoadResource(dllModule, resource);
-	RwD3D9CreateVertexShader(shader, &vcsVertexShader);
-	assert(vcsVertexShader);
-	FreeResource(shader);
 }
 
 void
-CarPipe::LoadTweakingTable(void)
+NeoCarPipe::LoadTweakingTable(void)
 {
 	char *path;
 	FILE *dat;
 	path = getpath("neo\\carTweakingTable.dat");
 	if(path == NULL){
-		MessageBox(NULL, "Couldn't load 'neo\\carTweakingTable.dat'", "Error", MB_ICONERROR | MB_OK);
-		exit(0);
+		errorMessage("Couldn't load 'neo\\carTweakingTable.dat'");
+		canUse = false;
+		return;
 	}
 	dat = fopen(path, "r");
 	neoReadWeatherTimeBlock(dat, &fresnel);
@@ -311,7 +256,7 @@ UploadLightColorWithSpecular(RpLight *light, int loc)
 {
 	float c[4];
 	if(RpLightGetFlags(light) & rpLIGHTLIGHTATOMICS){
-		Color s = CarPipe::specColor.Get();
+		Color s = NeoCarPipe::specColor.Get();
 		c[0] = light->color.red * s.a;
 		c[1] = light->color.green * s.a;
 		c[2] = light->color.blue * s.a;
@@ -322,7 +267,7 @@ UploadLightColorWithSpecular(RpLight *light, int loc)
 }
 
 void
-CarPipe::ShaderSetup(RwMatrix *world)
+NeoCarPipe::ShaderSetup(RwMatrix *world)
 {
 	DirectX::XMMATRIX worldMat, viewMat, projMat, texMat;
 	RwCamera *cam = (RwCamera*)RWSRCGLOBAL(curCamera);
@@ -333,7 +278,9 @@ CarPipe::ShaderSetup(RwMatrix *world)
 	RwToD3DMatrix(&worldMat, world);
 	RwToD3DMatrix(&viewMat, &view);
 	viewMat.r[0] = DirectX::XMVectorNegate(viewMat.r[0]);
-	MakeProjectionMatrix(&projMat, cam);
+//	MakeProjectionMatrix(&projMat, cam);
+	RwD3D8GetTransform(D3DTS_PROJECTION, &projMat);
+	projMat = DirectX::XMMatrixTranspose(projMat);
 
 	DirectX::XMMATRIX combined = DirectX::XMMatrixMultiply(projMat, DirectX::XMMatrixMultiply(viewMat, worldMat));
 	RwD3D9SetVertexShaderConstant(LOC_combined, (void*)&combined, 4);
@@ -371,39 +318,18 @@ CarPipe::ShaderSetup(RwMatrix *world)
 }
 
 void
-CarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
+NeoCarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
 {
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
 
 	RwD3D8SetTexture(reflectionTex, 1);
 
-	if(vcsBlend){
-//		RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MULTIPLYADD);
-//		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_SPECULAR);
-//		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-//		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_CURRENT);
-
-//		RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MULTIPLYADD);
-//		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
-//		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_TEXTURE);
-//		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_SPECULAR);
-
-		// ARG0 + ARG1*ARG2
-		RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MULTIPLYADD);
-		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_CURRENT);
-		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_SPECULAR);
-		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_TEXTURE);
-
-		RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
-	}else{
-		RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_LERP);
-		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_CURRENT);
-		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-		RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_SPECULAR);
-		RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-		RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
-	}
+	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_LERP);
+	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_CURRENT);
+	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_SPECULAR);
+	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
 
 	RwD3D8SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
 	RwD3D8SetTextureStageState(2, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
@@ -414,10 +340,7 @@ CarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
 	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDINVSRCALPHA);
 
-	if(vcsBlend)
-		RwD3D9SetVertexShader(vcsVertexShader);                                      // 9!
-	else
-		RwD3D9SetVertexShader(vertexShaderPass1);                                      // 9!
+	RwD3D9SetVertexShader(vertexShaderPass1);                                      // 9!
 
 	for(int i = 0; i < header->numMeshes; i++){
 		RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
@@ -442,20 +365,9 @@ CarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
 		RwD3D9SetVertexShaderConstant(LOC_matCol, (void*)&mat, 1);
 
 		float reflProps[4];
-		if(vcsBlend){
-/*
-			MatFX *matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);
-			float envcoeff = 0.0f;
-			if(matfx && matfx->effects == rpMATFXEFFECTENVMAP)
-				envcoeff = matfx->fx[0].envCoeff;
-			reflProps[0] = envcoeff;
-*/
-			float envcoeff = 0.0f;
-			if(enableEnv && inst->material->surfaceProps.specular)
-				envcoeff = 0.3f;
-			reflProps[0] = envcoeff;
-		}else
-			reflProps[0] = inst->material->surfaceProps.specular;
+		reflProps[0] = inst->material->surfaceProps.specular;
+		if(!enableEnv)
+			reflProps[0] = 0.0f;
 		reflProps[1] = fresnel.Get();
 		reflProps[2] = 0.6f;	// unused
 		reflProps[3] = power.Get();
@@ -467,7 +379,7 @@ CarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
 }
 
 void
-CarPipe::SpecularPass(RxD3D8ResEntryHeader *header)
+NeoCarPipe::SpecularPass(RxD3D8ResEntryHeader *header)
 {
 	RwUInt32 src, dst, fog, zwrite;
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
@@ -508,23 +420,10 @@ CarPipe::SpecularPass(RxD3D8ResEntryHeader *header)
 }
 
 void
-CarPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
+NeoCarPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
-						{
-							static bool keystate = false;
-							if(GetAsyncKeyState(neocarpipekey) & 0x8000){
-								if(!keystate){
-									keystate = true;
-									neocarpipe = (neocarpipe+1)%2;
-								}
-							}else
-								keystate = false;
-						}
-	if(!neocarpipe){
-		rwD3D8AtomicMatFXRenderCallback(repEntry, object, type, flags);
+	if(!NeoCarPipe::Get()->canUse)
 		return;
-	}
-
 	_rwD3D8EnableClippingIfNeeded(object, type);
 
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
@@ -547,7 +446,6 @@ neoMenu(void)
 #ifdef DEBUG
 	DebugMenuAddVarBool32("SkyGFX", "Neo Car env map debug", &debugEnvMap, nil);
 	DebugMenuAddVarBool32("SkyGFX", "Neo Car specular", &neoSpecularPass, nil);
-	DebugMenuAddVarBool32("SkyGFX", "Neo Car VCS blend", &vcsBlend, nil);
 	DebugMenuAddVarBool32("SkyGFX", "Neo Car env", &enableEnv, nil);
 #endif
 }

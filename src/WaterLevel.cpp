@@ -7,19 +7,6 @@ RpAtomic *&ms_pMaskAtomic = *AddressByVersion<RpAtomic**>(0, 0, 0, 0xA0D9A8, 0, 
 float &TEXTURE_ADDU = *AddressByVersion<float*>(0, 0, 0, 0x77FA6C, 0, 0);
 float &TEXTURE_ADDV = *AddressByVersion<float*>(0, 0, 0, 0x77FA70, 0, 0);
 
-MatFXEnv*
-getEnvData(RpMaterial *mat)
-{
-	MatFX *matfx = *RWPLUGINOFFSET(MatFX*, mat, MatFXMaterialDataOffset);
-	MatFXEnv *env = &matfx->fx[0];
-	if(env->effect == rpMATFXEFFECTENVMAP)
-		return env;
-	env = &matfx->fx[1];
-	if(env->effect == rpMATFXEFFECTENVMAP)
-		return env;
-	return nil;
-}
-
 // Wavy atomic is 32x32 units with 17x17 vertices
 // Mask atomic is 64x64 units with 33x33 vertices
 // One texture is stretched over 32 units
