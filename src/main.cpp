@@ -952,6 +952,7 @@ delayedPatches(int a, int b)
 		};
 		DebugMenuAddVar("SkyGFX", "World pipe", &config.worldPipeSwitch, nil, 1, WORLD_DEFAULT, WORLD_LEEDS, pipeStr+1);
 		DebugMenuAddVar("SkyGFX", "Car pipe", &config.carPipeSwitch, nil, 1, CAR_DEFAULT, CAR_LEEDS, pipeStr+1);
+		DebugMenuAddVar("SkyGFX|Advanced", "Leeds Car Env Mult", &config.leedsEnvMult, nil, 0.1f, 0.0f, 2.0f);
 		DebugMenuAddVar("SkyGFX|Advanced", "Trails switch", &config.trailsSwitch, nil, 1, 0, 1, postfxStr+1);
 
 		DebugMenuAddVarBool32("SkyGFX", "Neo rim light pipe", &config.rimlight, nil);
@@ -1046,8 +1047,8 @@ patch(void)
 	// set to reasonable values when used
 	config.radiosity = readint(cfg.get("SkyGfx", "radiosity", ""), -1);
 	config.trailsSwitch = readint(cfg.get("SkyGfx", "trailsSwitch", ""), -1);
-	config.leedsWorldAmbTweak = readfloat(cfg.get("SkyGFX", "leedsWorldAmbTweak", ""), -9999.0f);
-	config.leedsWorldEmissTweak = readfloat(cfg.get("SkyGFX", "leedsWorldEmissTweak", ""), -9999.0f);
+	config.leedsWorldAmbTweak = readfloat(cfg.get("SkyGfx", "leedsWorldAmbTweak", ""), -9999.0f);
+	config.leedsWorldEmissTweak = readfloat(cfg.get("SkyGfx", "leedsWorldEmissTweak", ""), -9999.0f);
 
 
 	config.disableColourOverlay = readint(cfg.get("SkyGfx", "disableColourOverlay", ""), -1);
@@ -1123,7 +1124,7 @@ patch(void)
 	while(n < config.envMapSize) n *= 2;
 	config.envMapSize = n;
 	// set to a reasonable value when used
-	config.leedsEnvMult = readfloat(cfg.get("SkyGFX", "leedsEnvMult", ""), -9999.0f);
+	config.leedsEnvMult = readfloat(cfg.get("SkyGfx", "leedsEnvMult", ""), -9999.0f);
 
 	config.rimlight = readint(cfg.get("SkyGfx", "neoRimLightPipe", ""), -1);
 	config.neoGlossPipe = readint(cfg.get("SkyGfx", "neoGlossPipe", ""), -1);
