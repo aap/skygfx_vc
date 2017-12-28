@@ -243,6 +243,7 @@ void
 CustomPipe::CreateRwPipeline(void)
 {
 	rwPipeline = neoCreatePipe();
+	assert(rwPipeline != nil);
 }
 
 void

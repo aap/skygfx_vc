@@ -964,7 +964,6 @@ delayedPatches(int a, int b)
 
 //		if(config.disableColourOverlay >= 0)
 			DebugMenuAddVarBool32("SkyGFX", "Disable Colour Overlay", &config.disableColourOverlay, nil);
-		if(config.disableColourOverlay < 0) config.disableColourOverlay = 0;
 
 		void neoMenu();
 		neoMenu();
@@ -1052,6 +1051,7 @@ patch(void)
 
 
 	config.disableColourOverlay = readint(cfg.get("SkyGfx", "disableColourOverlay", ""), -1);
+	if(config.disableColourOverlay < 0) config.disableColourOverlay = 0;
 
 // TEMP
 //	if(disableColourOverlay >= 0){
