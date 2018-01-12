@@ -50,4 +50,5 @@ project "skygfx_vc"
 	filter "configurations:Release"
 		defines { "NDEBUG" }
 		optimize "On"
+		symbols "On"
 		flags { "StaticRuntime" }

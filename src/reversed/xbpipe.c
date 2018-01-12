@@ -39,12 +39,12 @@ void _rxXbDefaultRenderFFPObjectSetUp(RxXboxResEntryHeader *res, void *object, c
 	if(lightingEnabled){
 		if(flags & rpGEOMETRYPRELIT){
 			RwXboxSetCachedRenderState(D3DRS_COLORVERTEX, 1);
-			RwXboxSetCachedRenderState(D3DRS_EMISSIVEMATERIALSOURCE, 1);
+			RwXboxSetCachedRenderState(D3DRS_EMISSIVEMATERIALSOURCE, D3DMCS_COLOR1);
 		}else{
 			RwXboxSetCachedRenderState(D3DRS_COLORVERTEX, 0);
-			RwXboxSetCachedRenderState(D3DRS_EMISSIVEMATERIALSOURCE, 0);
+			RwXboxSetCachedRenderState(D3DRS_EMISSIVEMATERIALSOURCE, D3DMCS_MATERIAL);
 		}
-		RwXboxSetCachedRenderState(D3DRS_DIFFUSEMATERIALSOURCE, res->vertexAlpha);
+		RwXboxSetCachedRenderState(D3DRS_DIFFUSEMATERIALSOURCE, res->vertexAlpha ? D3DMCS_COLOR1 : D3DMCS_MATERIAL);
 	}
 	normalizeNormals = 0;
 	if(flags & rpGEOMETRYNORMALS && type == rpATOMIC && XbAtomicHasScaling(object)){

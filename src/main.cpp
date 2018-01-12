@@ -72,6 +72,8 @@ RwImVertexIndex *blurIndices = AddressByVersion<RwImVertexIndex*>(0x5FDD90, 0x5F
 static addr DefinedState_A = AddressByVersion<addr>(0x526330, 0x526570, 0x526500, 0x57F9C0, 0x57F9E0, 0x57F7F0);
 WRAPPER void DefinedState(void) { VARJMP(DefinedState_A); }
 
+RsGlobalType &RsGlobal = *AddressByVersion<RsGlobalType*>(0x8F4360, 0, 0, 0, 0, 0);
+
 SkyGFXConfig config;
 bool d3d9;
 
@@ -808,10 +810,20 @@ footsplash_hook(void)
 	}
 }
 
+// BETA sliding in oddjob2 text for III, thanks Fire_Head for finding this
+float &OddJob2XOffset = *(float*)0x8F1B5C;
+WRAPPER void CFont__PrintString(float x, float y, short *str) { EAXJMP(0x500F50); }
+void
+CFont__PrintString__Oddjob2(float x, float y, short *str)
+{
+	CFont__PrintString(x - OddJob2XOffset * RsGlobal.width/640.0f, y, str);
+}
+
 void (*CMBlur__MotionBlurRenderIII_orig)(RwCamera*, RwUInt8, RwUInt8, RwUInt8, RwUInt8, int, int);
 void
 CMBlur__MotionBlurRenderIII(RwCamera *cam, RwUInt8 red, RwUInt8 green, RwUInt8 blue, RwUInt8 alpha, int type, int bluralpha)
 {
+	// REMOVE: we do this in InitialiseGame_hook now
 	if(config.trailsSwitch < 0) config.trailsSwitch = 0;
 	if(config.disableColourOverlay)
 		return;
@@ -825,6 +837,7 @@ void (*CMBlur__MotionBlurRenderVC_orig)(RwCamera*, RwUInt8, RwUInt8, RwUInt8, Rw
 void
 CMBlur__MotionBlurRenderVC(RwCamera *cam, RwUInt8 red, RwUInt8 green, RwUInt8 blue, RwUInt8 alpha, int type)
 {
+	// REMOVE: we do this in InitialiseGame_hook now
 	if(config.trailsSwitch < 0) config.trailsSwitch = 0;
 	if(config.disableColourOverlay)
 		return;
@@ -917,6 +930,14 @@ InitialiseGame_hook(void)
 	if(!postrw_once){
 		d3d9 = RwD3D9Supported();
 
+		// This is where we can sanitize some values:
+		if(config.trailsSwitch < 0) config.trailsSwitch = 0;
+		if(config.radiosity < 0) config.radiosity = 0;
+		if(config.leedsEnvMult < 0) config.leedsEnvMult = isIII() ? 0.22 : 0.3;
+		if(config.leedsWorldAmbTweak < 0) config.leedsWorldAmbTweak = 1.0f;
+		if(config.leedsWorldEmissTweak < 0) config.leedsWorldEmissTweak = 0.0f;
+
+
 		if (isIII()) // fall back to generic.txd when reading from dff
 			InjectHook(AddressByVersion<addr>(0x5AAE1B, 0x5AB0DB, 0x5AD708, 0, 0, 0), RwTextureRead_generic);
 		CarPipe::Init();
@@ -924,10 +945,14 @@ InitialiseGame_hook(void)
 		LeedsCarPipe::Get()->Init();
 
 		neoInit();
+
+		if(config.rimlight < 0) config.rimlight = 0;
+		if(config.neoGlossPipe < 0) config.neoGlossPipe = 0;
+		if(config.carPipeSwitch < 0) config.carPipeSwitch = 0;
+		if(config.worldPipeSwitch < 0) config.worldPipeSwitch = 0;
+
 		postrw_once = true;
 	}
-	if(config.carPipeSwitch < 0) config.carPipeSwitch = 0;
-	if(config.worldPipeSwitch < 0) config.worldPipeSwitch = 0;
 
 	InitialiseGame();
 }
@@ -970,6 +995,13 @@ delayedPatches(int a, int b)
 		void leedsMenu();
 		leedsMenu();
 
+		extern int seamOffX;
+		extern int seamOffY;
+		DebugMenuAddVarBool32("SkyGFX", "Seam fixer", &config.seamfix, nil);
+		DebugMenuAddVar("SkyGFX", "Seam Offset X", &seamOffX, nil, 1, -10, 10, nil);
+		DebugMenuAddVar("SkyGFX", "Seam Offset Y", &seamOffY, nil, 1, -10, 10, nil);
+
+
 		DebugMenuAddVarBool8("SkyGFX|ScreenFX", "Enable YCbCr tweak", (int8_t*)&ScreenFX::m_bYCbCrFilter, nil);
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Y scale", &ScreenFX::m_lumaScale, nil, 0.004f, 0.0f, 10.0f);
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Y offset", &ScreenFX::m_lumaOffset, nil, 0.004f, -1.0f, 1.0f);
@@ -995,6 +1027,7 @@ delayedPatches(int a, int b)
 
 #endif
 	}
+
 	return RsEventHandler_orig(a, b);
 }
 
@@ -1253,6 +1286,11 @@ patch(void)
 		//MemoryVP::InjectHook(0x48E603, RenderEffectsHook);
 		//MemoryVP::InjectHook(0x5219B3, CVehicleModelInfo__SetEnvironmentMapCB_hook);
 		//MemoryVP::Patch<void*>(0x521986+1, CVehicleModelInfo__SetEnvironmentMapCB_hook);
+
+		// beta sliding in text
+		InjectHook(0x509DDE, CFont__PrintString__Oddjob2);
+		InjectHook(0x509E51, CFont__PrintString__Oddjob2);
+		
 
 		// clear framebuffer
 		Patch<uchar>(0x48CFC1+1, 3);

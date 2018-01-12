@@ -112,7 +112,7 @@ rxD3D8DefaultRenderCallback_fixed(RwResEntry *repEntry, void *object, RwUInt8 ty
 		if(curalpha != a)
 			rwD3D8RenderStateVertexAlphaEnable(curalpha = a);
 		if(lighting){
-			RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha != 0);
+			RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha ? D3DMCS_COLOR1 : D3DMCS_MATERIAL);
 			RwD3D8SetSurfaceProperties(&inst->material->color, &inst->material->surfaceProps,
 			                           flags & rpGEOMETRYMODULATEMATERIALCOLOR);
 		}

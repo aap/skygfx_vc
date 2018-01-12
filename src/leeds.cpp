@@ -31,6 +31,7 @@ leedsSetSurfaceProps(RwRGBA *color, RwSurfaceProperties *surfProps, RwUInt32 fla
 	static D3DCOLORVALUE black = { 0, 0, 0, 0 };
 	RwRGBA c = *color;
 
+	// REMOVE: we do this in InitialiseGame_hook now
 	if(config.leedsWorldAmbTweak < 0) config.leedsWorldAmbTweak = 1.0f;
 	if(config.leedsWorldEmissTweak < 0) config.leedsWorldEmissTweak = 0.0f;
 

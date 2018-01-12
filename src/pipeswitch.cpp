@@ -153,12 +153,6 @@ WorldPipe::Init(void)
 	WorldPipe::Get()->CreateRwPipeline();
 	WorldPipe::Get()->SetRenderCallback(RenderCallback);
 
-	if(DebugMenuLoad()){
-		DebugMenuAddVarBool32("SkyGFX", "Seam fixer", &config.seamfix, nil);
-		DebugMenuAddVar("SkyGFX", "Seam Offset X", &seamOffX, nil, 1, -10, 10, nil);
-		DebugMenuAddVar("SkyGFX", "Seam Offset Y", &seamOffY, nil, 1, -10, 10, nil);
-	}
-
 	if(gtaversion == III_10){
 		InterceptCall(&CSimpleModelInfo__SetAtomic_A, &CSimpleModelInfo::SetAtomic_hook, 0x4768F1);
 		InjectHook(0x476707, &CSimpleModelInfo::SetAtomic_hook);

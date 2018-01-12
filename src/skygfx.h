@@ -65,6 +65,24 @@ public:
 
 //#define RELEASE
 
+struct RsGlobalType
+{
+	const char *appName;
+	int width;
+	int height;
+	int maximumWidth;
+	int maximumHeight;
+	int maxFPS;
+	int quit;
+	void *ps;
+/*
+	RsInputDevice keyboard;
+	RsInputDevice mouse;
+	RsInputDevice pad;
+*/
+};
+extern RsGlobalType &RsGlobal;
+
 struct GlobalScene
 {
 	RpWorld *world;
