@@ -31,6 +31,8 @@ project "skygfx_vc"
 	targetextension ".dll"
 	characterset ("MBCS")
 
+	buildoptions { "/Zc:threadSafeInit-" }
+
 	filter "configurations:DebugIII"
 		defines { "DEBUG" }
 		flags { "StaticRuntime" }
