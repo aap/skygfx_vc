@@ -55,6 +55,8 @@ public:
 	static RwIm2DVertex screenVertices[4];
 	static RwImVertexIndex screenIndices[6];
 
+	static void (*nullsub_orig)(void);
+
 	static void Initialise(void);
 	static void CreateImmediateModeData(RwCamera *cam, RwRect *rect);
 	static void UpdateFrontBuffer(void);
@@ -183,7 +185,8 @@ enum eCarPipe
 {
 	CAR_DEFAULT,
 	CAR_NEO,
-	CAR_LEEDS,
+	CAR_LCS,
+	CAR_VCS,
 
 	CAR_NUMPIPES
 };
@@ -257,8 +260,9 @@ struct CMBlur
 	static RwIm2DVertex ms_radiosityVerts[44];
 	static RwImVertexIndex ms_radiosityIndices[7*6];
 
-	static void MotionBlurRender_custom(RwCamera *cam, uint8 red, uint8 green, uint8 blue, uint8 alpha, uint8 type);
+	static void MotionBlurRender_leeds(RwCamera *cam, uint8 red, uint8 green, uint8 blue, uint8 alpha, uint8 type);
 	static void OverlayRender_leeds(RwCamera *cam, RwRaster *frontbuf, RwRGBA *col, uint8 type);
+	static void MotionBlurRender_mobile(RwCamera *cam, uint8 red, uint8 green, uint8 blue, uint8 alpha, uint8 type);
 
 	static void RadiosityInit(RwCamera *cam);
 	static void RadiosityCreateImmediateData(RwCamera *cam);

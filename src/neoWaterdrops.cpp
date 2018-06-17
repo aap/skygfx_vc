@@ -74,7 +74,7 @@ int WaterDrops::ms_numDropsMoving;
 bool WaterDrops::ms_enabled;
 bool WaterDrops::ms_movingEnabled;
 
-int WaterDrops::ms_splashDuration;
+int WaterDrops::ms_splashDuration = -1;
 CPlaceable_III *WaterDrops::ms_splashObject;
 
 float WaterDrops::ms_distMoved, WaterDrops::ms_vecLen, WaterDrops::ms_rainStrength;
@@ -149,9 +149,9 @@ static uint32_t GetLookRight_A = AddressByVersion<uint32_t>(0x4932C0, 0, 0, 0x4A
 WRAPPER bool CPad::GetLookRight(void) { VARJMP(GetLookRight_A); }
 
 #define INJECTRESET(x) \
-	addr reset_call_##x; \
-	void reset_hook_##x(void){ \
-		((voidfunc)reset_call_##x)(); \
+	static void (*reset_call_##x)(void); \
+	static void reset_hook_##x(void){ \
+		reset_call_##x(); \
 		WaterDrops::Reset(); \
 	}
 
@@ -161,36 +161,52 @@ INJECTRESET(3)
 INJECTRESET(4)
 INJECTRESET(5)
 
+uint32 splashbreak;
+void __declspec(naked)
+splashhook(void)
+{
+	_asm{
+		push	ebp
+		call	WaterDrops::RegisterSplash
+		pop	ebp
+		mov	eax, splashbreak
+		jmp	eax
+	}
+}
+
+void (*RenderEffects)(void);
+void
+RenderEffects_hook(void)
+{
+	RenderEffects();
+	WaterDrops::Process();
+	WaterDrops::Render();
+}
+
 void
 hookWaterDrops()
 {
-	if (is10()) 
-	{
-		static injector::hook_back<void(*)()> RenderEffects;
-		auto RenderEffects_hook = []()
-		{
-			RenderEffects.fun();
-			WaterDrops::Process();
-			WaterDrops::Render();
-		}; RenderEffects.fun = injector::MakeCALL(AddressByVersion<addr>(0x48E603, 0, 0, 0x4A604F, 0, 0), static_cast<void(*)()>(RenderEffects_hook), true).get();
+	if(is10()){
+		InterceptCall(&RenderEffects, RenderEffects_hook, AddressByVersion<addr>(0x48E603, 0, 0, 0x4A604F, 0, 0));
 
-		static auto splashbreak = injector::GetBranchDestination(AddressByVersion<addr>(0x4BC7D0, 0, 0, 0x4E8721, 0, 0), true).as_int();
-		struct splashhook
-		{
-			void operator()(injector::reg_pack& regs)
-			{
-				WaterDrops::RegisterSplash((CPlaceable_III*)regs.ebp, 20.0f);
-				*(uint32_t*)regs.esp = splashbreak;
-			}
-		}; injector::MakeInline<splashhook>(AddressByVersion<addr>(0x4BC7D0, 0, 0, 0x4E8721, 0, 0));
+		// Original Neo droplets
 
-		if (config.neoblooddrops)
-		{
+		InterceptCall(&reset_call_1, reset_hook_1, AddressByVersion<addr>(0x48C1AB, 0, 0, 0x4A4DD6, 0, 0));	// CGame::Initialise
+		InterceptCall(&reset_call_2, reset_hook_2, AddressByVersion<addr>(0x48C530, 0, 0, 0x4A48EA, 0, 0));	// CGame::ReInitGameObjectVariables
+		InterceptCall(&reset_call_3, reset_hook_3, AddressByVersion<addr>(0x42155D, 0, 0, 0x42BCD6, 0, 0));	// CGameLogic::Update
+		InterceptCall(&reset_call_4, reset_hook_4, AddressByVersion<addr>(0x42177A, 0, 0, 0x42C0BC, 0, 0));	// CGameLogic::Update
+		InterceptCall(&reset_call_5, reset_hook_5, AddressByVersion<addr>(0x421926, 0, 0, 0x42C318, 0, 0));  // CGameLogic::Update
+
+		InterceptCall(&splashbreak, splashhook, AddressByVersion<addr>(0x4BC7D0, 0, 0, 0x4E8721, 0, 0));
+
+		// TAG's extended droplets
+
+		if(config.neoblooddrops){
 			static injector::hook_back<void(__cdecl*)(int, int, int, int, int, int, int, int, int)> AddParticle;
 			auto AddParticleHook = [](int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9)
 			{
 				AddParticle.fun(a1, a2, a3, a4, a5, a6, a7, a8, a9);
-				if (config.neoblooddrops)
+				if(config.neoblooddrops)
 					WaterDrops::FillScreenMoving(0.2f, true);
 			}; AddParticle.fun = injector::MakeCALL(AddressByVersion<addr>(0x4E78D1, 0, 0, 0x52A4B3, 0, 0), static_cast<void(__cdecl*)(int, int, int, int, int, int, int, int, int)>(AddParticleHook), true).get();
 			injector::MakeCALL(AddressByVersion<addr>(0x55CF2E, 0, 0, 0x5D343A, 0, 0), static_cast<void(__cdecl*)(int, int, int, int, int, int, int, int, int)>(AddParticleHook), true);
@@ -202,22 +218,16 @@ hookWaterDrops()
 			void operator()(injector::reg_pack& regs)
 			{
 				regs.eax = regs.esp + 0x1A8;
-				WaterDrops::FillScreenMoving(0.05f, false);
+				if(config.neowaterdrops == 2)
+					WaterDrops::FillScreenMoving(0.05f, false);
 			}
 		}; injector::MakeInline<boathook>(AddressByVersion<addr>(0x541497, 0, 0, 0x5A42E6, 0, 0), AddressByVersion<addr>(0x541497 + 7, 0, 0, 0x5A42E6 + 7, 0, 0));
 
-		INTERCEPT(reset_call_1, reset_hook_1, AddressByVersion<addr>(0x48C1AB, 0, 0, 0x4A4DD6, 0, 0));	// CGame::Initialise
-		INTERCEPT(reset_call_2, reset_hook_2, AddressByVersion<addr>(0x48C530, 0, 0, 0x4A48EA, 0, 0));	// CGame::ReInitGameObjectVariables
-		INTERCEPT(reset_call_3, reset_hook_3, AddressByVersion<addr>(0x42155D, 0, 0, 0x42BCD6, 0, 0));	// CGameLogic::Update
-		INTERCEPT(reset_call_4, reset_hook_4, AddressByVersion<addr>(0x42177A, 0, 0, 0x42C0BC, 0, 0));	// CGameLogic::Update
-		INTERCEPT(reset_call_5, reset_hook_5, AddressByVersion<addr>(0x421926, 0, 0, 0x42C318, 0, 0));  // CGameLogic::Update
+		if(gtaversion == VC_10){
+			//remove old effect in VC
+			Nop(AddressByVersion<addr>(0, 0, 0, 0x560D63, 0, 0), 5);
 
-		if (gtaversion == VC_10) 
-		{
-			injector::MakeNOP(AddressByVersion<addr>(0, 0, 0, 0x560D63, 0, 0), 5, true); //remove old effect in VC
-
-			if (config.neoblooddrops)
-			{
+			if(config.neoblooddrops){
 				//chainsaw
 				struct bloodhook
 				{
@@ -234,7 +244,8 @@ hookWaterDrops()
 				void operator()(injector::reg_pack& regs)
 				{
 					regs.edi = regs.esp + 0x3C0;
-					WaterDrops::RegisterSplash((CPlaceable_III*)regs.ebx, 5.0f);
+					if(config.neowaterdrops == 2)
+						WaterDrops::RegisterSplash_dist((CPlaceable_III*)regs.ebx, 5.0f);
 				}
 			}; injector::MakeInline<fountainhook>(AddressByVersion<addr>(0, 0, 0, 0x4E7F64, 0, 0), AddressByVersion<addr>(0, 0, 0, 0x4E7F64+7, 0, 0));
 
@@ -243,7 +254,8 @@ hookWaterDrops()
 				void operator()(injector::reg_pack& regs)
 				{
 					regs.edi = regs.esp + 0x390;
-					WaterDrops::RegisterSplash((CPlaceable_III*)regs.ebx, 10.0f);
+					if(config.neowaterdrops == 2)
+						WaterDrops::RegisterSplash_dist((CPlaceable_III*)regs.ebx, 10.0f);
 				}
 			}; injector::MakeInline<fountainhook2>(AddressByVersion<addr>(0, 0, 0, 0x4E795D, 0, 0), AddressByVersion<addr>(0, 0, 0, 0x4E795D+7, 0, 0));
 
@@ -252,14 +264,21 @@ hookWaterDrops()
 			auto AddParticlePoolHook = [](int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8, int a9)
 			{
 				AddParticle.fun(a1, a2, a3, a4, a5, a6, a7, a8, a9);
-				WaterDrops::FillScreenMoving(0.5f, false);
+				if(config.neowaterdrops == 2)
+					WaterDrops::FillScreenMoving(0.5f, false);
 			}; AddParticle.fun = injector::MakeCALL(AddressByVersion<addr>(0, 0, 0, 0x50489F, 0, 0), static_cast<void(__cdecl*)(int, int, int, int, int, int, int, int, int)>(AddParticlePoolHook), true).get();
 		}
 	}
 }
 
 void
-WaterDrops::RegisterSplash(CPlaceable_III *plc, float distance = 20.0f)
+WaterDrops::RegisterSplash(CPlaceable_III *plc)
+{
+	RegisterSplash_dist(plc, 20.0f);
+}
+
+void
+WaterDrops::RegisterSplash_dist(CPlaceable_III *plc, float distance)
 {
 	RwV3d dist;
 	if(isIII())

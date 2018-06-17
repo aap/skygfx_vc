@@ -245,7 +245,9 @@ RenderScene_hook(void)
 
 	switch(config.carPipeSwitch){
 		case CAR_NEO: NeoCarPipe::RenderEnvTex(); break;
-		case CAR_LEEDS: LeedsCarPipe::RenderEnvTex(); break;
+		case CAR_LCS:
+		case CAR_VCS:
+			LeedsCarPipe::RenderEnvTex(); break;
 	}
 }
 
@@ -282,7 +284,9 @@ CarPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt
 	switch(config.carPipeSwitch){
 		case CAR_DEFAULT: rwD3D8AtomicMatFXRenderCallback(repEntry, object, type, flags); break;
 		case CAR_NEO: NeoCarPipe::Get()->renderCB(repEntry, object, type, flags); break;
-		case CAR_LEEDS: LeedsCarPipe::RenderCallback(repEntry, object, type, flags); break;
+		case CAR_LCS:
+		case CAR_VCS:
+			LeedsCarPipe::RenderCallback(repEntry, object, type, flags); break;
 	}
 }
 

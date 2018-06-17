@@ -27,7 +27,7 @@ public:
 	static RimPipe *Get(void);
 	void Init(void);
 	static void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
-	static void ShaderSetup(RwMatrix *world);
+	static void ShaderSetup(RwMatrix *world, RwUInt32 flags);
 	static void ObjectSetup(void);
 	static void RenderMesh(RxD3D8InstanceData *inst);
 };
@@ -160,8 +160,10 @@ RimPipe::LoadTweakingTable(void)
 //
 
 void
-RimPipe::ShaderSetup(RwMatrix *world)
+RimPipe::ShaderSetup(RwMatrix *world, RwUInt32 flags)
 {
+	int lighting = !!(flags & rpGEOMETRYLIGHT);
+
 	DirectX::XMMATRIX worldMat, viewMat, projMat;
 	RwCamera *cam = (RwCamera*)RWSRCGLOBAL(curCamera);
 
@@ -191,11 +193,11 @@ RimPipe::ShaderSetup(RwMatrix *world)
 	v = DirectX::XMVector4Transform(v, viewMat);
 	RwD3D9SetVertexShaderConstant(LOC_viewVec, &v, 1);
 
-	if(pAmbient)
+	if(lighting && pAmbient && rwObjectTestFlags(pAmbient, rpLIGHTLIGHTATOMICS))
 		UploadLightColor(pAmbient, LOC_ambient);
 	else
 		UploadZero(LOC_ambient);
-	if(pDirect){
+	if(lighting && pDirect && rwObjectTestFlags(pDirect, rpLIGHTLIGHTATOMICS)){
 		UploadLightColor(pDirect, LOC_directCol);
 		UploadLightDirection(pDirect, LOC_directDir);
 	}else{
@@ -203,7 +205,10 @@ RimPipe::ShaderSetup(RwMatrix *world)
 		UploadZero(LOC_directDir);
 	}
 	for(int i = 0 ; i < 4; i++)
-		if(i < NumExtraDirLightsInWorld && RpLightGetType(pExtraDirectionals[i]) == rpLIGHTDIRECTIONAL){
+		if(i < NumExtraDirLightsInWorld &&
+		   lighting &&
+		   RpLightGetType(pExtraDirectionals[i]) == rpLIGHTDIRECTIONAL &&
+		   rwObjectTestFlags(pExtraDirectionals[i], rpLIGHTLIGHTATOMICS)){
 			UploadLightDirection(pExtraDirectionals[i], LOC_lightDir+i);
 			UploadLightColor(pExtraDirectionals[i], LOC_lightCol+i);
 		}else{
@@ -220,7 +225,7 @@ RimPipe::ShaderSetup(RwMatrix *world)
 	f[0] = offset.Get();
 	f[1] = scale.Get();
 	f[2] = scaling.Get();
-	if(!config.rimlight)
+	if(!config.rimlight || !lighting)
 		f[2] = 0.0f;
 	f[3] = 1.0f;
 	RwD3D9SetVertexShaderConstant(LOC_rim, (void*)f, 1);
@@ -252,7 +257,6 @@ RimPipe::RenderMesh(RxD3D8InstanceData *inst)
 						//	}else
 						//		keystate = false;
 						//}
-
 	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
 	RwD3D9SetFVF(inst->vertexShader);				       // 9!
 	RwRGBAReal color;
@@ -287,6 +291,7 @@ RimPipe::RenderMesh(RxD3D8InstanceData *inst)
 void
 RimPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
+	// Cutscene shadows are rendered with almost all flags turned off
 						{
 							static bool keystate = false;
 							if(GetAsyncKeyState(config.rimlightkey) & 0x8000){
@@ -303,7 +308,7 @@ RimPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt
 	}
 	_rwD3D8EnableClippingIfNeeded(object, type);
 
-	ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)));
+	ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)), flags);
 
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];

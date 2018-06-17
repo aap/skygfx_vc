@@ -325,16 +325,20 @@ rxD3D8DefaultRenderFFPMeshCombinerSetUp(RxD3D8InstanceData *inst, RwUInt32 flags
 		RwD3D8SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
 		RwD3D8SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TEXTURE);
 	}else{
+		// Without lighting this should be white or prelight
 		RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
 		RwD3D8SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
 		RwD3D8SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
 		RwD3D8SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
 	}
+
 	if(modulateMaterial){
 		RwUInt32 tf;
 		RwRGBA *c = &inst->material->color;
-		//                     v-- what's that?
-		if(!lightingEnabled && flags & rpGEOMETRYLIGHT && !(flags & rpGEOMETRYPRELIT)){
+		// this happens when the geometry is lit but there were no lights
+		if(!lightingEnabled &&
+//		   flags & rpGEOMETRYLIGHT &&	// we don't really want this, unlit geometry should be black too
+		   !(flags & rpGEOMETRYPRELIT)){
 			if(flags & rpGEOMETRYMODULATEMATERIALCOLOR)
 				tf = D3DCOLOR_ARGB(c->alpha, 0, 0, 0);
 			else

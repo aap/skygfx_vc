@@ -183,8 +183,8 @@ public:
 	static void RenderEnvTex(void);
 	static void SetupEnvMap(void);
 	static void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
-	static void ShaderSetup(RwMatrix *world);
-	static void DiffusePass(RxD3D8ResEntryHeader *header);
+	static void ShaderSetup(RwMatrix *world, RwUInt32 flags);
+	static void DiffusePass(RxD3D8ResEntryHeader *header, int refl);
 	static void SpecularPass(RxD3D8ResEntryHeader *header);
 };
 
@@ -271,7 +271,8 @@ public:
 	static void Clear(void);
 	static void Reset(void);
 
-	static void RegisterSplash(CPlaceable_III *plc, float distance);
+	static void RegisterSplash(CPlaceable_III *plc);
+	static void RegisterSplash_dist(CPlaceable_III *plc, float distance);
 	static bool NoRain(void);
 
 	// Rendering

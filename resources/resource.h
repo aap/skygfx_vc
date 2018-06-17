@@ -8,3 +8,4 @@
 #define IDR_CURVEPS				107
 #define IDR_VCSVEHICLEVS                        108
 #define IDR_GRADINGPS				109
+#define IDR_CONTRASTPS				111

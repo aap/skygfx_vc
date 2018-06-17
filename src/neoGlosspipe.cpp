@@ -60,6 +60,8 @@ GlossPipe::GlossPipe(void)
 	texdict = NULL;
 }
 
+
+
 void
 GlossPipe::Init(void)
 {

@@ -47,7 +47,7 @@ project "skygfx_vc"
 		symbols "On"
 		debugdir "C:/Users/aap/games/gtavc"
 		debugcommand "C:/Users/aap/games/gtavc/gta_vc.exe"
-		postbuildcommands "copy /y \"$(TargetPath)\" \"C:\\Users\\aap\\games\\gtavc\\dlls\\skygfx.dll\""
+		postbuildcommands "copy /y \"$(TargetPath)\" \"C:\\Users\\aap\\games\\gtavc\\plugins\\skygfx.dll\""
 
 	filter "configurations:Release"
 		defines { "NDEBUG" }

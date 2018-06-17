@@ -231,6 +231,9 @@ ApplyEnvMapTextureMatrix_hook(RwTexture *tex, int n, RwFrame *frame)
 		}else
 			keystate = false;
 	}
+// TEMP - looks like PS2 uses same filtering as for diffuse texture, which is nearest for a vehicle color texture
+//tex->filterAddressing = 0x1101;
+
 	RwD3D8SetTexture(tex, n);
 	if(isVC() && rwD3D8RasterIsCubeRaster(tex->raster)){
 		RwD3D8SetTextureStageState(n, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR);
@@ -348,6 +351,7 @@ rpMatFXD3D8AtomicMatFXEnvRender_ps2(RxD3D8InstanceData *inst, int flags, int sel
 	}
 
 	uchar intens = (uchar)(env->envCoeff*255.0f);
+//intens = intens/2;
 	if(intens == 0 || !envMap){
 		if(sel == 0)
 			return rpMatFXD3D8AtomicMatFXDefaultRender(inst, flags, texture);
@@ -421,6 +425,30 @@ rpMatFXD3D8AtomicMatFXEnvRender_ps2(RxD3D8InstanceData *inst, int flags, int sel
 	RwD3D8SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
 	RwD3D8SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
 	return 0;
+}
+
+void
+rpMatFXD3D8AtomicMatFXRenderBlack_fixed(RxD3D8InstanceData *inst)
+{
+	// FIX: set texture to get its alpha
+	RwD3D8SetTexture(inst->material->texture, 0);
+	if(inst->material->texture){
+		RwD3D8SetTextureStageState(0, D3DTSS_COLOROP,   D3DTOP_SELECTARG2);
+		RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+	}
+
+
+	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)(inst->vertexAlpha || inst->material->color.alpha != 0xFF));
+	RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha ? D3DMCS_COLOR1 : D3DMCS_MATERIAL);
+
+	RwD3D8SetPixelShader(nil);
+	RwD3D8SetVertexShader(inst->vertexShader);
+	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
+	if(inst->indexBuffer){
+		RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
+		RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
+	}else
+		RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
 }
 
 RwFrame*
@@ -793,7 +821,7 @@ footsplash_ps2(uchar *ebx, uchar *esp)
 	col = *(uint*)0x5F85C4;
 	CParticle__AddParticle(44, &vec1, &vec2, NULL, 0.0f, &col, 0, 0, 0, 0);
 
-	if(config.neowaterdrops)
+	if(config.neowaterdrops == 2)
 		WaterDrops::FillScreenMoving(0.1f, false);
 }
 
@@ -809,6 +837,45 @@ footsplash_hook(void)
 		retn
 	}
 }
+
+static RwTexture *flametex[45];
+static RwRaster *flameras[45];
+
+void
+loadNeoFlameTextures(void)
+{
+	char texname[8];
+	int i;
+	for(i = 1; i <= 45; i++){
+		sprintf(texname, "flame%02d", i);
+		flametex[i-1] = RwTextureRead(texname, nil);
+		if(flametex[i-1])
+			flameras[i-1] = flametex[i-1]->raster;
+	}
+}
+
+void __declspec(naked)
+neoflame_hook_iii(void)
+{
+	_asm {
+		call	loadNeoFlameTextures
+		call	RwTextureRead
+		push	0x50C8D8
+		retn
+	}
+}
+
+void __declspec(naked)
+neoflame_hook_vc(void)
+{
+	_asm {
+		call	loadNeoFlameTextures
+		call	RwTextureRead
+		push	0x56522B
+		retn
+	}
+}
+
 
 // BETA sliding in oddjob2 text for III, thanks Fire_Head for finding this
 float &OddJob2XOffset = *(float*)0x8F1B5C;
@@ -827,10 +894,12 @@ CMBlur__MotionBlurRenderIII(RwCamera *cam, RwUInt8 red, RwUInt8 green, RwUInt8 b
 	if(config.trailsSwitch < 0) config.trailsSwitch = 0;
 	if(config.disableColourOverlay)
 		return;
-	if(config.trailsSwitch)
-		CMBlur::MotionBlurRender_custom(cam, red, green, blue, alpha, type);
-	else
-		CMBlur__MotionBlurRenderIII_orig(cam, red, green, blue, alpha, type, bluralpha);
+	switch(config.trailsSwitch){
+	default:
+	case 0: CMBlur__MotionBlurRenderIII_orig(cam, red, green, blue, alpha, type, bluralpha); break;
+	case 1: CMBlur::MotionBlurRender_leeds(cam, red, green, blue, alpha, type); break;
+	case 2: CMBlur::MotionBlurRender_mobile(cam, red, green, blue, alpha, type); break;
+	}
 }
 
 void (*CMBlur__MotionBlurRenderVC_orig)(RwCamera*, RwUInt8, RwUInt8, RwUInt8, RwUInt8, int);
@@ -841,10 +910,12 @@ CMBlur__MotionBlurRenderVC(RwCamera *cam, RwUInt8 red, RwUInt8 green, RwUInt8 bl
 	if(config.trailsSwitch < 0) config.trailsSwitch = 0;
 	if(config.disableColourOverlay)
 		return;
-	if(config.trailsSwitch)
-		CMBlur::MotionBlurRender_custom(cam, red, green, blue, alpha, type);
-	else
-		CMBlur__MotionBlurRenderVC_orig(cam, red, green, blue, alpha, type);
+	switch(config.trailsSwitch){
+	default:
+	case 0:	CMBlur__MotionBlurRenderVC_orig(cam, red, green, blue, alpha, type); break;
+	case 1: CMBlur::MotionBlurRender_leeds(cam, red, green, blue, alpha, type); break;
+	case 2: CMBlur::MotionBlurRender_mobile(cam, red, green, blue, alpha, type); break;
+	}
 }
 
 //
@@ -970,20 +1041,21 @@ delayedPatches(int a, int b)
 		DebugMenuEntrySetWrap(e, true);
 		DebugMenuAddVarBool32("SkyGFX", "Dual pass", &config.dualpass, nil);
 		static const char *pipeStr[] = {
-			"invalid", "default", "neo", "leeds"
+			"invalid", "default", "neo", "lcs", "vcs"
 		};
 		static const char *postfxStr[] = {
-			"invalid", "default", "leeds"
+			"invalid", "default", "leeds", "mobile"
 		};
 		DebugMenuAddVar("SkyGFX", "World pipe", &config.worldPipeSwitch, nil, 1, WORLD_DEFAULT, WORLD_LEEDS, pipeStr+1);
-		DebugMenuAddVar("SkyGFX", "Car pipe", &config.carPipeSwitch, nil, 1, CAR_DEFAULT, CAR_LEEDS, pipeStr+1);
+		DebugMenuAddVar("SkyGFX", "Car pipe", &config.carPipeSwitch, nil, 1, CAR_DEFAULT, CAR_VCS, pipeStr+1);
 		DebugMenuAddVar("SkyGFX|Advanced", "Leeds Car Env Mult", &config.leedsEnvMult, nil, 0.1f, 0.0f, 2.0f);
-		DebugMenuAddVar("SkyGFX|Advanced", "Trails switch", &config.trailsSwitch, nil, 1, 0, 1, postfxStr+1);
+		DebugMenuAddVar("SkyGFX|Advanced", "Trails switch", &config.trailsSwitch, nil, 1, 0, 2, postfxStr+1);
 
 		DebugMenuAddVarBool32("SkyGFX", "Neo rim light pipe", &config.rimlight, nil);
 		DebugMenuAddVarBool32("SkyGFX", "Neo gloss pipe", &config.neoGlossPipe, nil);
 		if(config.neowaterdrops){
-			DebugMenuAddVarBool32("SkyGFX", "Neo water drops", &config.neowaterdrops, nil);
+			static const char *dropstrings[] = { "None", "Neo", "Extended" };
+			DebugMenuAddVar("SkyGFX", "Neo water drops", &config.neowaterdrops, nil, 1, 0, 2, dropstrings);
 			DebugMenuAddVarBool32("SkyGFX", "Neo-style blood drops", &config.neoblooddrops, nil);
 		}
 
@@ -1031,6 +1103,13 @@ delayedPatches(int a, int b)
 	return RsEventHandler_orig(a, b);
 }
 
+void (*RwCameraEndUpdate_hooked)(RwCamera *cam);
+void endOfFrame(RwCamera *cam)
+{
+	ScreenFX::Render();
+	RwCameraEndUpdate_hooked(cam);
+}
+
 void
 patch(void)
 {
@@ -1059,7 +1138,8 @@ patch(void)
 	cfg.load_file(modulePath);
 
 	if(gtaversion == III_10 || gtaversion == VC_10){
-		InjectHook(AddressByVersion<uint32_t>(0x48D445, 0, 0, 0x4A6151, 0, 0), ScreenFX::Render);
+		InterceptCall(&ScreenFX::nullsub_orig, ScreenFX::Render, AddressByVersion<uint32_t>(0x48D445, 0, 0, 0x4A6151, 0, 0));
+//		InterceptCall(&RwCameraEndUpdate_hooked, endOfFrame, AddressByVersion<uint32_t>(0x48D450, 0, 0, 0x4A615C, 0, 0));
 		InterceptCall(&RsEventHandler_orig, delayedPatches, AddressByVersion<uint32_t>(0x58275E, 0, 0, 0x5FFAFE, 0, 0));
 	}
 
@@ -1103,6 +1183,8 @@ patch(void)
 
 	int ps2water = readint(cfg.get("SkyGfx", "ps2Water", ""), 0);
 
+	if(gtaversion == III_10)
+		InjectHook(AddressByVersion<addr>(0x5D0D2B, 0x0, 0, 0x0, 0x0, 0x0), rpMatFXD3D8AtomicMatFXRenderBlack_fixed);
 	tmp = cfg.get("SkyGfx", "texblendSwitch", "");
 	if(tmp != ""){
 		config.blendstyle = readint(tmp);
@@ -1114,12 +1196,13 @@ patch(void)
 			patchWater();
 
 		// disable car colour textures (messes up matfx)
-		if(gtaversion == III_10){
+		// but it could be intended...what to do?
+		if(0 && gtaversion == III_10){
 			Nop(0x520EEA, 2);
 			Nop(0x520F8A, 2);
 		}
 
-		if (gtaversion != III_STEAM)
+		if(gtaversion != III_STEAM)
 			InjectHook(AddressByVersion<addr>(0x5D0CE8, 0x5D0FA8, 0, 0x6765C8, 0x676618, 0x675578), rpMatFXD3D8AtomicMatFXEnvRender_ps2);
 		else
 			InjectHook(0x5D8D37, rpMatFXD3D8AtomicMatFXEnvRender_ps2_IIISteam);
@@ -1243,6 +1326,19 @@ patch(void)
 		}
 	}
 
+/*
+	// load xbox flames
+	if(gtaversion == III_10){
+		InjectHook(0x50C8D3, neoflame_hook_iii, PATCH_JUMP);
+		Patch(0x50CB0E + 6, flameras);
+		Patch(0x50CBA4 + 6, flameras);
+	}else if(gtaversion == VC_10){
+		InjectHook(0x565226, neoflame_hook_vc, PATCH_JUMP);
+		Patch(0x5655C7 + 6, flameras);
+		Patch(0x565671 + 6, flameras);
+	}
+*/
+
 	ScreenFX::m_bYCbCrFilter = readint(cfg.get("SkyGfx", "YCbCrCorrection", ""), 0);
 	ScreenFX::m_lumaScale = readfloat(cfg.get("SkyGfx", "lumaScale", ""), 219.0f/255.0f);
 	ScreenFX::m_lumaOffset = readfloat(cfg.get("SkyGfx", "lumaOffset", ""), 16.0f/255.0f);
@@ -1267,6 +1363,12 @@ patch(void)
 //	Nop(0x5C11C0, 3);
 	// mask atomic
 //	Nop(0x5C1579, 3);
+
+	// use get-in-vehicle camera from PS2 (thanks, Fire_Head)
+	if(gtaversion == III_10){
+		Nop(0x4713DB, 2);
+		Nop(0x47143B, 2);
+	}
 
 #ifdef DEBUG
 	if(gtaversion == III_10){
@@ -1297,9 +1399,6 @@ patch(void)
 		Patch<uchar>(0x48D0AD+1, 3);
 		Patch<uchar>(0x48E6A7+1, 3);
 		Patch<uchar>(0x48E78C+1, 3);
-
-		// disable replays
-		Nop(0x48C975, 5);
 	}
 #endif
 #ifdef DEBUG

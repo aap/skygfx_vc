@@ -8,6 +8,7 @@
 
 static int debugEnvMap = 0;
 static int enableEnv = 1;
+static int chromeCheat = 0;
 
 // ADDRESS
 int &skyTopRed = *AddressByVersion<int*>(0x9403C0, 0, 0, 0xA0CE98, 0, 0);
@@ -24,9 +25,7 @@ RwTexture *LeedsCarPipe::reflectionTex;
 RwIm2DVertex LeedsCarPipe::screenQuad[4];
 RwImVertexIndex LeedsCarPipe::screenindices[6] = { 0, 1, 2, 0, 2, 3 };
 
-void *LeedsCarPipe::vertexShader;
-
-//LeedsCarPipe leedsCarpipe;
+//void *LeedsCarPipe::vertexShader;
 
 //
 // Reflection map
@@ -51,9 +50,10 @@ LeedsCarPipe::SetupEnvMap(void)
 	reflectionTex = RwTextureCreate(envFB);
 	RwTextureSetFilterMode(reflectionTex, rwFILTERLINEAR);
 
-	MakeScreenQuad();
+//	MakeScreenQuad();
 }
 
+/*
 void
 LeedsCarPipe::MakeQuadTexCoords(bool textureSpace)
 {
@@ -101,6 +101,8 @@ LeedsCarPipe::MakeScreenQuad(void)
 	screenQuad[3].emissiveColor = 0xFFFFFFFF;
 	MakeQuadTexCoords(true);
 }
+
+*/
 
 void
 LeedsCarPipe::RenderReflectionScene(void)
@@ -167,127 +169,6 @@ LeedsCarPipe::Init(void)
 	SetupEnvMap();
 }
 
-#if 0
-void
-LeedsCarPipe::CreateShaders(void)
-{
-	HRSRC resource;
-	RwUInt32 *shader;
-	resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_VCSVEHICLEVS), RT_RCDATA);
-	shader = (RwUInt32*)LoadResource(dllModule, resource);
-	RwD3D9CreateVertexShader(shader, &vertexShader);
-	assert(vertexShader);
-	FreeResource(shader);
-}
-
-//
-// Rendering
-//
-
-void
-LeedsCarPipe::ShaderSetup(RwMatrix *world)
-{
-	DirectX::XMMATRIX worldMat, viewMat, projMat, texMat;
-	RwCamera *cam = (RwCamera*)RWSRCGLOBAL(curCamera);
-
-	RwMatrix view;
-	RwMatrixInvert(&view, RwFrameGetLTM(RwCameraGetFrame(cam)));
-
-	RwToD3DMatrix(&worldMat, world);
-	RwToD3DMatrix(&viewMat, &view);
-	texMat = viewMat;
-	viewMat.r[0] = DirectX::XMVectorNegate(viewMat.r[0]);
-	MakeProjectionMatrix(&projMat, cam);
-
-	DirectX::XMMATRIX combined = DirectX::XMMatrixMultiply(projMat, DirectX::XMMatrixMultiply(viewMat, worldMat));
-	RwD3D9SetVertexShaderConstant(LOC_combined, (void*)&combined, 4);
-	RwD3D9SetVertexShaderConstant(LOC_world, (void*)&worldMat, 4);
-//	texMat = DirectX::XMMatrixIdentity();
-	RwD3D9SetVertexShaderConstant(LOC_tex, (void*)&texMat, 4);
-
-	RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame(cam));
-	RwD3D9SetVertexShaderConstant(LOC_eye, (void*)RwMatrixGetPos(camfrm), 1);
-
-	if(pAmbient)
-		UploadLightColor(pAmbient, LOC_ambient);
-	else
-		UploadZero(LOC_ambient);
-	if(pDirect){
-		UploadLightColor(pDirect, LOC_directCol);
-		UploadLightDirection(pDirect, LOC_directDir);
-	}else{
-		UploadZero(LOC_directCol);
-		UploadZero(LOC_directDir);
-	}
-	for(int i = 0 ; i < 4; i++)
-		if(i < NumExtraDirLightsInWorld && RpLightGetType(pExtraDirectionals[i]) == rpLIGHTDIRECTIONAL){
-			UploadLightDirection(pExtraDirectionals[i], LOC_lightDir+i);
-			UploadLightColor(pExtraDirectionals[i], LOC_lightCol+i);
-		}else{
-			UploadZero(LOC_lightDir+i);
-			UploadZero(LOC_lightCol+i);
-		}
-}
-
-void
-LeedsCarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
-{
-	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
-
-	RwD3D8SetTexture(reflectionTex, 1);
-
-	// ARG0 + ARG1*ARG2
-	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MULTIPLYADD);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_CURRENT);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TFACTOR);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_TEXTURE);
-
-	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
-//RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-//RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-
-	RwD3D8SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
-	RwD3D8SetTextureStageState(2, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-	RwD3D8SetTextureStageState(3, D3DTSS_COLOROP, D3DTOP_DISABLE);
-	RwD3D8SetTextureStageState(3, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-
-	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)1);
-	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
-	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDINVSRCALPHA);
-
-	RwD3D9SetVertexShader(vertexShader);                                      // 9!
-
-	for(int i = 0; i < header->numMeshes; i++){
-		RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
-		RwD3D9SetFVF(inst->vertexShader);				       // 9!
-
-		RwD3D8SetTexture(inst->material->texture, 0);
-		// have to set these after the texture, RW sets texture stage states automatically
-		RwD3D8SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-		RwD3D8SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
-		RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TEXTURE);
-		RwD3D8SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
-		RwD3D8SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
-		RwD3D8SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TEXTURE);
-
-		RwRGBAReal mat;
-		RwRGBARealFromRwRGBA(&mat, &inst->material->color);
-		RwD3D9SetVertexShaderConstant(LOC_matCol, (void*)&mat, 1);
-
-		float envcoeff = 0.0f;
-		if(enableEnv && inst->material->surfaceProps.specular)
-		//	envcoeff = 0.3f;
-			envcoeff = 0.12f;	// LCS default it would seem, but perhaps depends on vehicle
-		int t = envcoeff*128;
-		RwD3D8SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_ARGB(255, t, t, t));
-
-		drawDualPass(inst);
-		inst++;
-	}
-}
-#endif
-
 extern IDirect3DDevice8 *&RwD3DDevice;
 extern D3DMATERIAL8 d3dmaterial;
 extern D3DMATERIAL8 &lastmaterial;
@@ -297,7 +178,67 @@ static int setMaterial;	// set d3d material, needed for lighting
 static int setMaterialColor;	// multiply material color at vertex stage
 static int modulateMaterial;	// modulate by material color at texture stage
 
-static D3DMATRIX envtexmat;
+void
+GetLeedsEnvMap(RpAtomic *atm, float *envmat)
+{
+	RwMatrix m1, m2, m3;
+	RwMatrix env;
+
+	RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera));
+	// Matrix to get normals from camera to world space
+	memcpy(&m2, camfrm, sizeof(m2));
+	m2.pos.x = 0.0f;
+	m2.pos.y = 0.0f;
+	m2.pos.z = 0.0f;
+	m2.right.x = -m2.right.x;
+	m2.right.y = -m2.right.y;
+	m2.right.z = -m2.right.z;
+	m2.flags = rwMATRIXTYPEORTHONORMAL;
+
+	// Now back to camera space but kill pitch
+	env.pos.x = 0.0f;
+	env.pos.y = 0.0f;
+	env.pos.z = 0.0f;
+	env.at.x = camfrm->at.x;
+	env.at.y = camfrm->at.y;
+	env.at.z = 0.0f;
+	float invlen = 1.0f/sqrt(env.at.x*env.at.x + env.at.y*env.at.y);
+	env.at.x *= invlen;
+	env.at.y *= invlen;
+	env.up.x = 0.0f;
+	env.up.y = 0.0f;
+	env.up.z = 1.0f;
+	env.right.x = -env.at.y;
+	env.right.y = env.at.x;
+	env.right.z = 0;
+	env.flags = rwMATRIXTYPEORTHONORMAL;
+	RwMatrixInvert(&m3, &env);
+
+	// Map normals to tex coords
+	m3.pos.x = -1.0f;
+	m3.pos.y = -1.0f;
+	m3.pos.z = -1.0f;
+	m3.right.x *= -0.5f;
+	m3.right.y *= -0.5f;
+	m3.right.z *= -0.5f;
+	m3.up.x *= -0.5f;
+	m3.up.y *= -0.5f;
+	m3.up.z *= -0.5f;
+	m3.at.x *= -0.5f;
+	m3.at.y *= -0.5f;
+	m3.at.z *= -0.5f;
+	m3.pos.x *= -0.5f;
+	m3.pos.y *= -0.5f;
+	m3.pos.z *= -0.5f;
+	m3.flags = 0;
+	RwMatrixMultiply(&m1, &m2, &m3);
+
+	memcpy(envmat, &m1, sizeof(m1));
+	envmat[3] = 0.0f;
+	envmat[7] = 0.0f;
+	envmat[11] = 0.0f;
+	envmat[15] = 1.0f;
+}
 
 void
 leedsCarRenderFFPObjectSetUp(RwUInt32 flags)
@@ -397,12 +338,14 @@ leedsCarRenderFFPMeshCombinerSetUp(RxD3D8InstanceData *inst, RwUInt32 flags)
 		RwD3D8SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
 	}
 
-	// Not supported because we needs the second stage for the envmap
+	// Not supported because we need the second stage for the envmap
 	if(modulateMaterial){
 		RwUInt32 tf;
 		RwRGBA *c = &inst->material->color;
-		//                     v-- what's that?
-		if(!lightingEnabled && flags & rpGEOMETRYLIGHT && !(flags & rpGEOMETRYPRELIT)){
+		// this happens when the geometry is lit but there were no lights
+		if(!lightingEnabled &&
+//		   flags & rpGEOMETRYLIGHT &&	// we don't really want this, unlit geometry should be black too
+		   !(flags & rpGEOMETRYPRELIT)){
 			if(flags & rpGEOMETRYMODULATEMATERIALCOLOR)
 				tf = D3DCOLOR_ARGB(c->alpha, 0, 0, 0);
 			else
@@ -463,8 +406,11 @@ leedsCarRenderFFPEnvMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 	RwD3D8SetTexture(LeedsCarPipe::reflectionTex, 0);
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)1);
 
-	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
-	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
+	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
+	if(chromeCheat || config.carPipeSwitch == CAR_VCS)
+		RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDINVSRCALPHA);
+	else
+		RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
 
 
 	float envcoeff = 0.0f;
@@ -472,7 +418,9 @@ leedsCarRenderFFPEnvMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 	if(enableEnv && env && env->envCoeff)
 		envcoeff = env->envCoeff*config.leedsEnvMult;
 	int t = envcoeff*128;
-	RwD3D8SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_ARGB(255, t, t, t));
+	if(chromeCheat)
+		t = 255;
+	RwD3D8SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_ARGB(t, 255, 255, 255));
 
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
 	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
@@ -481,11 +429,12 @@ leedsCarRenderFFPEnvMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 	RwD3D8SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TFACTOR);
 	RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TEXTURE);
 
-	RwD3D8SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+	RwD3D8SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+	RwD3D8SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
+	RwD3D8SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TEXTURE);
 
 	RwD3D8SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACENORMAL);
 	RwD3D8SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-	RwD3D8SetTransform(D3DTS_TEXTURE0, &envtexmat);
 
 	if(inst->indexBuffer){
 		RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
@@ -508,47 +457,15 @@ leedsCarRenderFFPEnvMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 void
 leedsCarRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
-	envtexmat.m[0][0] = 0.5f;
-	envtexmat.m[0][1] = 0.0f;
-	envtexmat.m[0][2] = 0.0f;
-	envtexmat.m[0][3] = 0.0f;
-
-	envtexmat.m[1][0] = 0.0f;
-	envtexmat.m[1][1] = -0.5f;
-	envtexmat.m[1][2] = 0.0f;
-	envtexmat.m[1][3] = 0.0f;
-
-	envtexmat.m[2][0] = 0.0f;
-	envtexmat.m[2][1] = 0.0f;
-	envtexmat.m[2][2] = 0.0f;
-	envtexmat.m[2][3] = 0.0f;
-
-	envtexmat.m[3][0] = 0.5f;
-	envtexmat.m[3][1] = 0.5f;
-	envtexmat.m[3][2] = 0.0f;
-	envtexmat.m[3][3] = 1.0f;
-
 	rxD3D8SetAmbientLight();
 
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
 
-/*
-	RwD3D8SetTexture(LeedsCarPipe::reflectionTex, 1);
 
-	// ARG0 + ARG1*ARG2
-	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MULTIPLYADD);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG0, D3DTA_CURRENT);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TFACTOR);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_TEXTURE);
-
-	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
-
-	RwD3D8SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACENORMAL);
-	RwD3D8SetTextureStageState(1, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-	RwD3D8SetTransform(D3DTS_TEXTURE1, &envtexmat);
-*/
+	float envmat[16];
+	GetLeedsEnvMap((RpAtomic*)object, envmat);
+	RwD3D8SetTransform(D3DTS_TEXTURE0, envmat);
 
 	leedsCarRenderFFPObjectSetUp(flags);
 
@@ -560,9 +477,11 @@ leedsCarRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt3
 		leedsCarRenderFFPMesh(inst, flags);
 		rxD3D8DefaultRenderFFPMeshCombinerTearDown();
 
-		RwD3D8SetRenderState(D3DRS_LIGHTING, 0);
-		leedsCarRenderFFPEnvMesh(inst, flags);
-		RwD3D8SetRenderState(D3DRS_LIGHTING, lightingEnabled);
+		if(lightingEnabled){
+			RwD3D8SetRenderState(D3DRS_LIGHTING, 0);
+			leedsCarRenderFFPEnvMesh(inst, flags);
+			RwD3D8SetRenderState(D3DRS_LIGHTING, lightingEnabled);
+		}
 
 		inst++;
 	}
@@ -592,6 +511,7 @@ LeedsCarPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, R
 //	RwD3D8SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
 //	RwD3D8SetTextureStageState(2, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
 //	}else
+
 	leedsCarRenderCallback(repEntry, object, type, flags);
 
 }

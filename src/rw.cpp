@@ -48,6 +48,8 @@ static uint32_t RwMatrixUpdate_A = AddressByVersion<uint32_t>(0x5A28E0, 0x5A2BA0
 WRAPPER RwMatrix *RwMatrixUpdate(RwMatrix*) { VARJMP(RwMatrixUpdate_A); }
 static uint32_t RwMatrixRotate_A = AddressByVersion<uint32_t>(0x5A2BF0, 0x5A2EB0, 0x5A3510, 0x643EA0, 0x643EF0, 0x642E50);
 WRAPPER RwMatrix *RwMatrixRotate(RwMatrix*, const RwV3d*, RwReal, RwOpCombineType) { VARJMP(RwMatrixRotate_A); }
+static uint32_t RwMatrixOptimize_A = AddressByVersion<uint32_t>(0x5A2820, 0, 0, 0x6436F0, 0, 0);
+WRAPPER RwMatrix *RwMatrixOptimize(RwMatrix *matrix, const RwMatrixTolerance *tolerance) { VARJMP(RwMatrixOptimize_A); }
 
 static uint32_t RwFrameCreate_A = AddressByVersion<uint32_t>(0x5A1A00, 0x5A1CC0, 0x5A2270, 0x644AA0, 0x644AF0, 0x643A50);
 WRAPPER RwFrame *RwFrameCreate(void) { VARJMP(RwFrameCreate_A); }

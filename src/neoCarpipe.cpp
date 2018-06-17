@@ -267,8 +267,9 @@ UploadLightColorWithSpecular(RpLight *light, int loc)
 }
 
 void
-NeoCarPipe::ShaderSetup(RwMatrix *world)
+NeoCarPipe::ShaderSetup(RwMatrix *world, RwUInt32 flags)
 {
+	int lighting = !!(flags & rpGEOMETRYLIGHT);
 	DirectX::XMMATRIX worldMat, viewMat, projMat, texMat;
 	RwCamera *cam = (RwCamera*)RWSRCGLOBAL(curCamera);
 
@@ -291,11 +292,11 @@ NeoCarPipe::ShaderSetup(RwMatrix *world)
 	RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame(cam));
 	RwD3D9SetVertexShaderConstant(LOC_eye, (void*)RwMatrixGetPos(camfrm), 1);
 
-	if(pAmbient)
+	if(lighting && pAmbient && rwObjectTestFlags(pAmbient, rpLIGHTLIGHTATOMICS))
 		UploadLightColorWithSpecular(pAmbient, LOC_ambient);
 	else
 		UploadZero(LOC_ambient);
-	if(pDirect){
+	if(lighting && pDirect && rwObjectTestFlags(pDirect, rpLIGHTLIGHTATOMICS)){
 		UploadLightColorWithSpecular(pDirect, LOC_directCol);
 		UploadLightDirection(pDirect, LOC_directDir);
 	}else{
@@ -303,7 +304,10 @@ NeoCarPipe::ShaderSetup(RwMatrix *world)
 		UploadZero(LOC_directDir);
 	}
 	for(int i = 0 ; i < 4; i++)
-		if(i < NumExtraDirLightsInWorld && RpLightGetType(pExtraDirectionals[i]) == rpLIGHTDIRECTIONAL){
+		if(i < NumExtraDirLightsInWorld &&
+		   lighting &&
+		   RpLightGetType(pExtraDirectionals[i]) == rpLIGHTDIRECTIONAL &&
+		   rwObjectTestFlags(pExtraDirectionals[i], rpLIGHTLIGHTATOMICS)){
 			UploadLightDirection(pExtraDirectionals[i], LOC_lightDir+i);
 			UploadLightColorWithSpecular(pExtraDirectionals[i], LOC_lightCol+i);
 		}else{
@@ -318,7 +322,7 @@ NeoCarPipe::ShaderSetup(RwMatrix *world)
 }
 
 void
-NeoCarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
+NeoCarPipe::DiffusePass(RxD3D8ResEntryHeader *header, int refl)
 {
 	RxD3D8InstanceData *inst = (RxD3D8InstanceData*)&header[1];
 
@@ -366,7 +370,7 @@ NeoCarPipe::DiffusePass(RxD3D8ResEntryHeader *header)
 
 		float reflProps[4];
 		reflProps[0] = inst->material->surfaceProps.specular;
-		if(!enableEnv)
+		if(!enableEnv || !refl)
 			reflProps[0] = 0.0f;
 		reflProps[1] = fresnel.Get();
 		reflProps[2] = 0.6f;	// unused
@@ -426,10 +430,12 @@ NeoCarPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwU
 		return;
 	_rwD3D8EnableClippingIfNeeded(object, type);
 
+	int refl = flags&rpGEOMETRYLIGHT;
+
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
-	ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)));
-	DiffusePass(header);
-	if(neoSpecularPass)
+	ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)), flags);
+	DiffusePass(header, refl);
+	if(neoSpecularPass && refl)
 		SpecularPass(header);
 	RwD3D8SetTexture(NULL, 1);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);

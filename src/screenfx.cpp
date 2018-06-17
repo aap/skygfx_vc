@@ -24,6 +24,8 @@ static int curScreenDepth;
 RwIm2DVertex ScreenFX::screenVertices[4];
 RwImVertexIndex ScreenFX::screenIndices[6] = { 0, 1, 2, 0, 2, 3 };
 
+void (*ScreenFX::nullsub_orig)(void);
+
 void
 ScreenFX::CreateImmediateModeData(RwCamera *cam, RwRect *rect)
 {
@@ -135,6 +137,8 @@ ScreenFX::AVColourCorrection(void)
 
 	UpdateFrontBuffer();
 
+	DefinedState();
+
 	RwRenderStateSet(rwRENDERSTATETEXTUREFILTER, (void*)rwFILTERNEAREST);
 	RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)FALSE);
 	RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)FALSE);
@@ -155,6 +159,8 @@ ScreenFX::AVColourCorrection(void)
 	m.up.z = 0.0f;
 	m.at.z = m_crScale;
 	m.pos.z = m_crOffset;
+	m.flags = 0;
+	RwMatrixOptimize(&m, nil);
 	RwMatrix m2;
 
 	RwMatrixMultiply(&m2, &RGB2YUV, &m);
@@ -199,6 +205,8 @@ ScreenFX::Render(void)
 		return;
 
 	ScreenFX::Update();
+
+	nullsub_orig();
 
 	AVColourCorrection();
 }

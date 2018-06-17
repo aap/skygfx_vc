@@ -77,13 +77,6 @@ isVC(void)
 	return gtaversion >= VC_10 && gtaversion <= VC_STEAM;
 }
 
-#define PTRFROMCALL(addr) (uint32_t)(*(uint32_t*)((uint32_t)addr+1) + (uint32_t)addr + 5)
-#define INTERCEPT(saved, func, a) \
-{ \
-	saved = PTRFROMCALL(a); \
-	InjectHook(a, func); \
-}
-
 template<typename T, typename AT> inline void
 Patch(AT address, T value)
 {
