@@ -292,16 +292,7 @@ void
 RimPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
 	// Cutscene shadows are rendered with almost all flags turned off
-						{
-							static bool keystate = false;
-							if(GetAsyncKeyState(config.rimlightkey) & 0x8000){
-								if(!keystate){
-									keystate = true;
-									config.rimlight = (config.rimlight+1)%2;
-								}
-							}else
-								keystate = false;
-						}
+
 	if(!RimPipe::Get()->canUse || !config.rimlight){
 		rxD3D8DefaultRenderCallback_xbox(repEntry, object, type, flags);
 		return;

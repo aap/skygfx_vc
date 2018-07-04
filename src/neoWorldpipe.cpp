@@ -231,7 +231,7 @@ NeoWorldPipe::RenderMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 	else
 		RwD3D8SetTexture(NULL, 0);
 	MatFX *matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);
-	RwD3D8SetTexture(((MatFXDual*)matfx->fx)[0].tex, 1);
+	RwD3D8SetTexture(matfx->fx[0].d.dualTex, 1);
 	if(!usePixelShader)
 		RenderMeshCombinerSetUp(inst, flags);
 	RwD3D8SetVertexShader(inst->vertexShader);
@@ -274,7 +274,7 @@ NeoWorldPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, R
 	RenderObjectSetup(flags);
 	for(int i = 0; i < header->numMeshes; i++){
 		matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);
-		if(matfx ? ((MatFXDual*)matfx->fx)[0].tex : NULL){
+		if(matfx ? matfx->fx[0].d.dualTex : NULL){
 			if(matfx->effects == rpMATFXEFFECTDUAL){
 				RenderMeshSetUp(inst);
 				RenderMesh(inst, flags);

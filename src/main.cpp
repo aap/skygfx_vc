@@ -36,29 +36,6 @@ getpath(char *path)
 
 static addr rwD3D8RasterIsCubeRaster_A = AddressByVersion<addr>(0, 0, 0, 0x63EE40, 0x63EE90, 0x63DDF0); // VC only
 WRAPPER int rwD3D8RasterIsCubeRaster(RwRaster*) { VARJMP(rwD3D8RasterIsCubeRaster_A); }
-static addr rpMatFXD3D8AtomicMatFXEnvRender_A = AddressByVersion<addr>(0x5CF6C0, 0x5CF980, 0x5D8F7C, 0x674EE0, 0x674F30, 0x673E90);
-WRAPPER int rpMatFXD3D8AtomicMatFXEnvRender(RxD3D8InstanceData* a1, int a2, int a3, RwTexture* a4, RwTexture* a5)
-{
-	if (gtaversion != III_STEAM)
-		VARJMP(rpMatFXD3D8AtomicMatFXEnvRender_A);
-
-	__asm
-	{
-		//mov ecx, a3
-		//mov edx, a2
-		//mov eax, a1
-		mov ecx,  [esp+0Ch]
-		mov edx,  [esp+8]
-		mov eax,  [esp+4]
-		jmp rpMatFXD3D8AtomicMatFXEnvRender_A
-	}
-}
-//static addr rpMatFXD3D8AtomicMatFXDefaultRender_A = AddressByVersion<addr>(0x5CEB80, 0x5CEE40, 0x5DB760, 0x674380, 0x6743D0, 0x673330);
-//WRAPPER int rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData*, int, RwTexture*) { VARJMP(rpMatFXD3D8AtomicMatFXDefaultRender_A); }
-int &MatFXMaterialDataOffset = *AddressByVersion<int*>(0x66188C, 0x66188C, 0x671944, 0x7876CC, 0x7876D4, 0x7866D4);
-int &MatFXAtomicDataOffset = *AddressByVersion<int*>(0x66189C, 0x66189C, 0x671930, 0x7876DC, 0x7876E4, 0x7866E4);
-
-RwMatrix &defmat = *AddressByVersion<RwMatrix*>(0x5E6738, 0x5E6738, 0x62C170, 0x67FB18, 0x67FB18, 0x67EB18);
 
 void **&RwEngineInst = *AddressByVersion<void***>(0x661228, 0x661228, 0x671248, 0x7870C0, 0x7870C8, 0x7860C8);
 RpLight *&pAmbient = *AddressByVersion<RpLight**>(0x885B6C, 0x885B1C, 0x895C5C, 0x974B44, 0x974B4C, 0x973B4C);
@@ -140,12 +117,12 @@ getEnvData(RpMaterial *mat)
 	MatFX *matfx = *RWPLUGINOFFSET(MatFX*, mat, MatFXMaterialDataOffset);
 	if(matfx == nil || matfx->effects != rpMATFXEFFECTENVMAP && matfx->effects != rpMATFXEFFECTBUMPENVMAP)
 		return nil;
-	MatFXEnv *env = &matfx->fx[0];
-	if(env->effect == rpMATFXEFFECTENVMAP)
-		return env;
-	env = &matfx->fx[1];
-	if(env->effect == rpMATFXEFFECTENVMAP)
-		return env;
+	MatFXNothing *n = &matfx->fx[0].n;
+	if(n->effect == rpMATFXEFFECTENVMAP)
+		return (MatFXEnv*)n;
+	n = &matfx->fx[1].n;
+	if(n->effect == rpMATFXEFFECTENVMAP)
+		return (MatFXEnv*)n;
 	return nil;
 }
 
@@ -200,256 +177,6 @@ _rwD3D8EnableClippingIfNeeded(void *object, RwUInt8 type)
 	RwD3D8SetRenderState(D3DRS_CLIPPING, clip);
 }
 
-static addr ApplyEnvMapTextureMatrix_A = AddressByVersion<addr>(0x5CFD40, 0x5D0000, 0x5D89E0, 0x6755D0, 0x675620, 0x674580);
-WRAPPER void ApplyEnvMapTextureMatrix(RwTexture* a1, int a2, RwFrame* a3)
-{
-	if (gtaversion != III_STEAM){
-		VARJMP(ApplyEnvMapTextureMatrix_A);
-	}
-	else
-	{
-		__asm
-		{
-			mov ecx,  [esp+0Ch]
-			mov edx,  [esp+8]
-			mov eax,  [esp+4]
-			jmp ApplyEnvMapTextureMatrix_A
-		}
-	}
-}
-
-void
-ApplyEnvMapTextureMatrix_hook(RwTexture *tex, int n, RwFrame *frame)
-{
-	{
-		static bool keystate = false;
-		if(GetAsyncKeyState(config.texgenkey) & 0x8000){
-			if(!keystate){
-				keystate = true;
-				config.texgenstyle = (config.texgenstyle+1)%2;
-			}
-		}else
-			keystate = false;
-	}
-// TEMP - looks like PS2 uses same filtering as for diffuse texture, which is nearest for a vehicle color texture
-//tex->filterAddressing = 0x1101;
-
-	RwD3D8SetTexture(tex, n);
-	if(isVC() && rwD3D8RasterIsCubeRaster(tex->raster)){
-		RwD3D8SetTextureStageState(n, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR);
-		return;
-	}
-	RwD3D8SetTextureStageState(n, D3DRS_ALPHAREF, 2);
-	RwD3D8SetTextureStageState(n, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACENORMAL);
-	if(frame){
-		D3DMATRIX invmat;
-
-		RwMatrix *m1 = RwMatrixCreate();
-		m1->flags = 0;
-		RwMatrix *m2 = RwMatrixCreate();
-		m2->flags = 0;
-		RwMatrix *m3 = RwMatrixCreate();
-		m3->flags = 0;
-
-		RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera));
-		RwMatrix *envfrm = RwFrameGetLTM(frame);
-		if(config.texgenstyle == 0){
-			memcpy(m2, camfrm, 0x40);
-			m2->pos.x = 0.0f;
-			m2->pos.y = 0.0f;
-			m2->pos.z = 0.0f;
-			m2->right.x = -m2->right.x;
-			m2->right.y = -m2->right.y;
-			m2->right.z = -m2->right.z;
-			m2->flags = 0;
-	
-			RwMatrixInvert(m3, envfrm);
-			m3->pos.x = -1.0f;
-			m3->pos.y = -1.0f;
-			m3->pos.z = -1.0f;
-	
-			m3->right.x *= -0.5f;
-			m3->right.y *= -0.5f;
-			m3->right.z *= -0.5f;
-			m3->up.x *= -0.5f;
-			m3->up.y *= -0.5f;
-			m3->up.z *= -0.5f;
-			m3->at.x *= -0.5f;
-			m3->at.y *= -0.5f;
-			m3->at.z *= -0.5f;
-			m3->pos.x *= -0.5f;
-			m3->pos.y *= -0.5f;
-			m3->pos.z *= -0.5f;
-			m3->flags = 0;
-			RwMatrixMultiply(m1, m2, m3);
-	
-			rwtod3dmat(&invmat, m1);
-			RwD3D8SetTransform(D3DTS_TEXTURE0+n, &invmat);
-		}else{
-			RwMatrixInvert(m1, envfrm);
-			RwMatrixMultiply(m2, m1, camfrm);
-			m2->right.x = -m2->right.x;
-			m2->right.y = -m2->right.y;
-			m2->right.z = -m2->right.z;
-			m2->pos.x = 0.0f;
-			m2->pos.y = 0.0f;
-			m2->pos.z = 0.0f;
-			m2->flags = 0;
-			RwMatrixMultiply(m1, m2, &defmat);
-			rwtod3dmat(&invmat, m1);
-			RwD3D8SetTransform(D3DTS_TEXTURE0+n, &invmat);
-		}
-
-		RwMatrixDestroy(m1);
-		RwMatrixDestroy(m2);
-		RwMatrixDestroy(m3);
-		return;
-	}
-	RwD3D8SetTransform(D3DTS_TEXTURE0+n, &defmat);
-}
-
-int rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData *inst, int flags, RwTexture *texture)
-{
-	if(flags & 0x84 && texture)
-		RwD3D8SetTexture(texture, 0);
-	else
-		RwD3D8SetTexture(NULL, 0);
-	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)(inst->vertexAlpha || inst->material->color.alpha != 0xFF));
-	RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha != 0);
-	RwD3D8SetPixelShader(0);
-	RwD3D8SetVertexShader(inst->vertexShader);
-	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
-	drawDualPass(inst);
-	return 0;
-}
-
-int
-rpMatFXD3D8AtomicMatFXEnvRender_ps2(RxD3D8InstanceData *inst, int flags, int sel, RwTexture *texture, RwTexture *envMap)
-{
-	MatFX *matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);
-	MatFXEnv *env = &matfx->fx[sel];
-	{
-		static bool keystate = false;
-		if(GetAsyncKeyState(config.blendkey) & 0x8000){
-			if(!keystate){
-				keystate = true;
-				config.blendstyle = (config.blendstyle+1)%2;
-			}
-		}else
-			keystate = false;
-	}
-
-	// Render PC envmap
-	if(config.blendstyle == 1){
-		float oldcoeff = env->envCoeff;
-		static float carMult = isIII() ? 0.5f : 0.25f;
-		if(env->envFBalpha == 0)	// hacky way to distinguish vehicles from water
-			env->envCoeff *= carMult;
-		int ret = rpMatFXD3D8AtomicMatFXEnvRender(inst, flags, sel, texture, envMap);
-		env->envCoeff = oldcoeff;
-		return ret;
-	}
-
-	uchar intens = (uchar)(env->envCoeff*255.0f);
-//intens = intens/2;
-	if(intens == 0 || !envMap){
-		if(sel == 0)
-			return rpMatFXD3D8AtomicMatFXDefaultRender(inst, flags, texture);
-		return 0;
-	}
-	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)(inst->vertexAlpha || inst->material->color.alpha != 0xFF));
-	if(flags & (rpGEOMETRYTEXTURED|rpGEOMETRYTEXTURED2) && texture)
-		RwD3D8SetTexture(texture, 0);
-	else
-		RwD3D8SetTexture(nil, 0);
-	RwD3D8SetVertexShader(inst->vertexShader);
-	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
-	RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
-	if(inst->indexBuffer)
-		RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
-	else
-		RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
-
-	// Effect pass
-	
-	ApplyEnvMapTextureMatrix(envMap, 0, env->envFrame);
-	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)1);
-	RwUInt32 src, dst, lighting, zwrite, fog, fogcol;
-	RwRenderStateGet(rwRENDERSTATESRCBLEND, &src);
-	RwRenderStateGet(rwRENDERSTATEDESTBLEND, &dst);
-
-	// This is of course not using framebuffer alpha,
-	// but if the diffuse texture had no alpha, the result should actually be rather the same
-	if(env->envFBalpha)
-		RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
-	else
-		RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
-	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
-	RwD3D8GetRenderState(D3DRS_LIGHTING, &lighting);
-	RwD3D8GetRenderState(D3DRS_ZWRITEENABLE, &zwrite);
-	RwD3D8GetRenderState(D3DRS_FOGENABLE, &fog);
-	RwD3D8SetRenderState(D3DRS_FOGENABLE, 0);
-	RwD3D8SetRenderState(D3DRS_ZWRITEENABLE, 0);
-	if(fog){
-		RwD3D8GetRenderState(D3DRS_FOGCOLOR, &fogcol);
-		RwD3D8SetRenderState(D3DRS_FOGCOLOR, 0);
-	}
-
-	D3DCOLOR texfactor = D3DCOLOR_RGBA(intens, intens, intens, intens);
-	RwD3D8SetRenderState(D3DRS_TEXTUREFACTOR, texfactor);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MODULATE);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_CURRENT);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-	// alpha unused
-	//RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-	//RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_CURRENT);
-	//RwD3D8SetTextureStageState(1, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-
-	if(inst->indexBuffer)
-		RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
-	else
-		RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
-
-	// Reset states
-
-	rwD3D8RenderStateVertexAlphaEnable(0);
-	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)src);
-	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)dst);
-	RwD3D8SetRenderState(D3DRS_LIGHTING, lighting);
-	RwD3D8SetRenderState(D3DRS_ZWRITEENABLE, zwrite);
-	RwD3D8SetRenderState(D3DRS_FOGENABLE, fog);
-	if(fog)
-		RwD3D8SetRenderState(D3DRS_FOGCOLOR, fogcol);
-	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-	RwD3D8SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
-	RwD3D8SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
-	return 0;
-}
-
-void
-rpMatFXD3D8AtomicMatFXRenderBlack_fixed(RxD3D8InstanceData *inst)
-{
-	// FIX: set texture to get its alpha
-	RwD3D8SetTexture(inst->material->texture, 0);
-	if(inst->material->texture){
-		RwD3D8SetTextureStageState(0, D3DTSS_COLOROP,   D3DTOP_SELECTARG2);
-		RwD3D8SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-	}
-
-
-	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)(inst->vertexAlpha || inst->material->color.alpha != 0xFF));
-	RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha ? D3DMCS_COLOR1 : D3DMCS_MATERIAL);
-
-	RwD3D8SetPixelShader(nil);
-	RwD3D8SetVertexShader(inst->vertexShader);
-	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
-	if(inst->indexBuffer){
-		RwD3D8SetIndices(inst->indexBuffer, inst->baseIndex);
-		RwD3D8DrawIndexedPrimitive(inst->primType, 0, inst->numVertices, 0, inst->numIndices);
-	}else
-		RwD3D8DrawPrimitive(inst->primType, inst->baseIndex, inst->numVertices);
-}
 
 RwFrame*
 createIIIEnvFrame(void)
@@ -616,7 +343,7 @@ WRAPPER void rpMatFXD3D8AtomicMatFXEnvRender_ps2_IIISteam()
 		mov [esp+0Ch], ecx
 		mov ecx, [esp+28h]
 		mov [esp+10h], ecx
-		call rpMatFXD3D8AtomicMatFXEnvRender_ps2
+		call _rpMatFXD3D8AtomicMatFXEnvRender_ps2
 		add esp, 20
 		retn
 	}
@@ -1034,10 +761,13 @@ delayedPatches(int a, int b)
 {
 	if(DebugMenuLoad()){
 		DebugMenuEntry *e;
-		static const char *ps2pc[] = { "PS2", "PC" };
-		e = DebugMenuAddVar("SkyGFX", "MatFX blend", &config.blendstyle, nil, 1, 0, 1, ps2pc);
+		static const char *ps2pcmobile[] = { "PS2", "PC", "Mobile" };
+		static const char *pcps2[] = { "PC", "PS2" };
+		e = DebugMenuAddVar("SkyGFX", "MatFX blend", &config.blendstyle, nil, 1, 0, 2, ps2pcmobile);
 		DebugMenuEntrySetWrap(e, true);
-		e = DebugMenuAddVar("SkyGFX", "MatFX texgen", &config.texgenstyle, nil, 1, 0, 1, ps2pc);
+		e = DebugMenuAddVar("SkyGFX", "MatFX texgen", &config.texgenstyle, nil, 1, 0, 2, ps2pcmobile);
+		DebugMenuEntrySetWrap(e, true);
+		e = DebugMenuAddVar("SkyGFX", "MatFX PS2 lighting", &config.ps2light, nil, 1, 0, 1, pcps2);
 		DebugMenuEntrySetWrap(e, true);
 		DebugMenuAddVarBool32("SkyGFX", "Dual pass", &config.dualpass, nil);
 		static const char *pipeStr[] = {
@@ -1083,6 +813,20 @@ delayedPatches(int a, int b)
 		DebugMenuAddVar("SkyGFX|ScreenFX", "Cr offset", &ScreenFX::m_crOffset, nil, 0.004f, -1.0f, 1.0f);
 
 #ifdef DEBUG
+	extern float envmult;
+	extern bool ps2filtering;
+	extern bool envdebug;
+
+	if(gtaversion == III_10){
+		DebugMenuAddVar("SkyGFX", "Env Mult", &envmult, nil, 0.05f, 0.0f, 2.0f);
+		DebugMenuAddVarBool8("SkyGFX", "ps2 env filter", (int8*)&ps2filtering, nil);
+#ifdef ENVTEST
+		DebugMenuAddVarBool8("SkyGFX", "env debug", (int8*)&envdebug, nil);
+#endif
+	}
+#endif
+
+#ifdef XXX //DEBUG
 
 	if(gtaversion == III_10){
 		// car zoom angles
@@ -1174,40 +918,39 @@ patch(void)
 			InterceptCall(&CMBlur__MotionBlurRenderVC_orig, CMBlur__MotionBlurRenderVC, 0x46BE0F);
 //	}
 
-	config.blendkey = readhex(cfg.get("SkyGfx", "texblendSwitchKey", "0x0").c_str());
-	config.texgenkey = readhex(cfg.get("SkyGfx", "texgenSwitchKey", "0x0").c_str());
-	config.carPipeKey = readhex(cfg.get("SkyGfx", "carPipeKey", "0x0").c_str());
-	config.worldPipeKey = readhex(cfg.get("SkyGfx", "worldPipeKey", "0x0").c_str());
-	config.rimlightkey = readhex(cfg.get("SkyGfx", "neoRimLightKey", "0x0").c_str());
-	config.neoGlossPipeKey = readhex(cfg.get("SkyGfx", "neoGlossPipeKey", "0x0").c_str());
-
 	int ps2water = readint(cfg.get("SkyGfx", "ps2Water", ""), 0);
 
 	if(gtaversion == III_10)
-		InjectHook(AddressByVersion<addr>(0x5D0D2B, 0x0, 0, 0x0, 0x0, 0x0), rpMatFXD3D8AtomicMatFXRenderBlack_fixed);
-	tmp = cfg.get("SkyGfx", "texblendSwitch", "");
+		InjectHook(AddressByVersion<addr>(0x5D0D2B, 0x0, 0, 0x0, 0x0, 0x0), _rpMatFXD3D8AtomicMatFXRenderBlack_fixed);
+	tmp = cfg.get("SkyGfx", "texblendSwitch", "1");
 	if(tmp != ""){
 		config.blendstyle = readint(tmp);
 
 		// MatFX env coefficient on cars
 		static float envCoeff = 1.0f;
+//		static float envCoeff = 0.5f;
 		Patch(AddressByVersion<addr>(0x5217DF, 0, 0, 0x578B7B, 0, 0) + 2, &envCoeff);
 		if(ps2water && gtaversion == VC_10)
 			patchWater();
 
 		// disable car colour textures (messes up matfx)
 		// but it could be intended...what to do?
-		if(0 && gtaversion == III_10){
+		if(gtaversion == III_10){
 			Nop(0x520EEA, 2);
 			Nop(0x520F8A, 2);
 		}
 
+		InterceptCall(&_rpMatFXPipelinesCreate_orig, _rpMatFXPipelinesCreate, AddressByVersion<addr>(0x5B27B1, 0, 0, 0x656031, 0, 0));
+
+		void _rwD3D8AtomicMatFXRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
+		InjectHook(AddressByVersion<addr>(0x5D0B80, 0, 0, 0x676460, 0, 0), _rwD3D8AtomicMatFXRenderCallback, PATCH_JUMP);
+
 		if(gtaversion != III_STEAM)
-			InjectHook(AddressByVersion<addr>(0x5D0CE8, 0x5D0FA8, 0, 0x6765C8, 0x676618, 0x675578), rpMatFXD3D8AtomicMatFXEnvRender_ps2);
+			InjectHook(AddressByVersion<addr>(0x5D0CE8, 0x5D0FA8, 0, 0x6765C8, 0x676618, 0x675578), _rpMatFXD3D8AtomicMatFXEnvRender_ps2);
 		else
 			InjectHook(0x5D8D37, rpMatFXD3D8AtomicMatFXEnvRender_ps2_IIISteam);
 	}
-	config.blendstyle %= 2;
+	config.blendstyle %= 3;
 	tmp = cfg.get("SkyGfx", "texgenSwitch", "");
 	if(tmp != ""){
 		config.texgenstyle = readint(tmp);
@@ -1216,7 +959,9 @@ patch(void)
 		else
 			InjectHook(ApplyEnvMapTextureMatrix_A, ApplyEnvMapTextureMatrix_hook_IIISteam, PATCH_JUMP);
 	}
-	config.texgenstyle %= 2;
+	config.texgenstyle %= 3;
+
+	config.ps2light = readint(cfg.get("SkyGfx", "ps2light", ""));
 
 	if(isVC() && readint(cfg.get("SkyGfx", "IIIEnvFrame", ""))){
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x57A8BA, 0x57A8DA, 0x57A7AA), createIIIEnvFrame);
@@ -1252,7 +997,7 @@ patch(void)
 			InjectHook(AddressByVersion<addr>(0x5DFB99, 0x5DFE59, 0, 0x678D69, 0x678DB9, 0x677D19), dualPassHook, PATCH_JUMP);
 		else
 			InjectHook(0x5EE675, dualPassHook_IIISteam, PATCH_JUMP);
-		InjectHook(AddressByVersion<addr>(0x5CEB80, 0x5CEE40, 0x5DB760, 0x674380, 0x6743D0, 0x673330), rpMatFXD3D8AtomicMatFXDefaultRender, PATCH_JUMP);
+		InjectHook(AddressByVersion<addr>(0x5CEB80, 0x5CEE40, 0x5DB760, 0x674380, 0x6743D0, 0x673330), _rpMatFXD3D8AtomicMatFXDefaultRender, PATCH_JUMP);
 	}
 
 	if(isVC() && readint(cfg.get("SkyGfx", "disableBackfaceCulling", ""), 0)){

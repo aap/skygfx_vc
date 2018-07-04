@@ -20,6 +20,8 @@ static uint32_t SetAmbientColours_A = AddressByVersion<uint32_t>(0x526F60, 0, 0,
 WRAPPER void SetAmbientColours(void) { VARJMP(SetAmbientColours_A); }
 static uint32_t CClouds__RenderBackground_A = AddressByVersion<uint32_t>(0x4F7F00, 0, 0, 0x53F650, 0, 0);
 WRAPPER void CClouds__RenderBackground(int16 tr, int16 tg, int16 tb, int16 br, int16 bg, int16 bb, uint8 a) { VARJMP(CClouds__RenderBackground_A); }
+static uint32_t CClouds__Render_A = AddressByVersion<uint32_t>(0x4F6D90, 0, 0, 0x53FC50, 0, 0);
+WRAPPER void CClouds__Render(void) { VARJMP(CClouds__Render_A); }
 
 extern IDirect3DDevice8 *&RwD3DDevice;
 
@@ -166,17 +168,6 @@ WorldPipe::Init(void)
 void
 WorldPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
-							{
-								static bool keystate = false;
-								if(GetAsyncKeyState(config.worldPipeKey) & 0x8000){
-									if(!keystate){
-										keystate = true;
-										config.worldPipeSwitch = (config.worldPipeSwitch+1)%WORLD_NUMPIPES;
-									}
-								}else
-									keystate = false;
-							}
-
 	switch(config.worldPipeSwitch){
 		case WORLD_DEFAULT: rxD3D8DefaultRenderCallback_xbox(repEntry, object, type, flags); break;
 		case WORLD_NEO: NeoWorldPipe::Get()->renderCB(repEntry, object, type, flags); break;
@@ -271,16 +262,6 @@ CarPipe::Init(void)
 void
 CarPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
-						{
-							static bool keystate = false;
-							if(GetAsyncKeyState(config.carPipeKey) & 0x8000){
-								if(!keystate){
-									keystate = true;
-									config.carPipeSwitch = (config.carPipeSwitch+1)%CAR_NUMPIPES;
-								}
-							}else
-								keystate = false;
-						}
 	switch(config.carPipeSwitch){
 		case CAR_DEFAULT: rwD3D8AtomicMatFXRenderCallback(repEntry, object, type, flags); break;
 		case CAR_NEO: NeoCarPipe::Get()->renderCB(repEntry, object, type, flags); break;

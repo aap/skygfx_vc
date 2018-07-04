@@ -96,11 +96,33 @@ reloadRamp(void)
 {
 	RwImage *img = readTGA("curves.tga");
 	RwInt32 w, h, d, flags;
-	RwImageFindRasterFormat(img, 4, &w, &h, &d, &flags);
+	RwImageFindRasterFormat(img, rwRASTERTYPETEXTURE, &w, &h, &d, &flags);
 	RwRaster *ras = RwRasterCreate(w, h, d, flags);
 	ras = RwRasterSetFromImage(ras, img);
 	assert(ras);
 	rampTex = RwTextureCreate(ras);
 	RwTextureAddRef(rampTex);
 	RwImageDestroy(img);
+}
+
+RwTexture*
+reloadTestTex(void)
+{
+	static RwTexture *tex;
+
+	RwImage *img = readTGA("test.tga");
+	RwInt32 w, h, d, flags;
+	RwImageFindRasterFormat(img, rwRASTERTYPETEXTURE, &w, &h, &d, &flags);
+	RwRaster *ras = RwRasterCreate(w, h, d, flags);
+	ras = RwRasterSetFromImage(ras, img);
+	assert(ras);
+	if(tex == nil){
+		tex = RwTextureCreate(ras);
+		RwTextureAddRef(tex);
+	}else{
+		RwRasterDestroy(tex->raster);
+		tex->raster = ras;
+	}
+	RwImageDestroy(img);
+	return tex;
 }

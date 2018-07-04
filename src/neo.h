@@ -8,6 +8,7 @@ enum {
 	LOC_tex         = 8,
 	LOC_eye         = 12,
 	LOC_directDir   = 13,
+	LOC_surfProps   = 14,
 	LOC_ambient     = 15,
 	LOC_matCol      = 16,
 	LOC_directCol   = 17,

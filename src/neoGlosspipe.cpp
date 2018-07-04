@@ -218,17 +218,7 @@ void
 GlossPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
-						{
-							static bool keystate = false;
-							if(GetAsyncKeyState(config.neoGlossPipeKey) & 0x8000){
-								if(!keystate){
-									keystate = true;
-									config.neoGlossPipe = !config.neoGlossPipe;
-								//	GlossPipe::Get()->isActive = !GlossPipe::Get()->isActive;
-								}
-							}else
-								keystate = false;
-						}
+
 	WorldPipe::Get()->RenderCallback(repEntry, object, type, flags);
 //	if(GlossPipe::Get()->isActive){
 	if(GlossPipe::Get()->canUse && config.neoGlossPipe){

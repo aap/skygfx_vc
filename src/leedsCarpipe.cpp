@@ -4,7 +4,7 @@
 #include <DirectXMath.h>
 #include "debugmenu_public.h"
 
-#define DEBUGTEX
+//#define DEBUGTEX
 
 static int debugEnvMap = 0;
 static int enableEnv = 1;
@@ -24,8 +24,6 @@ RwCamera *LeedsCarPipe::reflectionCam;
 RwTexture *LeedsCarPipe::reflectionTex;
 RwIm2DVertex LeedsCarPipe::screenQuad[4];
 RwImVertexIndex LeedsCarPipe::screenindices[6] = { 0, 1, 2, 0, 2, 3 };
-
-//void *LeedsCarPipe::vertexShader;
 
 //
 // Reflection map
@@ -50,10 +48,12 @@ LeedsCarPipe::SetupEnvMap(void)
 	reflectionTex = RwTextureCreate(envFB);
 	RwTextureSetFilterMode(reflectionTex, rwFILTERLINEAR);
 
-//	MakeScreenQuad();
+#ifdef DEBUGTEX
+	MakeScreenQuad();
+#endif
 }
 
-/*
+#ifdef DEBUGTEX
 void
 LeedsCarPipe::MakeQuadTexCoords(bool textureSpace)
 {
@@ -101,8 +101,7 @@ LeedsCarPipe::MakeScreenQuad(void)
 	screenQuad[3].emissiveColor = 0xFFFFFFFF;
 	MakeQuadTexCoords(true);
 }
-
-*/
+#endif
 
 void
 LeedsCarPipe::RenderReflectionScene(void)
@@ -111,12 +110,100 @@ LeedsCarPipe::RenderReflectionScene(void)
 //	CRenderer__RenderRoads();
 //	CRenderer__RenderEverythingBarRoads();	
 //	CRenderer__RenderFadingInEntities();
+
 	CClouds__RenderBackground(skyTopRed, skyTopGreen, skyTopBlue,
 		skyBotRed, skyBotGreen, skyBotBlue, 255);
+	CClouds__Render();
 	RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)1);
 	RenderEveryBarCarsPeds();
 	RenderAlphaListBarCarsPeds();
 }
+
+RwTexture **gpCoronaTexture = (RwTexture**)AddressByVersion<int*>(0x5FAF44, 0, 0, 0x695538, 0, 0);
+static uint32_t CGeneral__GetATanOfXY_A = AddressByVersion<uint32_t>(0x48CC30, 0, 0, 0x4A55E0, 0, 0);
+WRAPPER double CGeneral__GetATanOfXY(float x, float y) { VARJMP(CGeneral__GetATanOfXY_A); }
+
+static RwIm2DVertex coronaVerts[4*4];
+static RwImVertexIndex coronaIndices[6*4];
+static int numCoronaVerts, numCoronaIndices;
+
+static void
+AddCorona(float x, float y, float sz)
+{
+	float nearz, recipz;
+	RwIm2DVertex *v;
+	nearz = RwIm2DGetNearScreenZ();
+	recipz = 1.0f / RwCameraGetNearClipPlane((RwCamera*)RWSRCGLOBAL(curCamera));
+
+	v = &coronaVerts[numCoronaVerts];
+	RwIm2DVertexSetScreenX(&v[0], x);
+	RwIm2DVertexSetScreenY(&v[0], y);
+	RwIm2DVertexSetScreenZ(&v[0], nearz);
+	RwIm2DVertexSetRecipCameraZ(&v[0], recipz);
+	RwIm2DVertexSetU(&v[0], 0.0f, recipz);
+	RwIm2DVertexSetV(&v[0], 0.0f, recipz);
+	RwIm2DVertexSetIntRGBA(&v[0], 0xFF, 0xFF, 0xFF, 0xFF);
+
+	RwIm2DVertexSetScreenX(&v[1], x);
+	RwIm2DVertexSetScreenY(&v[1], y + sz);
+	RwIm2DVertexSetScreenZ(&v[1], nearz);
+	RwIm2DVertexSetRecipCameraZ(&v[1], recipz);
+	RwIm2DVertexSetU(&v[1], 0.0f, recipz);
+	RwIm2DVertexSetV(&v[1], 1.0f, recipz);
+	RwIm2DVertexSetIntRGBA(&v[1], 0xFF, 0xFF, 0xFF, 0xFF);
+
+	RwIm2DVertexSetScreenX(&v[2], x + sz);
+	RwIm2DVertexSetScreenY(&v[2], y + sz);
+	RwIm2DVertexSetScreenZ(&v[2], nearz);
+	RwIm2DVertexSetRecipCameraZ(&v[2], recipz);
+	RwIm2DVertexSetU(&v[2], 1.0f, recipz);
+	RwIm2DVertexSetV(&v[2], 1.0f, recipz);
+	RwIm2DVertexSetIntRGBA(&v[2], 0xFF, 0xFF, 0xFF, 0xFF);
+
+	RwIm2DVertexSetScreenX(&v[3], x + sz);
+	RwIm2DVertexSetScreenY(&v[3], y);
+	RwIm2DVertexSetScreenZ(&v[3], nearz);
+	RwIm2DVertexSetRecipCameraZ(&v[3], recipz);
+	RwIm2DVertexSetU(&v[3], 1.0f, recipz);
+	RwIm2DVertexSetV(&v[3], 0.0f, recipz);
+	RwIm2DVertexSetIntRGBA(&v[3], 0xFF, 0xFF, 0xFF, 0xFF);
+
+
+	coronaIndices[numCoronaIndices++] = numCoronaVerts;
+	coronaIndices[numCoronaIndices++] = numCoronaVerts + 1;
+	coronaIndices[numCoronaIndices++] = numCoronaVerts + 2;
+	coronaIndices[numCoronaIndices++] = numCoronaVerts;
+	coronaIndices[numCoronaIndices++] = numCoronaVerts + 2;
+	coronaIndices[numCoronaIndices++] = numCoronaVerts + 3;
+	numCoronaVerts += 4;
+}
+
+void
+DrawEnvMapCoronas(RwV3d at)
+{
+	const float BIG = 89.0f * LeedsCarPipe::reflectionTex->raster->width/128.0f;
+	const float SMALL = 38.0f * LeedsCarPipe::reflectionTex->raster->height/128.0f;
+
+	float x;
+	numCoronaVerts = 0;
+	numCoronaIndices = 0;
+	x = CGeneral__GetATanOfXY(-at.y, at.x)/(2*M_PI) - 1.0f;
+	x *= BIG+SMALL;
+	AddCorona(x, 12.0f, SMALL);	x += SMALL;
+	AddCorona(x, 0.0f, BIG);	x += BIG;
+	AddCorona(x, 12.0f, SMALL);	x += SMALL;
+	AddCorona(x, 0.0f, BIG);	x += BIG;
+
+	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
+	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
+	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)TRUE);
+	RwRenderStateSet(rwRENDERSTATETEXTURERASTER, gpCoronaTexture[0]->raster);
+	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, coronaVerts, numCoronaVerts, coronaIndices, numCoronaIndices);
+	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
+	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDINVSRCALPHA);
+	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)FALSE);
+}
+
 
 void
 LeedsCarPipe::RenderEnvTex(void)
@@ -132,6 +219,7 @@ LeedsCarPipe::RenderEnvTex(void)
 
 	RwCameraBeginUpdate(reflectionCam);
 	RenderReflectionScene();
+	DrawEnvMapCoronas(RwFrameGetLTM(RwCameraGetFrame(reflectionCam))->at);
 	RwCameraEndUpdate(reflectionCam);
 
 	RwCameraBeginUpdate(cam);
@@ -181,21 +269,29 @@ static int modulateMaterial;	// modulate by material color at texture stage
 void
 GetLeedsEnvMap(RpAtomic *atm, float *envmat)
 {
-	RwMatrix m1, m2, m3;
+	static RwMatrix scalenormal_flipU = {
+		{ -0.5f, 0.0f, 0.0f }, 0,
+		{ 0.0f, -0.5f, 0.0f }, 0,
+		{ 0.0f, 0.0f, 1.0f }, 0,
+		{ 0.5f, 0.5f, 0.0f }, 0,	
+	};
+
+	RwMatrix tmpmat, cammat, envinv;
 	RwMatrix env;
 
-	RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame((RwCamera*)((RwGlobals*)RwEngineInst)->curCamera));
+	RwMatrix *camfrm = RwFrameGetLTM(RwCameraGetFrame(RwCameraGetCurrentCamera()));
 	// Matrix to get normals from camera to world space
-	memcpy(&m2, camfrm, sizeof(m2));
-	m2.pos.x = 0.0f;
-	m2.pos.y = 0.0f;
-	m2.pos.z = 0.0f;
-	m2.right.x = -m2.right.x;
-	m2.right.y = -m2.right.y;
-	m2.right.z = -m2.right.z;
-	m2.flags = rwMATRIXTYPEORTHONORMAL;
+	memcpy(&cammat, camfrm, sizeof(cammat));
+	cammat.pos.x = 0.0f;
+	cammat.pos.y = 0.0f;
+	cammat.pos.z = 0.0f;
+	cammat.right.x = -cammat.right.x;
+	cammat.right.y = -cammat.right.y;
+	cammat.right.z = -cammat.right.z;
+	cammat.flags = rwMATRIXTYPEORTHONORMAL;
 
 	// Now back to camera space but kill pitch
+	// TODO: do the inversion in place here?
 	env.pos.x = 0.0f;
 	env.pos.y = 0.0f;
 	env.pos.z = 0.0f;
@@ -212,28 +308,10 @@ GetLeedsEnvMap(RpAtomic *atm, float *envmat)
 	env.right.y = env.at.x;
 	env.right.z = 0;
 	env.flags = rwMATRIXTYPEORTHONORMAL;
-	RwMatrixInvert(&m3, &env);
+	RwMatrixInvert(&envinv, &env);
 
-	// Map normals to tex coords
-	m3.pos.x = -1.0f;
-	m3.pos.y = -1.0f;
-	m3.pos.z = -1.0f;
-	m3.right.x *= -0.5f;
-	m3.right.y *= -0.5f;
-	m3.right.z *= -0.5f;
-	m3.up.x *= -0.5f;
-	m3.up.y *= -0.5f;
-	m3.up.z *= -0.5f;
-	m3.at.x *= -0.5f;
-	m3.at.y *= -0.5f;
-	m3.at.z *= -0.5f;
-	m3.pos.x *= -0.5f;
-	m3.pos.y *= -0.5f;
-	m3.pos.z *= -0.5f;
-	m3.flags = 0;
-	RwMatrixMultiply(&m1, &m2, &m3);
-
-	memcpy(envmat, &m1, sizeof(m1));
+	RwMatrixMultiply(&tmpmat, &cammat, &envinv);
+	RwMatrixMultiply((RwMatrix*)envmat, &tmpmat, &scalenormal_flipU);
 	envmat[3] = 0.0f;
 	envmat[7] = 0.0f;
 	envmat[11] = 0.0f;
@@ -457,6 +535,8 @@ leedsCarRenderFFPEnvMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 void
 leedsCarRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
+	_rwD3D8EnableClippingIfNeeded(object, type);
+
 	rxD3D8SetAmbientLight();
 
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
@@ -497,21 +577,6 @@ leedsCarRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt3
 void
 LeedsCarPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
-//	if(GetAsyncKeyState(VK_TAB) & 0x8000){
-//
-//	_rwD3D8EnableClippingIfNeeded(object, type);
-//
-//	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];
-//	ShaderSetup(RwFrameGetLTM(RpAtomicGetFrame((RpAtomic*)object)));
-//	DiffusePass(header);
-//	RwD3D8SetTexture(NULL, 1);
-//	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-//	RwD3D8SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-//	RwD3D8SetTexture(NULL, 2);
-//	RwD3D8SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
-//	RwD3D8SetTextureStageState(2, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-//	}else
-
 	leedsCarRenderCallback(repEntry, object, type, flags);
 
 }

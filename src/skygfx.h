@@ -85,6 +85,18 @@ struct RsGlobalType
 };
 extern RsGlobalType &RsGlobal;
 
+struct MatFXNothing { int pad[5]; int effect; };
+
+struct MatFXBump
+{
+	RwFrame *bumpFrame;
+	RwTexture *bumpedTex;
+	RwTexture *bumpTex;
+	float negBumpCoefficient;
+	int pad;
+	int effect;
+};
+
 struct GlobalScene
 {
 	RpWorld *world;
@@ -102,15 +114,22 @@ struct MatFXEnv
 	int effect;
 };
 
-struct MatFXDual {
-	RwTexture *tex;
+struct MatFXDual
+{
+	RwTexture *dualTex;
 	RwInt32 srcBlend;
 	RwInt32 dstBlend;
 };
 
+
 struct MatFX
 {
-	MatFXEnv fx[2];
+	union {
+		MatFXNothing n;
+		MatFXBump b;
+		MatFXEnv e;
+		MatFXDual d;
+	} fx[2];
 	int effects;
 };
 
@@ -220,17 +239,14 @@ struct SkyGFXConfig {
 	FLOATPARAMS
 #undef X
 
-	// These are not (yet?) exported
-	int worldPipeKey;
-	int carPipeKey;
-
 	int dualpass;
 	int seamfix;
 
-	int neoGlossPipe, neoGlossPipeKey;
-	int blendstyle, blendkey;
-	int texgenstyle, texgenkey;
-	int rimlight, rimlightkey;
+	int neoGlossPipe;
+	int blendstyle;
+	int texgenstyle;
+	int ps2light;
+	int rimlight;
 	int neowaterdrops, neoblooddrops;
 	int envMapSize;
 	float leedsEnvMult;
@@ -320,6 +336,7 @@ public:
 void leedsRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
 
 void CClouds__RenderBackground(int16 tr, int16 tg, int16 tb, int16 br, int16 bg, int16 bb, uint8 a);
+void CClouds__Render(void);
 void RenderEveryBarCarsPeds(void);
 void RenderAlphaListBarCarsPeds(void);
 
@@ -362,6 +379,17 @@ void rxD3D8DefaultRenderFFPMesh(RxD3D8InstanceData *inst, RwUInt32 flags);
 void rxD3D8DefaultRenderCallback_xbox(RwResEntry*, void*, RwUInt8, RwUInt32);
 
 int rwD3D8RWGetRasterStage(int);
+int rwD3D8RasterIsCubeRaster(RwRaster*);
+
+// matfx
+extern addr ApplyEnvMapTextureMatrix_A;
+void ApplyEnvMapTextureMatrix(RwTexture *tex, int n, RwFrame *frame);
+void ApplyEnvMapTextureMatrix_hook(RwTexture *tex, int n, RwFrame *frame);
+void _rpMatFXD3D8AtomicMatFXRenderBlack_fixed(RxD3D8InstanceData *inst);
+void _rpMatFXD3D8AtomicMatFXEnvRender_ps2(RxD3D8InstanceData *inst, int flags, int sel, RwTexture *texture, RwTexture *envMap);
+void _rpMatFXD3D8AtomicMatFXDefaultRender(RxD3D8InstanceData *inst, int flags, RwTexture *texture);
+extern int (*_rpMatFXPipelinesCreate_orig)(void);
+int _rpMatFXPipelinesCreate(void);
 
 //
 // plugins
