@@ -624,7 +624,7 @@ MatFXShaderSetup(RwMatrix *world, RwUInt32 flags)
 {
 	int lighting = !!(flags & rpGEOMETRYLIGHT);
 	DirectX::XMMATRIX worldMat, viewMat, projMat, texMat;
-	RwCamera *cam = (RwCamera*)RWSRCGLOBAL(curCamera);
+	RwCamera *cam = RwCameraGetCurrentCamera();
 
 	RwMatrix view;
 	RwMatrixInvert(&view, RwFrameGetLTM(RwCameraGetFrame(cam)));
@@ -673,7 +673,7 @@ _rwD3D8AtomicMatFXRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 typ
 	RxD3D8InstanceData *inst;
 	RwInt32 i;
 
-	static bool useShader = RwD3D9Supported();	
+	static bool useShader = RwD3D9Supported();
 
 	if(flags & rpGEOMETRYPRELIT){
 		RwD3D8SetRenderState(D3DRS_COLORVERTEX, 1);
@@ -760,53 +760,57 @@ _rwD3D8AtomicMatFXRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 typ
 int (*_rpMatFXPipelinesCreate_orig)(void);
 int _rpMatFXPipelinesCreate(void)
 {
+	// This can be called multiple times, when RW is restarted!
+	// So don't assume old pointers are valid
+
+	// MULTIPLE INIT
 	if(RwD3D9Supported()){
-		if(nolightVS == nil){
+		{
 			#include "nolightVS.h"
 			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &nolightVS);
 			assert(nolightVS);
 		}
-		if(ps2DiffuseVS == nil){
+		{
 			#include "ps2DiffuseVS.h"
 			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &ps2DiffuseVS);
 			assert(ps2DiffuseVS);
 		}
-		if(pcDiffuseVS == nil){
+		{
 			#include "pcDiffuseVS.h"
 			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &pcDiffuseVS);
 			assert(pcDiffuseVS);
 		}
-		if(ps2EnvVS == nil){
+		{
 			#include "ps2EnvVS.h"
 			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &ps2EnvVS);
 			assert(ps2EnvVS);
 		}
-		if(pcEnvVS == nil){
+		{
 			#include "pcEnvVS.h"
 			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &pcEnvVS);
 			assert(pcEnvVS);
 		}
-		if(nolightEnvVS == nil){
+		{
 			#include "nolightEnvVS.h"
 			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &nolightEnvVS);
 			assert(nolightEnvVS);
 		}
-		if(ps2DiffuseEnvVS == nil){
+		{
 			#include "ps2DiffuseEnvVS.h"
 			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &ps2DiffuseEnvVS);
 			assert(ps2DiffuseEnvVS);
 		}
-		if(pcDiffuseEnvVS == nil){
+		{
 			#include "pcDiffuseEnvVS.h"
 			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &pcDiffuseEnvVS);
 			assert(pcDiffuseEnvVS);
 		}
-		if(pcEnvPS == nil){
+		{
 			#include "pcEnvPS.h"
 			RwD3D9CreatePixelShader((RwUInt32*)g_ps20_main, &pcEnvPS);
 			assert(pcEnvPS);
 		}
-		if(mobileEnvPS == nil){
+		{
 			#include "mobileEnvPS.h"
 			RwD3D9CreatePixelShader((RwUInt32*)g_ps20_main, &mobileEnvPS);
 			assert(mobileEnvPS);

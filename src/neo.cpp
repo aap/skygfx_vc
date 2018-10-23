@@ -292,6 +292,13 @@ UploadZero(int loc)
 }
 
 void
+UploadOne(int loc)
+{
+	static float o[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	RwD3D9SetVertexShaderConstant(loc, (void*)o, 1);
+}
+
+void
 UploadLightColor(RpLight *light, int loc)
 {
 	float c[4];

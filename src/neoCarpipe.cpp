@@ -121,9 +121,9 @@ NeoCarPipe::RenderReflectionScene(void)
 //	CRenderer__RenderFadingInEntities();
 
 	// ^ This also renders cars, which causes wheels to spin too fast
-	// in III, so use your own code instead
+	// in III, so use our own code instead
 	RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)1);
-	RenderEveryBarCarsPeds();
+	RenderEverythingBarCarsPeds();
 	RenderAlphaListBarCarsPeds();
 }
 

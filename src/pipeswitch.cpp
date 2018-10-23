@@ -155,6 +155,8 @@ WorldPipe::Init(void)
 	WorldPipe::Get()->CreateRwPipeline();
 	WorldPipe::Get()->SetRenderCallback(RenderCallback);
 
+	leedsWorldPipeInit();
+
 	if(gtaversion == III_10){
 		InterceptCall(&CSimpleModelInfo__SetAtomic_A, &CSimpleModelInfo::SetAtomic_hook, 0x4768F1);
 		InjectHook(0x476707, &CSimpleModelInfo::SetAtomic_hook);
@@ -171,7 +173,7 @@ WorldPipe::RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUI
 	switch(config.worldPipeSwitch){
 		case WORLD_DEFAULT: rxD3D8DefaultRenderCallback_xbox(repEntry, object, type, flags); break;
 		case WORLD_NEO: NeoWorldPipe::Get()->renderCB(repEntry, object, type, flags); break;
-		case WORLD_LEEDS: leedsRenderCallback(repEntry, object, type, flags); break;
+		case WORLD_LEEDS: leedsWorldRenderCallback(repEntry, object, type, flags); break;
 	}
 }
 
@@ -311,7 +313,7 @@ CLinkList_AlphaObjectInfo &CVisibilityPlugins__m_alphaEntityList = *AddressByVer
 
 // A simple function just enough for a reflection map
 void
-RenderEveryBarCarsPeds(void)
+RenderEverythingBarCarsPeds(void)
 {
 	int i;
 	void *ent;

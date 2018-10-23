@@ -228,8 +228,8 @@ struct SkyGFXConfig {
 	X(currentAmbientMultBlue) \
 	X(currentBlurAlpha) \
 	X(currentBlurOffset) \
-	X(leedsWorldAmbTweak) \
-	X(leedsWorldEmissTweak)
+	X(leedsWorldPrelightTweakMult) \
+	X(leedsWorldPrelightTweakAdd)
 
 #define X(v) int v;
 	INTPARAMS
@@ -238,6 +238,9 @@ struct SkyGFXConfig {
 #define X(v) float v;
 	FLOATPARAMS
 #undef X
+
+	int radiosityFilterPasses;
+	int radiosityRenderPasses;
 
 	int dualpass;
 	int seamfix;
@@ -309,8 +312,6 @@ public:
 
 class LeedsCarPipe : public CustomPipe
 {
-	void CreateShaders(void);
-
 	static void MakeScreenQuad(void);
 	static void MakeQuadTexCoords(bool textureSpace);
 	static void RenderReflectionScene(void);
@@ -328,16 +329,15 @@ public:
 	static void RenderEnvTex(void);
 	static void SetupEnvMap(void);
 	static void RenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
-	static void ShaderSetup(RwMatrix *world);
-	static void DiffusePass(RxD3D8ResEntryHeader *header);
 };
 //extern LeedsCarPipe leedsCarpipe;
 
-void leedsRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
+void leedsWorldPipeInit(void);
+void leedsWorldRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
 
 void CClouds__RenderBackground(int16 tr, int16 tg, int16 tb, int16 br, int16 bg, int16 bb, uint8 a);
 void CClouds__Render(void);
-void RenderEveryBarCarsPeds(void);
+void RenderEverythingBarCarsPeds(void);
 void RenderAlphaListBarCarsPeds(void);
 
 

@@ -25,6 +25,9 @@ enum {
 	LOC_rampEnd     = 37,
 	LOC_rim         = 38,
 	LOC_viewVec     = 41,
+
+	LOC_emissive    = 17,	// for leeds world pipe
+	LOC_prelightTweak = 18,
 };
 
 #define NUMWEATHERS 7	// 4 for III
@@ -95,6 +98,7 @@ public:
 };
 
 void UploadZero(int loc);
+void UploadOne(int loc);
 void UploadLightColor(RpLight *light, int loc);
 void UploadLightDirection(RpLight *light, int loc);
 void UploadLightDirectionInv(RpLight *light, int loc);

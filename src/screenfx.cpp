@@ -76,12 +76,14 @@ ScreenFX::CreateImmediateModeData(RwCamera *cam, RwRect *rect)
 	RwIm2DVertexSetIntRGBA(&screenVertices[3], 255, 255, 255, 255);
 }
 
+// This is called by the seam fixer even when we don't have D3D9!!
 void
 ScreenFX::Initialise(void)
 {
 	RwRect r = { 0, 0, 0, 0};
 	int width, height;
-	if(gradingPS == nil){
+	// MULTIPLE INIT
+	if(RwD3D9Supported()){
 		HRSRC resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_GRADINGPS), RT_RCDATA);
 		RwUInt32 *shader = (RwUInt32*)LoadResource(dllModule, resource);
 		RwD3D9CreatePixelShader(shader, &gradingPS);
@@ -101,16 +103,25 @@ ScreenFX::Initialise(void)
 		while(width < curScreenWidth) width *= 2;
 		while(height < curScreenHeight) height *= 2;
 		pFrontBuffer = RwRasterCreate(width, height, curScreenDepth, rwRASTERTYPECAMERATEXTURE);
+//printf("create frontbuffer: %p %d\n", pFrontBuffer, pFrontBuffer->cType);
+//fflush(stdout);
 	}
 	r.w = width;
 	r.h = height;
 	CreateImmediateModeData(Scene.camera, &r);
 }
 
+//RwRaster *&_RwD3D8CurrentRasterTarget = *(RwRaster**)0x660F78;
+
 void
 ScreenFX::UpdateFrontBuffer(void)
 {
+//printf("render frontbuffer: %p %d\n", pFrontBuffer, pFrontBuffer->cType);
+//fflush(stdout);
+//	assert(pFrontBuffer->cType == rwRASTERTYPECAMERATEXTURE);
 	RwRasterPushContext(pFrontBuffer);
+//	assert(_RwD3D8CurrentRasterTarget);
+//	assert(_RwD3D8CurrentRasterTarget->cType == rwRASTERTYPECAMERATEXTURE);
 	RwRasterRenderFast(Scene.camera->frameBuffer, 0, 0);
 	RwRasterPopContext();
 }

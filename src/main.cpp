@@ -731,9 +731,9 @@ InitialiseGame_hook(void)
 		// This is where we can sanitize some values:
 		if(config.trailsSwitch < 0) config.trailsSwitch = 0;
 		if(config.radiosity < 0) config.radiosity = 0;
-		if(config.leedsEnvMult < 0) config.leedsEnvMult = isIII() ? 0.22 : 0.3;
-		if(config.leedsWorldAmbTweak < 0) config.leedsWorldAmbTweak = 1.0f;
-		if(config.leedsWorldEmissTweak < 0) config.leedsWorldEmissTweak = 0.0f;
+		if(config.leedsEnvMult < 0) config.leedsEnvMult = isIII() ? 0.22f : 0.4f;
+		if(config.leedsWorldPrelightTweakMult < 0) config.leedsWorldPrelightTweakMult = 1.0f;
+		if(config.leedsWorldPrelightTweakAdd < 0) config.leedsWorldPrelightTweakAdd = 0.0f;
 
 
 		if (isIII()) // fall back to generic.txd when reading from dff
@@ -825,34 +825,17 @@ delayedPatches(int a, int b)
 #endif
 	}
 #endif
-
-#ifdef XXX //DEBUG
-
-	if(gtaversion == III_10){
-		// car zoom angles
-		static float angle1 = 30.0f;
-		static float angle2 = 30.0f;
-		static float angle3 = 30.0f;
-		Patch(0x466763 + 2, &angle1);
-		Patch(0x46679A + 2, &angle2);
-		Patch(0x4667CE + 2, &angle3);
-		DebugMenuAddVar("SkyGFX|Debug", "Angle1", &angle1, nil, 0.5f, -90.0f, 90.0f);
-		DebugMenuAddVar("SkyGFX|Debug", "Angle2", &angle2, nil, 0.5f, -90.0f, 90.0f);
-		DebugMenuAddVar("SkyGFX|Debug", "Angle3", &angle3, nil, 0.5f, -90.0f, 90.0f);
-	}
-
-#endif
 	}
 
 	return RsEventHandler_orig(a, b);
 }
 
-void (*RwCameraEndUpdate_hooked)(RwCamera *cam);
-void endOfFrame(RwCamera *cam)
-{
-	ScreenFX::Render();
-	RwCameraEndUpdate_hooked(cam);
-}
+//void (*RwCameraEndUpdate_hooked)(RwCamera *cam);
+//void endOfFrame(RwCamera *cam)
+//{
+//	ScreenFX::Render();
+//	RwCameraEndUpdate_hooked(cam);
+//}
 
 void
 patch(void)
@@ -900,16 +883,20 @@ patch(void)
 	dontnag = readint(cfg.get("SkyGfx", "dontNag", ""), 0);
 	config.seamfix = readint(cfg.get("SkyGfx", "seamFix", ""), 0);
 
+//config.seamfix = 0;
+
 	// set to reasonable values when used
 	config.radiosity = readint(cfg.get("SkyGfx", "radiosity", ""), -1);
 	config.trailsSwitch = readint(cfg.get("SkyGfx", "trailsSwitch", ""), -1);
-	config.leedsWorldAmbTweak = readfloat(cfg.get("SkyGfx", "leedsWorldAmbTweak", ""), -9999.0f);
-	config.leedsWorldEmissTweak = readfloat(cfg.get("SkyGfx", "leedsWorldEmissTweak", ""), -9999.0f);
+	config.leedsWorldPrelightTweakMult = readfloat(cfg.get("SkyGfx", "leedsWorldPrelightTweakMult", ""), -9999.0f);
+	config.leedsWorldPrelightTweakAdd = readfloat(cfg.get("SkyGfx", "leedsWorldPrelightTweakAdd", ""), -9999.0f);
 
+	// TODO_INI
+	config.radiosityRenderPasses = 2;
+	config.radiosityFilterPasses = 4;
 
 	config.disableColourOverlay = readint(cfg.get("SkyGfx", "disableColourOverlay", ""), -1);
 	if(config.disableColourOverlay < 0) config.disableColourOverlay = 0;
-
 // TEMP
 //	if(disableColourOverlay >= 0){
 		if(gtaversion == III_10)
@@ -922,7 +909,7 @@ patch(void)
 
 	if(gtaversion == III_10)
 		InjectHook(AddressByVersion<addr>(0x5D0D2B, 0x0, 0, 0x0, 0x0, 0x0), _rpMatFXD3D8AtomicMatFXRenderBlack_fixed);
-	tmp = cfg.get("SkyGfx", "texblendSwitch", "1");
+	tmp = cfg.get("SkyGfx", "texblendSwitch", "");
 	if(tmp != ""){
 		config.blendstyle = readint(tmp);
 
@@ -935,6 +922,7 @@ patch(void)
 
 		// disable car colour textures (messes up matfx)
 		// but it could be intended...what to do?
+		// TODO_INI
 		if(gtaversion == III_10){
 			Nop(0x520EEA, 2);
 			Nop(0x520F8A, 2);
@@ -945,11 +933,13 @@ patch(void)
 		void _rwD3D8AtomicMatFXRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
 		InjectHook(AddressByVersion<addr>(0x5D0B80, 0, 0, 0x676460, 0, 0), _rwD3D8AtomicMatFXRenderCallback, PATCH_JUMP);
 
-		if(gtaversion != III_STEAM)
-			InjectHook(AddressByVersion<addr>(0x5D0CE8, 0x5D0FA8, 0, 0x6765C8, 0x676618, 0x675578), _rpMatFXD3D8AtomicMatFXEnvRender_ps2);
-		else
-			InjectHook(0x5D8D37, rpMatFXD3D8AtomicMatFXEnvRender_ps2_IIISteam);
+	// no longer needed
+	//	if(gtaversion != III_STEAM)
+	//		InjectHook(AddressByVersion<addr>(0x5D0CE8, 0x5D0FA8, 0, 0x6765C8, 0x676618, 0x675578), _rpMatFXD3D8AtomicMatFXEnvRender_ps2);
+	//	else
+	//		InjectHook(0x5D8D37, rpMatFXD3D8AtomicMatFXEnvRender_ps2_IIISteam);
 	}
+
 	config.blendstyle %= 3;
 	tmp = cfg.get("SkyGfx", "texgenSwitch", "");
 	if(tmp != ""){
@@ -961,7 +951,7 @@ patch(void)
 	}
 	config.texgenstyle %= 3;
 
-	config.ps2light = readint(cfg.get("SkyGfx", "ps2light", ""));
+	config.ps2light = readint(cfg.get("SkyGfx", "ps2light", "1"));
 
 	if(isVC() && readint(cfg.get("SkyGfx", "IIIEnvFrame", ""))){
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x57A8BA, 0x57A8DA, 0x57A7AA), createIIIEnvFrame);
@@ -1109,6 +1099,7 @@ patch(void)
 	// mask atomic
 //	Nop(0x5C1579, 3);
 
+	// TODO_INI
 	// use get-in-vehicle camera from PS2 (thanks, Fire_Head)
 	if(gtaversion == III_10){
 		Nop(0x4713DB, 2);
@@ -1127,7 +1118,7 @@ patch(void)
 			InjectHook(0x48E44B, curvehook, PATCH_JUMP);
 		}
 #endif
-		InjectHook(0x405DB0, printf, PATCH_JUMP);
+//		InjectHook(0x405DB0, printf, PATCH_JUMP);
 
 
 		//MemoryVP::InjectHook(0x48E603, RenderEffectsHook);
@@ -1153,8 +1144,8 @@ patch(void)
 		//MemoryVP::InjectHook(0x650ACB, RwTextureRead_VC);
 		InjectHook(0x401000, printf, PATCH_JUMP);
 
-		static float lod0dist = 150.0f;
-		Patch(0x5818A3 + 2, &lod0dist);
+//		static float lod0dist = 150.0f;
+//		Patch(0x5818A3 + 2, &lod0dist);
 
 		// try to reduce timecyc flickering...didn't work
 		//static float s = 0.0f;

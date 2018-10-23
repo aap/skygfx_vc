@@ -115,7 +115,7 @@ LeedsCarPipe::RenderReflectionScene(void)
 		skyBotRed, skyBotGreen, skyBotBlue, 255);
 	CClouds__Render();
 	RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)1);
-	RenderEveryBarCarsPeds();
+	RenderEverythingBarCarsPeds();
 	RenderAlphaListBarCarsPeds();
 }
 
@@ -470,10 +470,6 @@ void
 leedsCarRenderFFPEnvMesh(RxD3D8InstanceData *inst, RwUInt32 flags)
 {
 	int fog, zwrite;
-
-	// REMOVE: we do this in InitialiseGame_hook now
-	if(config.leedsEnvMult == -9999.0f)
-		config.leedsEnvMult = isIII() ? 0.22 : 0.3;
 
 	RwRenderStateGet(rwRENDERSTATEFOGENABLE, &fog);
 	RwRenderStateGet(rwRENDERSTATEZWRITEENABLE, &zwrite);

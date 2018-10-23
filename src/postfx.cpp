@@ -311,7 +311,7 @@ CMBlur::RadiosityRender(RwCamera *cam, int limit, int intensity)
 
 	fb1 = ms_pRadiosityRaster1;
 	fb2 = ms_pRadiosityRaster2;
-	for(i = 0; i < 4; i++){
+	for(i = 0; i < config.radiosityFilterPasses; i++){
 		RwCameraEndUpdate(cam);
 		RwCameraSetRaster(cam, fb1);
 		RwCameraBeginUpdate(cam);
@@ -349,8 +349,8 @@ CMBlur::RadiosityRender(RwCamera *cam, int limit, int intensity)
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)1);
 	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDSRCALPHA);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
-	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, ms_radiosityVerts+4, 4, ms_radiosityIndices, 6);
-	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, ms_radiosityVerts+4, 4, ms_radiosityIndices, 6);
+	for(i = 0; i < config.radiosityRenderPasses; i++)
+		RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, ms_radiosityVerts+4, 4, ms_radiosityIndices, 6);
 
 	RwD3D8SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
 }
