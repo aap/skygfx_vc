@@ -125,13 +125,11 @@ RimPipe::Init(void)
 void
 RimPipe::CreateShaders(void)
 {
-	HRSRC resource;
-	RwUInt32 *shader;
-	resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_RIMVS), RT_RCDATA);
-	shader = (RwUInt32*)LoadResource(dllModule, resource);
-	RwD3D9CreateVertexShader(shader, &vertexShader);
-	assert(RimPipe::vertexShader);
-	FreeResource(shader);
+	{
+		#include "rimVS.h"
+		RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &vertexShader);
+		assert(vertexShader);
+	}
 }
 
 void

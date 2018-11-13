@@ -2,11 +2,9 @@ workspace "skygfx_vc"
 	configurations { "Release", "DebugIII", "DebugVC" }
 	location "build"
 
-	files { "resources/*.*" }
 	files { "shaders/*.*" }
 	files { "src/*.*" }
 
-	includedirs { "resources" }
 	includedirs { "shaders" }
 	includedirs { "src" }
 	includedirs { os.getenv("RWSDK34") }
@@ -19,8 +17,8 @@ workspace "skygfx_vc"
 	links { "rwd3d9.lib" }
    
 	prebuildcommands {
-		"for /R \"../shaders/ps/\" %%f in (*.hlsl) do \"%DXSDK_DIR%/Utilities/bin/x86/fxc.exe\" /T ps_2_0 /nologo /E main /Fo ../resources/cso/%%~nf.cso %%f",
-		"for /R \"../shaders/vs/\" %%f in (*.hlsl) do \"%DXSDK_DIR%/Utilities/bin/x86/fxc.exe\" /T vs_2_0 /nologo /E main /Fo ../resources/cso/%%~nf.cso %%f",
+		"for /R \"../shaders/ps/\" %%f in (*.hlsl) do \"%DXSDK_DIR%/Utilities/bin/x86/fxc.exe\" /T ps_2_0 /nologo /E main /Fh ../shaders/%%~nf.h %%f",
+		"for /R \"../shaders/vs/\" %%f in (*.hlsl) do \"%DXSDK_DIR%/Utilities/bin/x86/fxc.exe\" /T vs_2_0 /nologo /E main /Fh ../shaders/%%~nf.h %%f",
 	}
 	  
 project "skygfx_vc"

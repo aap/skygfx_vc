@@ -82,19 +82,16 @@ GlossPipe::Init(void)
 void
 GlossPipe::CreateShaders(void)
 {
-	HRSRC resource;
-	RwUInt32 *shader;
-	resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_GLOSSVS), RT_RCDATA);
-	shader = (RwUInt32*)LoadResource(dllModule, resource);
-	RwD3D9CreateVertexShader(shader, &vertexShader);
-	assert(vertexShader);
-	FreeResource(shader);
-
-	resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_GLOSSPS), RT_RCDATA);
-	shader = (RwUInt32*)LoadResource(dllModule, resource);
-	RwD3D9CreatePixelShader(shader, &pixelShader);
-	assert(pixelShader);
-	FreeResource(shader);
+	{
+		#include "glossVS.h"
+		RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &vertexShader);
+		assert(vertexShader);
+	}
+	{
+		#include "glossPS.h"
+		RwD3D9CreatePixelShader((RwUInt32*)g_ps20_main, &pixelShader);
+		assert(pixelShader);
+	}
 }
 
 //

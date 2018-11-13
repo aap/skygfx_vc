@@ -213,19 +213,16 @@ NeoCarPipe::Init(void)
 void
 NeoCarPipe::CreateShaders(void)
 {
-	HRSRC resource;
-	RwUInt32 *shader;
-	resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_VEHICLEONEVS), RT_RCDATA);
-	shader = (RwUInt32*)LoadResource(dllModule, resource);
-	RwD3D9CreateVertexShader(shader, &vertexShaderPass1);
-	assert(vertexShaderPass1);
-	FreeResource(shader);
-
-	resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_VEHICLETWOVS), RT_RCDATA);
-	shader = (RwUInt32*)LoadResource(dllModule, resource);
-	RwD3D9CreateVertexShader(shader, &vertexShaderPass2);
-	assert(vertexShaderPass2);
-	FreeResource(shader);
+	{
+		#include "vehiclePass1VS.h"
+		RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &vertexShaderPass1);
+		assert(vertexShaderPass1);
+	}
+	{
+		#include "vehiclePass2VS.h"
+		RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &vertexShaderPass2);
+		assert(vertexShaderPass2);
+	}
 }
 
 void

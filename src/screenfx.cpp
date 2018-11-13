@@ -84,11 +84,9 @@ ScreenFX::Initialise(void)
 	int width, height;
 	// MULTIPLE INIT
 	if(RwD3D9Supported()){
-		HRSRC resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_GRADINGPS), RT_RCDATA);
-		RwUInt32 *shader = (RwUInt32*)LoadResource(dllModule, resource);
-		RwD3D9CreatePixelShader(shader, &gradingPS);
+		#include "gradingPS.h"
+		RwD3D9CreatePixelShader((RwUInt32*)g_ps20_main, &gradingPS);
 		assert(gradingPS);
-		FreeResource(shader);
 	}
 	if(pFrontBuffer){
 		RwRasterDestroy(pFrontBuffer);

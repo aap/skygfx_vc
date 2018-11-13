@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
-#include "resource.h"
 
 // want to use RwEngineInst instead of RwEngineInstance
 #undef RWSRCGLOBAL

@@ -883,17 +883,14 @@ patch(void)
 	dontnag = readint(cfg.get("SkyGfx", "dontNag", ""), 0);
 	config.seamfix = readint(cfg.get("SkyGfx", "seamFix", ""), 0);
 
-//config.seamfix = 0;
-
 	// set to reasonable values when used
 	config.radiosity = readint(cfg.get("SkyGfx", "radiosity", ""), -1);
 	config.trailsSwitch = readint(cfg.get("SkyGfx", "trailsSwitch", ""), -1);
 	config.leedsWorldPrelightTweakMult = readfloat(cfg.get("SkyGfx", "leedsWorldPrelightTweakMult", ""), -9999.0f);
 	config.leedsWorldPrelightTweakAdd = readfloat(cfg.get("SkyGfx", "leedsWorldPrelightTweakAdd", ""), -9999.0f);
 
-	// TODO_INI
-	config.radiosityRenderPasses = 2;
-	config.radiosityFilterPasses = 4;
+	config.radiosityRenderPasses = readint(cfg.get("SkyGfx", "radiosityRenderPasses", ""), 2);
+	config.radiosityFilterPasses = readint(cfg.get("SkyGfx", "radiosityFilterPasses", ""), 4);
 
 	config.disableColourOverlay = readint(cfg.get("SkyGfx", "disableColourOverlay", ""), -1);
 	if(config.disableColourOverlay < 0) config.disableColourOverlay = 0;
@@ -920,14 +917,6 @@ patch(void)
 		if(ps2water && gtaversion == VC_10)
 			patchWater();
 
-		// disable car colour textures (messes up matfx)
-		// but it could be intended...what to do?
-		// TODO_INI
-		if(gtaversion == III_10){
-			Nop(0x520EEA, 2);
-			Nop(0x520F8A, 2);
-		}
-
 		InterceptCall(&_rpMatFXPipelinesCreate_orig, _rpMatFXPipelinesCreate, AddressByVersion<addr>(0x5B27B1, 0, 0, 0x656031, 0, 0));
 
 		void _rwD3D8AtomicMatFXRenderCallback(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags);
@@ -938,6 +927,13 @@ patch(void)
 	//		InjectHook(AddressByVersion<addr>(0x5D0CE8, 0x5D0FA8, 0, 0x6765C8, 0x676618, 0x675578), _rpMatFXD3D8AtomicMatFXEnvRender_ps2);
 	//	else
 	//		InjectHook(0x5D8D37, rpMatFXD3D8AtomicMatFXEnvRender_ps2_IIISteam);
+	}
+
+	// disable car colour textures (messes up matfx)
+	// but it could be intended...what to do?
+	if(gtaversion == III_10 && readint(cfg.get("SkyGfx", "noCarcolTex", ""), 0)){
+		Nop(0x520EEA, 2);
+		Nop(0x520F8A, 2);
 	}
 
 	config.blendstyle %= 3;
@@ -1030,6 +1026,7 @@ patch(void)
 		}
 	}
 
+	/* TODO: remove this. but what about rain drops? */
 	if(gtaversion == III_10 && readint(cfg.get("SkyGfx", "ps2FootSplash", ""))){
 		// footsplash stuff - needs ps2 particle.cfg PED_SPLASH
 		static float randscl = 1/63556.0f;
@@ -1099,9 +1096,8 @@ patch(void)
 	// mask atomic
 //	Nop(0x5C1579, 3);
 
-	// TODO_INI
 	// use get-in-vehicle camera from PS2 (thanks, Fire_Head)
-	if(gtaversion == III_10){
+	if(gtaversion == III_10 && readint(cfg.get("SkyGfx", "ps2carCam", ""))){
 		Nop(0x4713DB, 2);
 		Nop(0x47143B, 2);
 	}

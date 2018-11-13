@@ -97,11 +97,9 @@ CMBlur::Initialise(void)
 			rwRASTERTYPECAMERATEXTURE);
 	if(RwD3D9Supported())
 		if(contrastPS == nil){
-			HRSRC resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_CONTRASTPS), RT_RCDATA);
-			RwUInt32 *shader = (RwUInt32*)LoadResource(dllModule, resource);
-			RwD3D9CreatePixelShader(shader, &contrastPS);
+			#include "contrastPS.h"
+			RwD3D9CreatePixelShader((RwUInt32*)g_ps20_main, &contrastPS);
 			assert(contrastPS);
-			FreeResource(shader);
 		}
 }
 

@@ -58,16 +58,15 @@ NeoWorldPipe::Init(void)
 void
 NeoWorldPipe::CreateShaders(void)
 {
-	HRSRC resource;
-	RwUInt32 *shader;
-	if(isIII())
-		resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_WORLDPS), RT_RCDATA);
-	else
-		resource = FindResource(dllModule, MAKEINTRESOURCE(IDR_VCWORLDPS), RT_RCDATA);
-	shader = (RwUInt32*)LoadResource(dllModule, resource);
-	RwD3D9CreatePixelShader(shader, &pixelShader);
-	assert(NeoWorldPipe::pixelShader);
-	FreeResource(shader);
+	if(isIII()){
+		#include "worldPS.h"
+		RwD3D9CreatePixelShader((RwUInt32*)g_ps20_main, &pixelShader);
+		assert(pixelShader);
+	}else{
+		#include "vc_worldPS.h"
+		RwD3D9CreatePixelShader((RwUInt32*)g_ps20_main, &pixelShader);
+		assert(pixelShader);
+	}
 }
 
 void
