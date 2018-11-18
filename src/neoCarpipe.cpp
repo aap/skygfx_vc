@@ -294,7 +294,7 @@ NeoCarPipe::ShaderSetup(RwMatrix *world, RwUInt32 flags)
 	else
 		UploadZero(LOC_ambient);
 	if(lighting && pDirect && rwObjectTestFlags(pDirect, rpLIGHTLIGHTATOMICS)){
-		UploadLightColorWithSpecular(pDirect, LOC_directCol);
+		UploadLightColorWithSpecular(pDirect, LOC_directCol);		// NOT actually used by accurate neo shader
 		UploadLightDirection(pDirect, LOC_directDir);
 	}else{
 		UploadZero(LOC_directCol);

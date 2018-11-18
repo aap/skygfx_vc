@@ -207,6 +207,13 @@ ScreenFX::AVColourCorrection(void)
 void
 ScreenFX::Render(void)
 {
+	/* For turbo PS2 accuracy, get the front buffer here */
+	if(CMBlur::BlurOn && CMBlur::pFrontBuffer){
+		RwRasterPushContext(CMBlur::pFrontBuffer);
+		RwRasterRenderFast(Scene.camera->frameBuffer, 0, 0);
+		RwRasterPopContext();
+	}
+
 	static int render = -1;
 	if(render == -1)
 		render = RwD3D9Supported();
