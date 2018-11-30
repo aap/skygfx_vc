@@ -10,7 +10,6 @@ struct VS_OUTPUT
 {
 	float4 position		: POSITION;
 	float2 texcoord0	: TEXCOORD0;
-	float2 texcoord1	: TEXCOORD1;
 	float4 color		: COLOR0;
 };
 
@@ -24,9 +23,8 @@ main(in VS_INPUT In)
 	VS_OUTPUT Out;
 
 	Out.position = mul(In.Position, combined);
-	Out.texcoord0 = In.TexCoord;
 	float3 N = normalize(mul(In.Normal, (float3x3)world).xyz);	// NORMAL MAT
-	Out.texcoord1 = mul(float4(N, 1.0), tex).xy;
+	Out.texcoord0 = mul(float4(N, 1.0), tex).xy;
 	Out.color = In.Color;
 
 	return Out;

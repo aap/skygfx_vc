@@ -3,14 +3,15 @@
 #include "d3d8types.h"
 #include <DirectXMath.h>
 
+static void *ps2StandardVS;
+static void *ps2StandardEnvVS;
+static void *ps2StandardEnvOnlyVS;
+static void *pcStandardVS;
+static void *pcStandardEnvVS;
+static void *pcStandardEnvOnlyVS;
 static void *nolightVS;
-static void *ps2DiffuseVS;
-static void *pcDiffuseVS;
-static void *ps2EnvVS;
-static void *pcEnvVS;
 static void *nolightEnvVS;
-static void *ps2DiffuseEnvVS;
-static void *pcDiffuseEnvVS;
+static void *nolightEnvOnlyVS;
 static void *pcEnvPS;
 static void *mobileEnvPS;
 
@@ -443,7 +444,7 @@ _rpMatFXD3D8AtomicMatFXDefaultRender_shader(RxD3D8InstanceData *inst, int flags,
 	RwD3D8SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, inst->vertexAlpha != 0);
 	RwD3D8SetPixelShader(0);
 	RwD3D9SetFVF(inst->vertexShader);
-	void *lightingShader = config.ps2light ? ps2DiffuseVS : pcDiffuseVS;
+	void *lightingShader = config.ps2light ? ps2StandardVS : pcStandardVS;
 	RwD3D9SetVertexShader(flags&rpGEOMETRYLIGHT ? lightingShader : nolightVS);
 	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
 	drawDualPass(inst);
@@ -457,15 +458,12 @@ _rpMatFXD3D8AtomicMatFXEnvRender_ps2_shader(RxD3D8InstanceData *inst, int flags,
 	// Diffuse pass
 	_rpMatFXD3D8AtomicMatFXDefaultRender_shader(inst, flags, texture);
 
-	if((flags & rpGEOMETRYLIGHT) == 0)
-		return;
-
 	// Env pass
 	MatFX *matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);
 	MatFXEnv *env = &matfx->fx[sel].e;
 	ApplyEnvMapTextureMatrix_world(envMap, 0, env->envFrame);
-	void *lightingShader = config.ps2light ? ps2EnvVS : pcEnvVS;
-	RwD3D9SetVertexShader(lightingShader);
+	void *lightingShader = config.ps2light ? ps2StandardEnvOnlyVS : pcStandardEnvOnlyVS;
+	RwD3D9SetVertexShader(flags&rpGEOMETRYLIGHT ? lightingShader : nolightEnvOnlyVS);
 
 	RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)1);
 	RwUInt32 src, dst, zwrite, fog, fogcol;
@@ -536,7 +534,7 @@ _rpMatFXD3D8AtomicMatFXEnvRender_pc_shader(RxD3D8InstanceData *inst, int flags, 
 	RwD3D9SetPixelShaderConstant(0, envCoeff, 1);
 
 	RwD3D9SetFVF(inst->vertexShader);
-	void *lightingShader = config.ps2light ? ps2DiffuseEnvVS : pcDiffuseEnvVS;
+	void *lightingShader = config.ps2light ? ps2StandardEnvVS : pcStandardEnvVS;
 	RwD3D9SetVertexShader(flags&rpGEOMETRYLIGHT ? lightingShader : nolightEnvVS);
 	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
 	drawDualPass(inst);
@@ -567,7 +565,7 @@ _rpMatFXD3D8AtomicMatFXEnvRender_mobile_shader(RxD3D8InstanceData *inst, int fla
 	RwD3D9SetPixelShaderConstant(0, envCoeff, 1);
 
 	RwD3D9SetFVF(inst->vertexShader);
-	void *lightingShader = config.ps2light ? ps2DiffuseEnvVS : pcDiffuseEnvVS;
+	void *lightingShader = config.ps2light ? ps2StandardEnvVS : pcStandardEnvVS;
 	RwD3D9SetVertexShader(flags&rpGEOMETRYLIGHT ? lightingShader : nolightEnvVS);
 	RwD3D8SetStreamSource(0, inst->vertexBuffer, inst->stride);
 	drawDualPass(inst);
@@ -766,29 +764,39 @@ int _rpMatFXPipelinesCreate(void)
 	// MULTIPLE INIT
 	if(RwD3D9Supported()){
 		{
+			#include "ps2StandardVS.h"
+			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &ps2StandardVS);
+			assert(ps2StandardVS);
+		}
+		{
+			#include "ps2StandardEnvVS.h"
+			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &ps2StandardEnvVS);
+			assert(ps2StandardEnvVS);
+		}
+		{
+			#include "ps2StandardEnvOnlyVS.h"
+			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &ps2StandardEnvOnlyVS);
+			assert(ps2StandardEnvOnlyVS);
+		}
+		{
+			#include "pcStandardVS.h"
+			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &pcStandardVS);
+			assert(pcStandardVS);
+		}
+		{
+			#include "pcStandardEnvVS.h"
+			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &pcStandardEnvVS);
+			assert(pcStandardEnvVS);
+		}
+		{
+			#include "pcStandardEnvOnlyVS.h"
+			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &pcStandardEnvOnlyVS);
+			assert(pcStandardEnvOnlyVS);
+		}
+		{
 			#include "nolightVS.h"
 			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &nolightVS);
 			assert(nolightVS);
-		}
-		{
-			#include "ps2DiffuseVS.h"
-			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &ps2DiffuseVS);
-			assert(ps2DiffuseVS);
-		}
-		{
-			#include "pcDiffuseVS.h"
-			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &pcDiffuseVS);
-			assert(pcDiffuseVS);
-		}
-		{
-			#include "ps2EnvVS.h"
-			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &ps2EnvVS);
-			assert(ps2EnvVS);
-		}
-		{
-			#include "pcEnvVS.h"
-			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &pcEnvVS);
-			assert(pcEnvVS);
 		}
 		{
 			#include "nolightEnvVS.h"
@@ -796,15 +804,12 @@ int _rpMatFXPipelinesCreate(void)
 			assert(nolightEnvVS);
 		}
 		{
-			#include "ps2DiffuseEnvVS.h"
-			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &ps2DiffuseEnvVS);
-			assert(ps2DiffuseEnvVS);
+			#include "nolightEnvOnlyVS.h"
+			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &nolightEnvOnlyVS);
+			assert(nolightEnvOnlyVS);
 		}
-		{
-			#include "pcDiffuseEnvVS.h"
-			RwD3D9CreateVertexShader((RwUInt32*)g_vs20_main, &pcDiffuseEnvVS);
-			assert(pcDiffuseEnvVS);
-		}
+
+
 		{
 			#include "pcEnvPS.h"
 			RwD3D9CreatePixelShader((RwUInt32*)g_ps20_main, &pcEnvPS);
