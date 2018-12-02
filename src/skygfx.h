@@ -249,7 +249,7 @@ struct SkyGFXConfig {
 	int texgenstyle;
 	int ps2light;
 	int rimlight;
-	int neowaterdrops, neoblooddrops;
+	int neowaterdrops;
 	int envMapSize;
 	float leedsEnvMult;
 

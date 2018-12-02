@@ -57,51 +57,53 @@ enum CamModeIII
 	CAMIII_M16FIRSTPERSON_44
 };
 
-enum class tSplashParticlesIII {
-    PARTICLE_WHEEL_WATER = 3,
-    PARTICLE_BLOOD = 4,
-    PARTICLE_BLOOD_SMALL = 5,
-    PARTICLE_BLOOD_SPURT = 6,
-    PARTICLE_WATER = 9,
-    PARTICLE_SPLASH = 20,
-    PARTICLE_RAINDROP = 27,
-    PARTICLE_RAINDROP_SMALL = 28,
-    PARTICLE_RAIN_SPLASH = 29,
-    PARTICLE_RAIN_SPLASH_BIGGROW = 30,
-    PARTICLE_RAIN_SPLASHUP = 31,
-    PARTICLE_WATERSPRAY = 32,
-    PARTICLE_CAR_SPLASH = 37,
-    PARTICLE_BOAT_SPLASH = 38,
-    PARTICLE_BOAT_THRUSTJET = 39,
-    PARTICLE_BOAT_WAKE = 40,
-    PARTICLE_WATER_HYDRANT = 41,
-    PARTICLE_WATER_CANNON = 42,
-    PARTICLE_PED_SPLASH = 44,
-    PARTICLE_RAINDROP_2D = 67
+enum tSplashParticlesIII
+{
+	III_PARTICLE_WHEEL_WATER = 3,
+	III_PARTICLE_BLOOD = 4,
+	III_PARTICLE_BLOOD_SMALL = 5,
+	III_PARTICLE_BLOOD_SPURT = 6,
+	III_PARTICLE_WATER = 9,
+	III_PARTICLE_SPLASH = 20,
+	III_PARTICLE_RAINDROP = 27,
+	III_PARTICLE_RAINDROP_SMALL = 28,
+	III_PARTICLE_RAIN_SPLASH = 29,
+	III_PARTICLE_RAIN_SPLASH_BIGGROW = 30,
+	III_PARTICLE_RAIN_SPLASHUP = 31,
+	III_PARTICLE_WATERSPRAY = 32,
+	III_PARTICLE_CAR_SPLASH = 37,
+	III_PARTICLE_BOAT_SPLASH = 38,
+	III_PARTICLE_BOAT_THRUSTJET = 39,
+	III_PARTICLE_BOAT_WAKE = 40,
+	III_PARTICLE_WATER_HYDRANT = 41,
+	III_PARTICLE_WATER_CANNON = 42,
+	III_PARTICLE_PED_SPLASH = 44,
+	III_PARTICLE_RAINDROP_2D = 67
 };
 
-enum class tSplashParticlesVC {
-    PARTICLE_WATER_SPARK = 2,
-    PARTICLE_BLOOD = 6,
-    PARTICLE_BLOOD_SMALL = 7,
-    PARTICLE_BLOOD_SPURT = 8,
-    PARTICLE_WATER = 12,
-    PARTICLE_SPLASH = 26,
-    PARTICLE_RAINDROP = 34,
-    PARTICLE_RAINDROP_SMALL = 35,
-    PARTICLE_RAIN_SPLASH = 36,
-    PARTICLE_RAIN_SPLASH_BIGGROW = 37,
-    PARTICLE_RAIN_SPLASHUP = 38,
-    PARTICLE_WATERSPRAY = 39,
-    PARTICLE_WATERDROP = 40,
-    PARTICLE_BLOODDROP = 41,
-    PARTICLE_CAR_SPLASH = 46,
-    PARTICLE_BOAT_SPLASH = 47,
-    PARTICLE_BOAT_THRUSTJET = 48,
-    PARTICLE_WATER_HYDRANT = 49,
-    PARTICLE_WATER_CANNON = 50,
-    PARTICLE_PED_SPLASH = 52,
-    PARTICLE_RAINDROP_2D = 80
+enum tSplashParticlesVC
+{
+	VC_PARTICLE_WATER_SPARK = 2,
+	VC_PARTICLE_BLOOD = 6,
+	VC_PARTICLE_BLOOD_SMALL = 7,
+	VC_PARTICLE_BLOOD_SPURT = 8,
+	VC_PARTICLE_WATER = 12,
+	VC_PARTICLE_SPLASH = 26,
+	VC_PARTICLE_RAINDROP = 34,
+	VC_PARTICLE_RAINDROP_SMALL = 35,
+	VC_PARTICLE_RAIN_SPLASH = 36,
+	VC_PARTICLE_RAIN_SPLASH_BIGGROW = 37,
+	VC_PARTICLE_RAIN_SPLASHUP = 38,
+	VC_PARTICLE_WATERSPRAY = 39,
+	VC_PARTICLE_WATERDROP = 40,
+	VC_PARTICLE_BLOODDROP = 41,
+	VC_PARTICLE_CAR_SPLASH = 46,
+	VC_PARTICLE_BOAT_SPLASH = 47,
+	VC_PARTICLE_BOAT_THRUSTJET = 48,
+	VC_PARTICLE_WATER_HYDRANT = 49,
+	VC_PARTICLE_WATER_CANNON = 50,
+	VC_PARTICLE_PED_SPLASH = 52,
+	VC_PARTICLE_RAINDROP_2D = 80
 };
 
 #define MAXSIZE 15
@@ -230,360 +232,333 @@ RenderEffects_hook(void)
 	WaterDrops::Render();
 }
 
+/* For extended droplets */
+
+static bool
+isParticleBlood(int id)
+{
+	if(isIII())
+		switch(id)
+		case III_PARTICLE_BLOOD:
+		case III_PARTICLE_BLOOD_SMALL:
+		case III_PARTICLE_BLOOD_SPURT:
+			return true;
+	else
+		switch(id)
+		case VC_PARTICLE_BLOOD:
+		case VC_PARTICLE_BLOOD_SMALL:
+		case VC_PARTICLE_BLOOD_SPURT:
+		case VC_PARTICLE_BLOODDROP:
+			return true;
+	return false;
+};
+
+static bool
+isParticleSplash(int id)
+{
+	if(isIII())
+		switch(id)
+		case III_PARTICLE_BOAT_SPLASH:
+		case III_PARTICLE_CAR_SPLASH:
+		case III_PARTICLE_PED_SPLASH:
+		case III_PARTICLE_RAIN_SPLASH:
+		case III_PARTICLE_RAIN_SPLASHUP:
+		case III_PARTICLE_RAIN_SPLASH_BIGGROW:
+		case III_PARTICLE_SPLASH:
+			return true;
+	else
+		switch(id)
+		case VC_PARTICLE_BOAT_SPLASH:
+		case VC_PARTICLE_CAR_SPLASH:
+		case VC_PARTICLE_PED_SPLASH:
+		case VC_PARTICLE_RAIN_SPLASH:
+		case VC_PARTICLE_RAIN_SPLASHUP:
+		case VC_PARTICLE_RAIN_SPLASH_BIGGROW:
+		case VC_PARTICLE_SPLASH:
+			return true;
+	return false;
+};
+
+static float
+getParticleDistance(int id)
+{
+	if(isIII()){
+		switch (id){
+		case III_PARTICLE_WHEEL_WATER:		return 5.0f;
+		case III_PARTICLE_BLOOD:		return 5.0f;
+		case III_PARTICLE_BLOOD_SMALL:		return 5.0f;
+		case III_PARTICLE_BLOOD_SPURT:		return 5.0f;
+		case III_PARTICLE_WATER:		return 20.0f;
+		case III_PARTICLE_SPLASH:		return 10.0f;
+		case III_PARTICLE_RAINDROP:		return 5.0f;
+		case III_PARTICLE_RAINDROP_SMALL:	return 5.0f;
+		case III_PARTICLE_RAIN_SPLASH:		return 5.0f;
+		case III_PARTICLE_RAIN_SPLASH_BIGGROW:	return 5.0f;
+		case III_PARTICLE_RAIN_SPLASHUP:	return 5.0f;
+		case III_PARTICLE_WATERSPRAY:		return 20.0f;
+		case III_PARTICLE_CAR_SPLASH:		return 5.0f;
+		case III_PARTICLE_BOAT_SPLASH:		return 30.0f;
+		case III_PARTICLE_BOAT_THRUSTJET:	return 20.0f;
+		case III_PARTICLE_BOAT_WAKE:		return 20.0f;
+		case III_PARTICLE_WATER_HYDRANT:	return 10.0f;
+		case III_PARTICLE_WATER_CANNON:		return 20.0f;
+		case III_PARTICLE_PED_SPLASH:		return 10.0f;
+		case III_PARTICLE_RAINDROP_2D:		return 5.0f;
+		default:	return 20.0f;
+		}
+	}else{
+		switch (id){
+		case VC_PARTICLE_WATER_SPARK:		return 5.0f;
+		case VC_PARTICLE_BLOOD:			return 5.0f;
+		case VC_PARTICLE_BLOOD_SMALL:		return 5.0f;
+		case VC_PARTICLE_BLOOD_SPURT:		return 5.0f;
+		case VC_PARTICLE_WATER:			return 20.0f;
+		case VC_PARTICLE_SPLASH:		return 10.0f;
+		case VC_PARTICLE_RAINDROP:		return 5.0f;
+		case VC_PARTICLE_RAINDROP_SMALL:	return 5.0f;
+		case VC_PARTICLE_RAIN_SPLASH:		return 5.0f;
+		case VC_PARTICLE_RAIN_SPLASH_BIGGROW:	return 5.0f;
+		case VC_PARTICLE_RAIN_SPLASHUP:		return 5.0f;
+		case VC_PARTICLE_WATERSPRAY:		return 20.0f;
+		case VC_PARTICLE_WATERDROP:		return 20.0f;
+		case VC_PARTICLE_BLOODDROP:		return 5.0f;
+		case VC_PARTICLE_CAR_SPLASH:		return 12.0f;
+		case VC_PARTICLE_BOAT_SPLASH:		return 30.0f;
+		case VC_PARTICLE_BOAT_THRUSTJET:	return 20.0f;
+		case VC_PARTICLE_WATER_HYDRANT:		return 10.0f;
+		case VC_PARTICLE_WATER_CANNON:		return 20.0f;
+		case VC_PARTICLE_PED_SPLASH:		return 10.0f;
+		case VC_PARTICLE_RAINDROP_2D:		return 5.0f;
+		default:	return 20.0f;
+		}
+	}
+};
+
+static void
+AddExtendedDroplets(int particleType, RwV3d const &posn, void *entity = nil)
+{
+	if(config.neowaterdrops < 2)
+		return;
+
+	RwV3d dist;
+	RwV3dSub(&dist, &posn, &WaterDrops::ms_lastPos);
+	float len = RwV3dLength(&dist);
+	if(len <= getParticleDistance(particleType)){
+		if(entity && isParticleSplash(particleType)){
+			WaterDrops::ms_splashDuration = 14;
+			WaterDrops::ms_splashObject = (CPlaceable_III*)entity;
+		}else{
+			bool isBlood = isParticleBlood(particleType);
+			if(config.neowaterdrops < 3 && isBlood)
+				return;
+
+			WaterDrops::FillScreenMoving(1.0f / (len / 2.0f), isBlood);
+		}
+	}
+};
+
 void
 hookWaterDrops()
 {
-	if(is10()){
-		InterceptCall(&RenderEffects, RenderEffects_hook, AddressByVersion<addr>(0x48E603, 0, 0, 0x4A604F, 0, 0));
+	if(!is10())
+		return;
 
-		// Original Neo droplets
+	InterceptCall(&RenderEffects, RenderEffects_hook, AddressByVersion<addr>(0x48E603, 0, 0, 0x4A604F, 0, 0));
 
-		InterceptCall(&reset_call_1, reset_hook_1, AddressByVersion<addr>(0x48C1AB, 0, 0, 0x4A4DD6, 0, 0));	// CGame::Initialise
-		InterceptCall(&reset_call_2, reset_hook_2, AddressByVersion<addr>(0x48C530, 0, 0, 0x4A48EA, 0, 0));	// CGame::ReInitGameObjectVariables
-		InterceptCall(&reset_call_3, reset_hook_3, AddressByVersion<addr>(0x42155D, 0, 0, 0x42BCD6, 0, 0));	// CGameLogic::Update
-		InterceptCall(&reset_call_4, reset_hook_4, AddressByVersion<addr>(0x42177A, 0, 0, 0x42C0BC, 0, 0));	// CGameLogic::Update
-		InterceptCall(&reset_call_5, reset_hook_5, AddressByVersion<addr>(0x421926, 0, 0, 0x42C318, 0, 0));  // CGameLogic::Update
+	// Original Neo droplets
 
-		InterceptCall(&splashbreak, splashhook, AddressByVersion<addr>(0x4BC7D0, 0, 0, 0x4E8721, 0, 0));
+	InterceptCall(&reset_call_1, reset_hook_1, AddressByVersion<addr>(0x48C1AB, 0, 0, 0x4A4DD6, 0, 0));	// CGame::Initialise
+	InterceptCall(&reset_call_2, reset_hook_2, AddressByVersion<addr>(0x48C530, 0, 0, 0x4A48EA, 0, 0));	// CGame::ReInitGameObjectVariables
+	InterceptCall(&reset_call_3, reset_hook_3, AddressByVersion<addr>(0x42155D, 0, 0, 0x42BCD6, 0, 0));	// CGameLogic::Update
+	InterceptCall(&reset_call_4, reset_hook_4, AddressByVersion<addr>(0x42177A, 0, 0, 0x42C0BC, 0, 0));	// CGameLogic::Update
+	InterceptCall(&reset_call_5, reset_hook_5, AddressByVersion<addr>(0x421926, 0, 0, 0x42C318, 0, 0));  // CGameLogic::Update
 
-		// TAG's extended droplets
-        static auto isParticleBlood = [](int id) -> bool
-        {
-            if (isIII())
-                return (id == (int)tSplashParticlesIII::PARTICLE_BLOOD) || (id == (int)tSplashParticlesIII::PARTICLE_BLOOD_SMALL) || (id == (int)tSplashParticlesIII::PARTICLE_BLOOD_SPURT);
-            else
-                return (id == (int)tSplashParticlesVC::PARTICLE_BLOOD) || (id == (int)tSplashParticlesVC::PARTICLE_BLOOD_SMALL) || (id == (int)tSplashParticlesVC::PARTICLE_BLOOD_SPURT) ||
-                (id == (int)tSplashParticlesVC::PARTICLE_BLOODDROP);
-        };
+	InterceptCall(&splashbreak, splashhook, AddressByVersion<addr>(0x4BC7D0, 0, 0, 0x4E8721, 0, 0));
 
-        static auto isParticleSplash = [](int id) -> bool
-        {
-            if (isIII())
-                return (id == (int)tSplashParticlesIII::PARTICLE_BOAT_SPLASH) || (id == (int)tSplashParticlesIII::PARTICLE_CAR_SPLASH) ||
-                (id == (int)tSplashParticlesIII::PARTICLE_PED_SPLASH) || (id == (int)tSplashParticlesIII::PARTICLE_RAIN_SPLASH) ||
-                (id == (int)tSplashParticlesIII::PARTICLE_RAIN_SPLASHUP) || (id == (int)tSplashParticlesIII::PARTICLE_RAIN_SPLASH_BIGGROW) ||
-                (id == (int)tSplashParticlesIII::PARTICLE_SPLASH);
-            else
-                return (id == (int)tSplashParticlesVC::PARTICLE_BOAT_SPLASH) || (id == (int)tSplashParticlesVC::PARTICLE_CAR_SPLASH) ||
-                (id == (int)tSplashParticlesVC::PARTICLE_PED_SPLASH) || (id == (int)tSplashParticlesVC::PARTICLE_RAIN_SPLASH) ||
-                (id == (int)tSplashParticlesVC::PARTICLE_RAIN_SPLASHUP) || (id == (int)tSplashParticlesVC::PARTICLE_RAIN_SPLASH_BIGGROW) ||
-                (id == (int)tSplashParticlesVC::PARTICLE_SPLASH);
-        };
+	// TAG's extended droplets
 
-        static auto getParticleDistance = [](int id) -> float
-        {
-            if (isIII())
-            {
-                switch (id)
-                {
-                case (int)tSplashParticlesIII::PARTICLE_WHEEL_WATER:
-                    return 5.0f;
-                case (int)tSplashParticlesIII::PARTICLE_BLOOD:
-                    return 5.0f;
-                case (int)tSplashParticlesIII::PARTICLE_BLOOD_SMALL:
-                    return 5.0f;
-                case (int)tSplashParticlesIII::PARTICLE_BLOOD_SPURT:
-                    return 5.0f;
-                case (int)tSplashParticlesIII::PARTICLE_WATER:
-                    return 20.0f;
-                case (int)tSplashParticlesIII::PARTICLE_SPLASH:
-                    return 10.0f;
-                case (int)tSplashParticlesIII::PARTICLE_RAINDROP:
-                    return 5.0f;
-                case (int)tSplashParticlesIII::PARTICLE_RAINDROP_SMALL:
-                    return 5.0f;
-                case (int)tSplashParticlesIII::PARTICLE_RAIN_SPLASH:
-                    return 5.0f;
-                case (int)tSplashParticlesIII::PARTICLE_RAIN_SPLASH_BIGGROW:
-                    return 5.0f;
-                case (int)tSplashParticlesIII::PARTICLE_RAIN_SPLASHUP:
-                    return 5.0f;
-                case (int)tSplashParticlesIII::PARTICLE_WATERSPRAY:
-                    return 20.0f;
-                case (int)tSplashParticlesIII::PARTICLE_CAR_SPLASH:
-                    return 5.0f;
-                case (int)tSplashParticlesIII::PARTICLE_BOAT_SPLASH:
-                    return 30.0f;
-                case (int)tSplashParticlesIII::PARTICLE_BOAT_THRUSTJET:
-                    return 20.0f;
-                case (int)tSplashParticlesIII::PARTICLE_BOAT_WAKE:
-                    return 20.0f;
-                case (int)tSplashParticlesIII::PARTICLE_WATER_HYDRANT:
-                    return 10.0f;
-                case (int)tSplashParticlesIII::PARTICLE_WATER_CANNON:
-                    return 20.0f;
-                case (int)tSplashParticlesIII::PARTICLE_PED_SPLASH:
-                    return 10.0f;
-                case (int)tSplashParticlesIII::PARTICLE_RAINDROP_2D:
-                    return 5.0f;
-                default:
-                    break;
-                }
-                return 20.0f;
-            }
-            else
-            {
-                switch (id)
-                {
-                case (int)tSplashParticlesVC::PARTICLE_WATER_SPARK:
-                    return 5.0f;
-                case (int)tSplashParticlesVC::PARTICLE_BLOOD:
-                    return 5.0f;
-                case (int)tSplashParticlesVC::PARTICLE_BLOOD_SMALL:
-                    return 5.0f;
-                case (int)tSplashParticlesVC::PARTICLE_BLOOD_SPURT:
-                    return 5.0f;
-                case (int)tSplashParticlesVC::PARTICLE_WATER:
-                    return 20.0f;
-                case (int)tSplashParticlesVC::PARTICLE_SPLASH:
-                    return 10.0f;
-                case (int)tSplashParticlesVC::PARTICLE_RAINDROP:
-                    return 5.0f;
-                case (int)tSplashParticlesVC::PARTICLE_RAINDROP_SMALL:
-                    return 5.0f;
-                case (int)tSplashParticlesVC::PARTICLE_RAIN_SPLASH:
-                    return 5.0f;
-                case (int)tSplashParticlesVC::PARTICLE_RAIN_SPLASH_BIGGROW:
-                    return 5.0f;
-                case (int)tSplashParticlesVC::PARTICLE_RAIN_SPLASHUP:
-                    return 5.0f;
-                case (int)tSplashParticlesVC::PARTICLE_WATERSPRAY:
-                    return 20.0f;
-                case (int)tSplashParticlesVC::PARTICLE_WATERDROP:
-                    return 20.0f;
-                case (int)tSplashParticlesVC::PARTICLE_BLOODDROP:
-                    return 5.0f;
-                case (int)tSplashParticlesVC::PARTICLE_CAR_SPLASH:
-                    return 12.0f;
-                case (int)tSplashParticlesVC::PARTICLE_BOAT_SPLASH:
-                    return 30.0f;
-                case (int)tSplashParticlesVC::PARTICLE_BOAT_THRUSTJET:
-                    return 20.0f;
-                case (int)tSplashParticlesVC::PARTICLE_WATER_HYDRANT:
-                    return 10.0f;
-                case (int)tSplashParticlesVC::PARTICLE_WATER_CANNON:
-                    return 20.0f;
-                case (int)tSplashParticlesVC::PARTICLE_PED_SPLASH:
-                    return 10.0f;
-                case (int)tSplashParticlesVC::PARTICLE_RAINDROP_2D:
-                    return 5.0f;
-                default:
-                    break;
-                }
-                return 20.0f;
-            }
-        };
-
-        static auto AddDroplets = [](int particleType, RwV3d const &posn, void* entity = nullptr)
-        {
-            if (config.neowaterdrops < 2)
-                return;
-
-            RwV3d dist;
-            RwV3dSub(&dist, &posn, &WaterDrops::ms_lastPos);
-            auto len = RwV3dLength(&dist);
-            if (len <= getParticleDistance(particleType))
-            {
-                if (entity && isParticleSplash(particleType))
-                {
-                    WaterDrops::ms_splashDuration = 14;
-                    WaterDrops::ms_splashObject = (CPlaceable_III*)entity;
-                }
-                else
-                {
-                    auto isBlood = isParticleBlood(particleType);
-                    if (!config.neoblooddrops && isBlood)
-                        return;
-
-                    WaterDrops::FillScreenMoving(1.0f / (len / 2.0f), isBlood);
-                }
-            }
-        };
-
-        static injector::hook_back<void(__cdecl*)(int, RwV3d const &, RwV3d const &, void *, float, int, int, int, int)> AddParticle1;
-        static injector::hook_back<void(__cdecl*)(int, RwV3d const &, RwV3d const &, void *, float, RwRGBA const&, int, int, int, int)> AddParticle2;
-        auto AddParticleHook1 = [](int particleType, RwV3d const &posn, RwV3d const &direction, void *entity, float size, int rotationSpeed, int rotation, int startFrame, int lifeSpan)
-        {
-            AddParticle1.fun(particleType, posn, direction, entity, size, rotationSpeed, rotation, startFrame, lifeSpan);
-            AddDroplets(particleType, posn, entity);
-        };
-        auto AddParticleHook2 = [](int particleType, RwV3d const &posn, RwV3d const &direction, void *entity, float size, RwRGBA const& color, int rotationSpeed, int rotation, int startFrame, int lifeSpan)
-        {
-            AddParticle2.fun(particleType, posn, direction, entity, size, color, rotationSpeed, rotation, startFrame, lifeSpan);
-            AddDroplets(particleType, posn, entity);
-        };
-        auto f1 = static_cast<void(__cdecl*)(int, RwV3d const &, RwV3d const &, void *, float, int, int, int, int)>(AddParticleHook1);
-        auto f2 = static_cast<void(__cdecl*)(int, RwV3d const &, RwV3d const &, void *, float, RwRGBA const&, int, int, int, int)>(AddParticleHook2);
-
-        //commented lines are particles during rain, which is handled already
-        if (gtaversion == III_10) {
-            AddParticle1.fun = injector::MakeCALL(0x004D00DC, f1, true).get(); // PARTICLE_BLOOD_SPURT
-            //injector::MakeCALL(0x004D0394, f1, true); // PARTICLE_RAIN_SPLASHUP
-            injector::MakeCALL(0x004E78D1, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x004E946D, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x004EB024, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x004EB564, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x0050E3AF, f1, true); // PARTICLE_RAIN_SPLASH
-            //injector::MakeCALL(0x0050E42E, f1, true); // PARTICLE_RAIN_SPLASHUP
-            injector::MakeCALL(0x0050E4E7, f1, true); // PARTICLE_RAIN_SPLASH
-            //injector::MakeCALL(0x0050E562, f1, true); // PARTICLE_RAIN_SPLASHUP
-            //injector::MakeCALL(0x00537080, f1, true); // PARTICLE_RAIN_SPLASHUP
-            injector::MakeCALL(0x00549815, f1, true); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x005588AA, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x0055CF07, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x0055CF2E, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x0055CF55, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x0055CFE2, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x0055D064, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x0055FDE8, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x0055FECC, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x0056120F, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x00562CB4, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x00563DD4, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x00563F73, f1, true); // PARTICLE_BOAT_SPLASH
-
-            AddParticle2.fun = injector::MakeCALL(0x004BD72B, f2, true).get(); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BD8FF, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BDAD3, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BDC7D, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BDE56, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BDFBD, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BE11E, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BE25A, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BE504, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BE6CE, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BE898, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BEA44, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BEBF6, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BED32, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BEE68, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004BEF79, f2, true); // PARTICLE_CAR_SPLASH
-            //injector::MakeCALL(0x004BF0FA, f2, true); // PARTICLE_RAIN_SPLASHUP
-            injector::MakeCALL(0x004C87DF, f2, true); // PARTICLE_RAIN_SPLASH_BIGGROW
-            //injector::MakeCALL(0x004CC5A3, f2, true); // PARTICLE_RAIN_SPLASHUP
-            injector::MakeCALL(0x004CCD69, f2, true); // PARTICLE_PED_SPLASH
-            //injector::MakeCALL(0x0052356F, f2, true); // PARTICLE_RAINDROP_2D
-            //injector::MakeCALL(0x0052372F, f2, true); // PARTICLE_RAINDROP_2D
-            //injector::MakeCALL(0x005238FE, f2, true); // PARTICLE_RAINDROP_2D
-            //injector::MakeCALL(0x00523AF9, f2, true); // PARTICLE_RAINDROP_2D
-            //injector::MakeCALL(0x00524098, f2, true); // PARTICLE_RAIN_SPLASHUP
-            injector::MakeCALL(0x00530EF0, f2, true); // PARTICLE_RAIN_SPLASH_BIGGROW
-            injector::MakeCALL(0x00531369, f2, true); // PARTICLE_PED_SPLASH
-            //injector::MakeCALL(0x00535B03, f2, true); // PARTICLE_WATERSPRAY
-            injector::MakeCALL(0x00540744, f2, true); // PARTICLE_BOAT_THRUSTJET
-            injector::MakeCALL(0x00540855, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x00540892, f2, true); // PARTICLE_BOAT_WAKE
-            injector::MakeCALL(0x00540924, f2, true); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x00540A35, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x005414A8, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x005414D8, f2, true); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x00541737, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x00541767, f2, true); // PARTICLE_BOAT_SPLASH
-        }
-        else if(gtaversion == VC_10){
-            //remove old effect in VC
-            Nop(AddressByVersion<addr>(0, 0, 0, 0x560D63, 0, 0), 5);
-
-            if (config.neoblooddrops)
-                Nop(AddressByVersion<addr>(0, 0, 0, 0x560EE3, 0, 0), 5);
-
-            AddParticle1.fun = injector::MakeCALL(0x004FF238, f1, true).get(); // PARTICLE_BLOOD_SPURT
-            //injector::MakeCALL(0x004FF529, f1, true); // PARTICLE_RAIN_SPLASHUP
-            injector::MakeCALL(0x00525AE4, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x00527D3F, f1, true); // PARTICLE_BLOOD_SPURT
-            injector::MakeCALL(0x00527D5F, f1, true); // PARTICLE_BLOOD_SPURT
-            injector::MakeCALL(0x00527D8A, f1, true); // PARTICLE_BLOOD_SPURT
-            injector::MakeCALL(0x00527DAA, f1, true); // PARTICLE_BLOOD_SPURT
-            injector::MakeCALL(0x00527EB8, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x0052A4B3, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x0057B794, f1, true); // PARTICLE_CAR_SPLASH
-            //injector::MakeCALL(0x0058B54F, f1, true); // PARTICLE_RAIN_SPLASHUP
-            injector::MakeCALL(0x005B4A1C, f1, true); // PARTICLE_BLOOD_SMALL
-            //injector::MakeCALL(0x005BEC65, f1, true); // PARTICLE_WATER_SPARK
-            //injector::MakeCALL(0x005BEF61, f1, true); // PARTICLE_WATER_SPARK
-            injector::MakeCALL(0x005C41A2, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x005C9E85, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x005CA073, f1, true); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x005CBD73, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x005CE46F, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x005CE55B, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x005CF648, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x005CF88E, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x005D3410, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x005D343A, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x005D3464, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x005D3509, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x005D35A3, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x005D368B, f1, true); // PARTICLE_BLOOD_SMALL
-            injector::MakeCALL(0x005D36F1, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x005D3757, f1, true); // PARTICLE_BLOOD
-            injector::MakeCALL(0x005D3A40, f1, true); // PARTICLE_BLOOD_SPURT
-            injector::MakeCALL(0x005D3A6A, f1, true); // PARTICLE_BLOOD_SPURT
-            injector::MakeCALL(0x005D3A94, f1, true); // PARTICLE_BLOOD_SPURT
-
-            AddParticle2.fun = injector::MakeCALL(0x004E2C50, f2, true).get(); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x004E2F5D, f2, true); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x004E30A3, f2, true); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x004E3353, f2, true); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x004E3516, f2, true); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x004E365C, f2, true); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x004E599C, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E5B6D, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E5D3E, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E5EE5, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E60BE, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E6222, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E6380, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E64B9, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E6761, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E6928, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E6AEF, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E6C98, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E6E43, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E6F7C, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E70AF, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E71BD, f2, true); // PARTICLE_CAR_SPLASH
-            //injector::MakeCALL(0x004E7338, f2, true); // PARTICLE_RAIN_SPLASHUP
-            injector::MakeCALL(0x004E7566, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E769C, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E77D2, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E78F5, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x004E7B20, f2, true); // PARTICLE_SPLASH
-            injector::MakeCALL(0x004E7C80, f2, true); // PARTICLE_SPLASH
-            injector::MakeCALL(0x004E7DE0, f2, true); // PARTICLE_SPLASH
-            injector::MakeCALL(0x004E7F2D, f2, true); // PARTICLE_SPLASH
-            injector::MakeCALL(0x004E8023, f2, true); // PARTICLE_CAR_SPLASH
-            //injector::MakeCALL(0x005040DB, f2, true); // PARTICLE_RAIN_SPLASHUP
-            injector::MakeCALL(0x005047D7, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x0050489F, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x00509CB1, f2, true); // PARTICLE_RAIN_SPLASH_BIGGROW
-            injector::MakeCALL(0x005620A0, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x00562BB5, f2, true); // PARTICLE_WATERDROP
-            injector::MakeCALL(0x00563177, f2, true); // PARTICLE_RAIN_SPLASH
-            //injector::MakeCALL(0x00563206, f2, true); // PARTICLE_RAIN_SPLASHUP
-            injector::MakeCALL(0x005632D9, f2, true); // PARTICLE_RAIN_SPLASH
-            //injector::MakeCALL(0x00563368, f2, true); // PARTICLE_RAIN_SPLASHUP
-            //injector::MakeCALL(0x0057CC1A, f2, true); // PARTICLE_RAINDROP_2D
-            //injector::MakeCALL(0x0057CD99, f2, true); // PARTICLE_RAINDROP_2D
-            //injector::MakeCALL(0x0057CEAA, f2, true); // PARTICLE_RAINDROP_2D
-            //injector::MakeCALL(0x0057D119, f2, true); // PARTICLE_RAIN_SPLASHUP
-            injector::MakeCALL(0x0058F514, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x0058FAE1, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x00590D3C, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x0059134C, f2, true); // PARTICLE_CAR_SPLASH
-            //injector::MakeCALL(0x00592063, f2, true); // PARTICLE_WATERSPRAY
-            injector::MakeCALL(0x0059A500, f2, true); // PARTICLE_RAIN_SPLASH_BIGGROW
-            injector::MakeCALL(0x0059A97C, f2, true); // PARTICLE_PED_SPLASH
-            injector::MakeCALL(0x005A1D80, f2, true); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x005A1E76, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x005A365B, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x005A3767, f2, true); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x005A41EB, f2, true); // PARTICLE_CAR_SPLASH
-            injector::MakeCALL(0x005A42F7, f2, true); // PARTICLE_BOAT_SPLASH
-            injector::MakeCALL(0x005A47CF, f2, true); // PARTICLE_WATERDROP
-            injector::MakeCALL(0x005D3989, f2, true); // PARTICLE_BLOODDROP
-            //injector::MakeCALL(0x0060DCE5, f2, true); // PARTICLE_WATERSPRAY
-		}
+	static injector::hook_back<void(__cdecl*)(int, RwV3d const &, RwV3d const &, void *, float, int, int, int, int)> AddParticle1;
+	static injector::hook_back<void(__cdecl*)(int, RwV3d const &, RwV3d const &, void *, float, RwRGBA const&, int, int, int, int)> AddParticle2;
+	auto AddParticleHook1 = [](int particleType, RwV3d const &posn, RwV3d const &direction, void *entity, float size, int rotationSpeed, int rotation, int startFrame, int lifeSpan)
+	{
+		AddParticle1.fun(particleType, posn, direction, entity, size, rotationSpeed, rotation, startFrame, lifeSpan);
+		AddExtendedDroplets(particleType, posn, entity);
+	};
+	auto AddParticleHook2 = [](int particleType, RwV3d const &posn, RwV3d const &direction, void *entity, float size, RwRGBA const& color, int rotationSpeed, int rotation, int startFrame, int lifeSpan)
+	{
+		AddParticle2.fun(particleType, posn, direction, entity, size, color, rotationSpeed, rotation, startFrame, lifeSpan);
+		AddExtendedDroplets(particleType, posn, entity);
+	};
+	auto f1 = static_cast<void(__cdecl*)(int, RwV3d const &, RwV3d const &, void *, float, int, int, int, int)>(AddParticleHook1);
+	auto f2 = static_cast<void(__cdecl*)(int, RwV3d const &, RwV3d const &, void *, float, RwRGBA const&, int, int, int, int)>(AddParticleHook2);
+	
+	//commented lines are particles during rain, which is handled already
+	if(gtaversion == III_10){
+		AddParticle1.fun = injector::MakeCALL(0x004D00DC, f1, true).get(); // PARTICLE_BLOOD_SPURT
+		//injector::MakeCALL(0x004D0394, f1, true); // PARTICLE_RAIN_SPLASHUP
+		injector::MakeCALL(0x004E78D1, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x004E946D, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x004EB024, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x004EB564, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x0050E3AF, f1, true); // PARTICLE_RAIN_SPLASH
+		//injector::MakeCALL(0x0050E42E, f1, true); // PARTICLE_RAIN_SPLASHUP
+		injector::MakeCALL(0x0050E4E7, f1, true); // PARTICLE_RAIN_SPLASH
+		//injector::MakeCALL(0x0050E562, f1, true); // PARTICLE_RAIN_SPLASHUP
+		//injector::MakeCALL(0x00537080, f1, true); // PARTICLE_RAIN_SPLASHUP
+		injector::MakeCALL(0x00549815, f1, true); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x005588AA, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x0055CF07, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x0055CF2E, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x0055CF55, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x0055CFE2, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x0055D064, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x0055FDE8, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x0055FECC, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x0056120F, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x00562CB4, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x00563DD4, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x00563F73, f1, true); // PARTICLE_BOAT_SPLASH
+	
+		AddParticle2.fun = injector::MakeCALL(0x004BD72B, f2, true).get(); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BD8FF, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BDAD3, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BDC7D, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BDE56, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BDFBD, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BE11E, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BE25A, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BE504, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BE6CE, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BE898, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BEA44, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BEBF6, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BED32, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BEE68, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004BEF79, f2, true); // PARTICLE_CAR_SPLASH
+		//injector::MakeCALL(0x004BF0FA, f2, true); // PARTICLE_RAIN_SPLASHUP
+		injector::MakeCALL(0x004C87DF, f2, true); // PARTICLE_RAIN_SPLASH_BIGGROW
+		//injector::MakeCALL(0x004CC5A3, f2, true); // PARTICLE_RAIN_SPLASHUP
+		injector::MakeCALL(0x004CCD69, f2, true); // PARTICLE_PED_SPLASH
+		//injector::MakeCALL(0x0052356F, f2, true); // PARTICLE_RAINDROP_2D
+		//injector::MakeCALL(0x0052372F, f2, true); // PARTICLE_RAINDROP_2D
+		//injector::MakeCALL(0x005238FE, f2, true); // PARTICLE_RAINDROP_2D
+		//injector::MakeCALL(0x00523AF9, f2, true); // PARTICLE_RAINDROP_2D
+		//injector::MakeCALL(0x00524098, f2, true); // PARTICLE_RAIN_SPLASHUP
+		injector::MakeCALL(0x00530EF0, f2, true); // PARTICLE_RAIN_SPLASH_BIGGROW
+		injector::MakeCALL(0x00531369, f2, true); // PARTICLE_PED_SPLASH
+		//injector::MakeCALL(0x00535B03, f2, true); // PARTICLE_WATERSPRAY
+		injector::MakeCALL(0x00540744, f2, true); // PARTICLE_BOAT_THRUSTJET
+		injector::MakeCALL(0x00540855, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x00540892, f2, true); // PARTICLE_BOAT_WAKE
+		injector::MakeCALL(0x00540924, f2, true); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x00540A35, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x005414A8, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x005414D8, f2, true); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x00541737, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x00541767, f2, true); // PARTICLE_BOAT_SPLASH
+	}else if(gtaversion == VC_10){
+		//remove old effect in VC
+		Nop(AddressByVersion<addr>(0, 0, 0, 0x560D63, 0, 0), 5);
+	
+//		if(config.neowaterdrops > 2)
+			Nop(AddressByVersion<addr>(0, 0, 0, 0x560EE3, 0, 0), 5);
+	
+		AddParticle1.fun = injector::MakeCALL(0x004FF238, f1, true).get(); // PARTICLE_BLOOD_SPURT
+		//injector::MakeCALL(0x004FF529, f1, true); // PARTICLE_RAIN_SPLASHUP
+		injector::MakeCALL(0x00525AE4, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x00527D3F, f1, true); // PARTICLE_BLOOD_SPURT
+		injector::MakeCALL(0x00527D5F, f1, true); // PARTICLE_BLOOD_SPURT
+		injector::MakeCALL(0x00527D8A, f1, true); // PARTICLE_BLOOD_SPURT
+		injector::MakeCALL(0x00527DAA, f1, true); // PARTICLE_BLOOD_SPURT
+		injector::MakeCALL(0x00527EB8, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x0052A4B3, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x0057B794, f1, true); // PARTICLE_CAR_SPLASH
+		//injector::MakeCALL(0x0058B54F, f1, true); // PARTICLE_RAIN_SPLASHUP
+		injector::MakeCALL(0x005B4A1C, f1, true); // PARTICLE_BLOOD_SMALL
+		//injector::MakeCALL(0x005BEC65, f1, true); // PARTICLE_WATER_SPARK
+		//injector::MakeCALL(0x005BEF61, f1, true); // PARTICLE_WATER_SPARK
+		injector::MakeCALL(0x005C41A2, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x005C9E85, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x005CA073, f1, true); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x005CBD73, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x005CE46F, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x005CE55B, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x005CF648, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x005CF88E, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x005D3410, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x005D343A, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x005D3464, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x005D3509, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x005D35A3, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x005D368B, f1, true); // PARTICLE_BLOOD_SMALL
+		injector::MakeCALL(0x005D36F1, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x005D3757, f1, true); // PARTICLE_BLOOD
+		injector::MakeCALL(0x005D3A40, f1, true); // PARTICLE_BLOOD_SPURT
+		injector::MakeCALL(0x005D3A6A, f1, true); // PARTICLE_BLOOD_SPURT
+		injector::MakeCALL(0x005D3A94, f1, true); // PARTICLE_BLOOD_SPURT
+	
+		AddParticle2.fun = injector::MakeCALL(0x004E2C50, f2, true).get(); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x004E2F5D, f2, true); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x004E30A3, f2, true); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x004E3353, f2, true); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x004E3516, f2, true); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x004E365C, f2, true); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x004E599C, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E5B6D, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E5D3E, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E5EE5, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E60BE, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E6222, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E6380, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E64B9, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E6761, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E6928, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E6AEF, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E6C98, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E6E43, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E6F7C, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E70AF, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E71BD, f2, true); // PARTICLE_CAR_SPLASH
+		//injector::MakeCALL(0x004E7338, f2, true); // PARTICLE_RAIN_SPLASHUP
+		injector::MakeCALL(0x004E7566, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E769C, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E77D2, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E78F5, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x004E7B20, f2, true); // PARTICLE_SPLASH
+		injector::MakeCALL(0x004E7C80, f2, true); // PARTICLE_SPLASH
+		injector::MakeCALL(0x004E7DE0, f2, true); // PARTICLE_SPLASH
+		injector::MakeCALL(0x004E7F2D, f2, true); // PARTICLE_SPLASH
+		injector::MakeCALL(0x004E8023, f2, true); // PARTICLE_CAR_SPLASH
+		//injector::MakeCALL(0x005040DB, f2, true); // PARTICLE_RAIN_SPLASHUP
+		injector::MakeCALL(0x005047D7, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x0050489F, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x00509CB1, f2, true); // PARTICLE_RAIN_SPLASH_BIGGROW
+		injector::MakeCALL(0x005620A0, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x00562BB5, f2, true); // PARTICLE_WATERDROP
+		injector::MakeCALL(0x00563177, f2, true); // PARTICLE_RAIN_SPLASH
+		//injector::MakeCALL(0x00563206, f2, true); // PARTICLE_RAIN_SPLASHUP
+		injector::MakeCALL(0x005632D9, f2, true); // PARTICLE_RAIN_SPLASH
+		//injector::MakeCALL(0x00563368, f2, true); // PARTICLE_RAIN_SPLASHUP
+		//injector::MakeCALL(0x0057CC1A, f2, true); // PARTICLE_RAINDROP_2D
+		//injector::MakeCALL(0x0057CD99, f2, true); // PARTICLE_RAINDROP_2D
+		//injector::MakeCALL(0x0057CEAA, f2, true); // PARTICLE_RAINDROP_2D
+		//injector::MakeCALL(0x0057D119, f2, true); // PARTICLE_RAIN_SPLASHUP
+		injector::MakeCALL(0x0058F514, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x0058FAE1, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x00590D3C, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x0059134C, f2, true); // PARTICLE_CAR_SPLASH
+		//injector::MakeCALL(0x00592063, f2, true); // PARTICLE_WATERSPRAY
+		injector::MakeCALL(0x0059A500, f2, true); // PARTICLE_RAIN_SPLASH_BIGGROW
+		injector::MakeCALL(0x0059A97C, f2, true); // PARTICLE_PED_SPLASH
+		injector::MakeCALL(0x005A1D80, f2, true); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x005A1E76, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x005A365B, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x005A3767, f2, true); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x005A41EB, f2, true); // PARTICLE_CAR_SPLASH
+		injector::MakeCALL(0x005A42F7, f2, true); // PARTICLE_BOAT_SPLASH
+		injector::MakeCALL(0x005A47CF, f2, true); // PARTICLE_WATERDROP
+		injector::MakeCALL(0x005D3989, f2, true); // PARTICLE_BLOODDROP
+		//injector::MakeCALL(0x0060DCE5, f2, true); // PARTICLE_WATERSPRAY
 	}
 }
 

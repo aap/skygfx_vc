@@ -704,10 +704,16 @@ delayedPatches(int a, int b)
 
 		DebugMenuAddVarBool32("SkyGFX", "Neo rim light pipe", &config.rimlight, nil);
 		DebugMenuAddVarBool32("SkyGFX", "Neo gloss pipe", &config.neoGlossPipe, nil);
-		if(config.neowaterdrops){
-			static const char *dropstrings[] = { "None", "Neo", "Extended" };
-			DebugMenuAddVar("SkyGFX", "Neo water drops", &config.neowaterdrops, nil, 1, 0, 2, dropstrings);
-			DebugMenuAddVarBool32("SkyGFX", "Neo-style blood drops", &config.neoblooddrops, nil);
+		if(config.neowaterdrops >= 0){
+			if(config.neowaterdrops > 3) config.neowaterdrops = 3;
+			static const char *dropstrings[] = { "None", "Neo", "Extended", "Extended+Blood" };
+			DebugMenuAddVar("SkyGFX", "Neo water drops", &config.neowaterdrops, nil, 1, 0, 3, dropstrings);
+
+#ifdef DEBUG
+			DebugMenuAddVar("SkyGFX", "Num Neo drops", &WaterDrops::ms_numDrops, nil, 0, 0, 99999999, nil);
+			DebugMenuAddVar("SkyGFX", "Num Neo drops moving", &WaterDrops::ms_numDropsMoving, nil, 0, 0, 99999999, nil);
+			
+#endif
 		}
 
 //		if(config.disableColourOverlay >= 0)
@@ -931,8 +937,7 @@ patch(void)
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x55EA39, 0x55EA59, 0x55E929), sniperTrailsHook, PATCH_JUMP);
 
 	config.neowaterdrops = readint(cfg.get("SkyGfx", "neoWaterDrops", ""));
-	config.neoblooddrops = readint(cfg.get("SkyGfx", "neoBloodDrops", ""));
-	if(config.neowaterdrops)
+	if(config.neowaterdrops >= 0)
 		hookWaterDrops();
 
 	if(readint(cfg.get("SkyGfx", "replaceDefaultPipeline", ""))){
