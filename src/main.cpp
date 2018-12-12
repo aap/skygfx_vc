@@ -966,19 +966,6 @@ patch(void)
 		}
 	}
 
-/*
-	// load xbox flames
-	if(gtaversion == III_10){
-		InjectHook(0x50C8D3, neoflame_hook_iii, PATCH_JUMP);
-		Patch(0x50CB0E + 6, flameras);
-		Patch(0x50CBA4 + 6, flameras);
-	}else if(gtaversion == VC_10){
-		InjectHook(0x565226, neoflame_hook_vc, PATCH_JUMP);
-		Patch(0x5655C7 + 6, flameras);
-		Patch(0x565671 + 6, flameras);
-	}
-*/
-
 	ScreenFX::m_bYCbCrFilter = readint(cfg.get("SkyGfx", "YCbCrCorrection", ""), 0);
 	ScreenFX::m_lumaScale = readfloat(cfg.get("SkyGfx", "lumaScale", ""), 219.0f/255.0f);
 	ScreenFX::m_lumaOffset = readfloat(cfg.get("SkyGfx", "lumaOffset", ""), 16.0f/255.0f);

@@ -228,8 +228,9 @@ void
 RenderEffects_hook(void)
 {
 	RenderEffects();
-	WaterDrops::Process();
-	WaterDrops::Render();
+		WaterDrops::Process();
+	if(config.neowaterdrops)
+		WaterDrops::Render();
 }
 
 /* For extended droplets */

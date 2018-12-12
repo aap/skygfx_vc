@@ -103,6 +103,8 @@ CMBlur::Initialise(void)
 		}
 }
 
+/* PS2 code. frame*blurcolour is added to frame, equivalent to multiplication by 255+blurcolour, i.e. it can only brighten.
+ * LCS PSP multiplies final frame with 255-blurcolour, i.e. it can only darken. */
 void
 CMBlur::OverlayRender_leeds(RwCamera *cam, RwRaster *frontbuf, RwRGBA *col, uint8 type)
 {

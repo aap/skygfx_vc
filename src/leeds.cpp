@@ -150,7 +150,8 @@ leedsWorldRenderCallback_shader(RwResEntry *repEntry, void *object, RwUInt8 type
 			// unused actually, but maybe we wanna use it later
 			memcpy(surfProps, &inst->material->surfaceProps, sizeof(inst->material->surfaceProps));
 			// scale down emissive
-			surfProps[3] = 128.0f/255.0f;
+			surfProps[3] = 0.5f;
+//			surfProps[3] = 1.22f;	// PSP
 			RwD3D9SetVertexShaderConstant(LOC_surfProps, surfProps, 1);
 			RwRGBARealFromRwRGBA(&color, &inst->material->color);
 			RwD3D9SetVertexShaderConstant(LOC_matCol, &color, 1);
