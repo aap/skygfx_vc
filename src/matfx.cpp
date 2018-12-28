@@ -299,7 +299,6 @@ else
 	RwD3D8GetRenderState(D3DRS_LIGHTING, &lighting);
 	RwD3D8GetRenderState(D3DRS_ZWRITEENABLE, &zwrite);
 	RwD3D8GetRenderState(D3DRS_FOGENABLE, &fog);
-	RwD3D8SetRenderState(D3DRS_FOGENABLE, 0);
 	RwD3D8SetRenderState(D3DRS_ZWRITEENABLE, 0);
 	if(fog){
 		RwD3D8GetRenderState(D3DRS_FOGCOLOR, &fogcol);
@@ -332,7 +331,6 @@ else
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)dst);
 	RwD3D8SetRenderState(D3DRS_LIGHTING, lighting);
 	RwD3D8SetRenderState(D3DRS_ZWRITEENABLE, zwrite);
-	RwD3D8SetRenderState(D3DRS_FOGENABLE, fog);
 	if(fog)
 		RwD3D8SetRenderState(D3DRS_FOGCOLOR, fogcol);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
@@ -479,7 +477,6 @@ _rpMatFXD3D8AtomicMatFXEnvRender_ps2_shader(RxD3D8InstanceData *inst, int flags,
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
 	RwD3D8GetRenderState(D3DRS_ZWRITEENABLE, &zwrite);
 	RwD3D8GetRenderState(D3DRS_FOGENABLE, &fog);
-	RwD3D8SetRenderState(D3DRS_FOGENABLE, 0);
 	RwD3D8SetRenderState(D3DRS_ZWRITEENABLE, 0);
 	if(fog){
 		RwD3D8GetRenderState(D3DRS_FOGCOLOR, &fogcol);
@@ -504,7 +501,6 @@ _rpMatFXD3D8AtomicMatFXEnvRender_ps2_shader(RxD3D8InstanceData *inst, int flags,
 	RwRenderStateSet(rwRENDERSTATESRCBLEND, (void*)src);
 	RwRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)dst);
 	RwD3D8SetRenderState(D3DRS_ZWRITEENABLE, zwrite);
-	RwD3D8SetRenderState(D3DRS_FOGENABLE, fog);
 	if(fog)
 		RwD3D8SetRenderState(D3DRS_FOGCOLOR, fogcol);
 	RwD3D8SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
