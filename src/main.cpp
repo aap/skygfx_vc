@@ -936,7 +936,7 @@ patch(void)
 	if(isVC())
 		InjectHook(AddressByVersion<addr>(0, 0, 0, 0x55EA39, 0x55EA59, 0x55E929), sniperTrailsHook, PATCH_JUMP);
 
-	config.neowaterdrops = readint(cfg.get("SkyGfx", "neoWaterDrops", ""));
+	config.neowaterdrops = readint(cfg.get("SkyGfx", "neoWaterDrops", ""), -1);
 	if(config.neowaterdrops >= 0)
 		hookWaterDrops();
 

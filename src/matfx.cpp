@@ -459,6 +459,14 @@ _rpMatFXD3D8AtomicMatFXEnvRender_ps2_shader(RxD3D8InstanceData *inst, int flags,
 	// Env pass
 	MatFX *matfx = *RWPLUGINOFFSET(MatFX*, inst->material, MatFXMaterialDataOffset);
 	MatFXEnv *env = &matfx->fx[sel].e;
+#ifdef DEBUG
+env->envCoeff *= envmult;
+// simulate broken filtering
+if(ps2filtering)
+	envMap->filterAddressing = texture == nil ? 0x1101 : texture->filterAddressing;
+else
+	envMap->filterAddressing = 0x1102;
+#endif
 	ApplyEnvMapTextureMatrix_world(envMap, 0, env->envFrame);
 	void *lightingShader = config.ps2light ? ps2StandardEnvOnlyVS : pcStandardEnvOnlyVS;
 	RwD3D9SetVertexShader(flags&rpGEOMETRYLIGHT ? lightingShader : nolightEnvOnlyVS);

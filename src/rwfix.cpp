@@ -403,6 +403,8 @@ rxD3D8SetAmbientLight(void)
 void
 rxD3D8DefaultRenderCallback_xbox(RwResEntry *repEntry, void *object, RwUInt8 type, RwUInt32 flags)
 {
+	_rwD3D8EnableClippingIfNeeded(object, type);
+
 	rxD3D8SetAmbientLight();
 
 	RxD3D8ResEntryHeader *header = (RxD3D8ResEntryHeader*)&repEntry[1];

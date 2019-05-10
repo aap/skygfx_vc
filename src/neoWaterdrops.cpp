@@ -298,7 +298,7 @@ getParticleDistance(int id)
 		case III_PARTICLE_RAIN_SPLASHUP:	return 5.0f;
 		case III_PARTICLE_WATERSPRAY:		return 20.0f;
 		case III_PARTICLE_CAR_SPLASH:		return 5.0f;
-		case III_PARTICLE_BOAT_SPLASH:		return 30.0f;
+		case III_PARTICLE_BOAT_SPLASH:		return 40.0f;
 		case III_PARTICLE_BOAT_THRUSTJET:	return 20.0f;
 		case III_PARTICLE_BOAT_WAKE:		return 20.0f;
 		case III_PARTICLE_WATER_HYDRANT:	return 10.0f;
@@ -324,7 +324,7 @@ getParticleDistance(int id)
 		case VC_PARTICLE_WATERDROP:		return 20.0f;
 		case VC_PARTICLE_BLOODDROP:		return 5.0f;
 		case VC_PARTICLE_CAR_SPLASH:		return 12.0f;
-		case VC_PARTICLE_BOAT_SPLASH:		return 30.0f;
+		case VC_PARTICLE_BOAT_SPLASH:		return 40.0f;
 		case VC_PARTICLE_BOAT_THRUSTJET:	return 20.0f;
 		case VC_PARTICLE_WATER_HYDRANT:		return 10.0f;
 		case VC_PARTICLE_WATER_CANNON:		return 20.0f;
