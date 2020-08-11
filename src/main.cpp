@@ -1030,6 +1030,8 @@ patch(void)
 #endif
 #ifdef DEBUG
 	if(gtaversion == VC_10){
+//extern void hackshit(void);
+//hackshit();
 		// remove "%s has not been pre-instanced", we don't really care
 		Nop(0x40C32B, 5);
 		//MemoryVP::InjectHook(0x650ACB, RwTextureRead_VC);
@@ -1050,6 +1052,9 @@ patch(void)
 		Patch(0x58051D + 2, 0x94B210);
 		Patch(0x58054D + 2, 0x94B210+4);
 		Patch(0x58057D + 2, 0x94B210+8);
+
+		// disable Vsynch
+		Patch<uint8>(0x6021EF + 1, 0);
 
 		// disable level load screens
 		Nop(0x40E00E, 5);

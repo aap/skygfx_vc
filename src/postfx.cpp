@@ -426,12 +426,12 @@ CMBlur::MotionBlurRender_mobile(RwCamera *cam, uint8 red, uint8 green, uint8 blu
 		add[1] = green/1536.f;
 		add[2] = blue/1536.f;
 	}else{
-		mult[0] = (red-64)/256.0f + 1.14f;
-		mult[1] = (green-64)/256.0f + 1.14f;
-		mult[2] = (blue-64)/256.0f + 1.14f;
-		add[0] = red/1536.f + 0.05f;
-		add[1] = green/1536.f + 0.05f;
-		add[2] = blue/1536.f + 0.05f;
+		mult[0] = (red-64)/256.0f + 1.4f;
+		mult[1] = (green-64)/256.0f + 1.4f;
+		mult[2] = (blue-64)/256.0f + 1.4f;
+		add[0] = red/1536.f - 0.05f;
+		add[1] = green/1536.f - 0.05f;
+		add[2] = blue/1536.f - 0.05f;
 	}
 	RwD3D9SetPixelShaderConstant(3, &mult, 1);
 	RwD3D9SetPixelShaderConstant(4, &add, 1);
