@@ -639,7 +639,7 @@ WaterDrops::CalculateMovement()
 	RwMatrix *modelMatrix;
 	modelMatrix = &RwCameraGetFrame(Scene.camera)->modelling;
 	RwV3dSub(&ms_posDelta, &modelMatrix->pos, &ms_lastPos);
-	ms_distMoved = RwV3dLength(&ms_posDelta);
+	ms_distMoved = RwV3dLength(&ms_posDelta) * (CTimer__ms_fTimeStep * 1000.0f / 50.0f);
 	// RwV3d pos;
 	// pos.x = (modelMatrix->at.x - ms_lastAt.x) * 10.0f;
 	// pos.y = (modelMatrix->at.y - ms_lastAt.y) * 10.0f;

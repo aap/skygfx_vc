@@ -287,7 +287,7 @@ rxD3D8DefaultRenderFFPMeshSetUp(RxD3D8InstanceData *inst)
 			d3dmaterial.Diffuse.r = m->color.red   * d;
 			d3dmaterial.Diffuse.g = m->color.green * d;
 			d3dmaterial.Diffuse.b = m->color.blue  * d;
-			d3dmaterial.Diffuse.a = m->color.alpha * d;
+			d3dmaterial.Diffuse.a = m->color.alpha * (1.0f / 255.0f);
 			d3dmaterial.Ambient.r = m->color.red   * a;
 			d3dmaterial.Ambient.g = m->color.green * a;
 			d3dmaterial.Ambient.b = m->color.blue  * a;
@@ -297,7 +297,7 @@ rxD3D8DefaultRenderFFPMeshSetUp(RxD3D8InstanceData *inst)
 			d3dmaterial.Diffuse.r = d;
 			d3dmaterial.Diffuse.g = d;
 			d3dmaterial.Diffuse.b = d;
-			d3dmaterial.Diffuse.a = d;
+			d3dmaterial.Diffuse.a = 1.0f;
 			a = m->surfaceProps.ambient;
 			d3dmaterial.Ambient.r = a;
 			d3dmaterial.Ambient.g = a;

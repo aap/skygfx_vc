@@ -152,7 +152,7 @@ NeoWorldPipe::RenderMeshSetUp(RxD3D8InstanceData *inst)
 			material.Diffuse.r = m->color.red   * d;
 			material.Diffuse.g = m->color.green * d;
 			material.Diffuse.b = m->color.blue  * d;
-			material.Diffuse.a = m->color.alpha * d;
+			material.Diffuse.a = m->color.alpha * (1.0f / 255.0f);
 			material.Ambient.r = m->color.red   * a;
 			material.Ambient.g = m->color.green * a;
 			material.Ambient.b = m->color.blue  * a;
@@ -162,7 +162,7 @@ NeoWorldPipe::RenderMeshSetUp(RxD3D8InstanceData *inst)
 			material.Diffuse.r = d;
 			material.Diffuse.g = d;
 			material.Diffuse.b = d;
-			material.Diffuse.a = d;
+			material.Diffuse.a = 1.0f;
 			a = m->surfaceProps.ambient;
 			material.Ambient.r = a;
 			material.Ambient.g = a;
