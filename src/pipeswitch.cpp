@@ -226,12 +226,6 @@ WRAPPER void RenderScene(void) { VARJMP(RenderScene_A); }
 void
 RenderScene_hook(void)
 {
-	// This is needed because the game sets far after RwCameraBeginUpdate,
-	// so do it again here
-	RwCamera *cam = (RwCamera*)RWSRCGLOBAL(curCamera);
-	RwCameraEndUpdate(cam);
-	RwCameraBeginUpdate(cam);
-
 	RenderScene();
 	if(config.seamfix)
 		fixSeams();
@@ -307,7 +301,11 @@ struct CLinkList_AlphaObjectInfo
 };
 
 int &CRenderer__ms_nNoOfVisibleEntities = *AddressByVersion<int*>(0x940730, 0, 0, 0xA0D1E4, 0, 0);
-void **CRenderer__ms_aVisibleEntityPtrs = AddressByVersion<void**>(0x6E9920, 0, 0, 0x7D54F8, 0, 0);
+// Read through the game's own code: a limit adjuster may have moved the list
+static void **VisibleEntityPtrs(void) { return *AddressByVersion<void***>(0x4A7853, 0, 0, 0x4C7621, 0, 0); }
+
+// Lets limit adjusters know that arrays moved by them are fine
+extern "C" __declspec(dllexport) int SkyGfx_FollowsMovedArrays(void) { return 1; }
 
 CLinkList_AlphaObjectInfo &CVisibilityPlugins__m_alphaEntityList = *AddressByVersion<CLinkList_AlphaObjectInfo*>(0x943084, 0, 0, 0xA0FD84, 0, 0);
 
@@ -322,8 +320,9 @@ RenderEverythingBarCarsPeds(void)
 	DeActivateDirectional();
 	SetAmbientColours();
 
+	void **list = VisibleEntityPtrs();
 	for(i = 0; i < CRenderer__ms_nNoOfVisibleEntities; i++){
-		ent = CRenderer__ms_aVisibleEntityPtrs[i];
+		ent = list[i];
 		type = FIELD(uint8, ent, 0x50)&7;
 		if(type != 1)	// building
 			continue;
